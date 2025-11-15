@@ -1,0 +1,30 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice",
+      "email": "alice@example.com",
+      "roles": ["admin", "user"],
+      "metadata": {
+        "created": "2024-01-01T00:00:00Z",
+        "lastLogin": "2024-01-15T12:30:00Z"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Bob",
+      "email": "bob@example.com",
+      "roles": ["user"],
+      "metadata": {
+        "created": "2024-01-05T10:00:00Z",
+        "lastLogin": null
+      }
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "notifications": true,
+    "maxLoginAttempts": 3,
+    "timeout": 1800.5
+  }
+}

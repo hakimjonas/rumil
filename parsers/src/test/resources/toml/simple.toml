@@ -1,0 +1,6 @@
+# Simple TOML configuration
+title = "TOML Example"
+version = 1
+enabled = true
+pi = 3.14159
+tags = ["config", "example", "simple"]

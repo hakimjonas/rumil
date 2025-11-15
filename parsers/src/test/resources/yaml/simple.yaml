@@ -1,0 +1,8 @@
+name: Alice Smith
+age: 30
+email: alice@example.com
+active: true
+tags:
+  - user
+  - admin
+  - verified

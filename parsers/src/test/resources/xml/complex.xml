@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<library xmlns="http://example.com/library">
+  <book isbn="978-0-123456-78-9">
+    <title>Example Book Title</title>
+    <author>
+      <firstName>John</firstName>
+      <lastName>Doe</lastName>
+    </author>
+    <publisher>Example Press</publisher>
+    <year>2024</year>
+    <description>
+      <![CDATA[This book contains special characters: <>&"']]>
+    </description>
+    <tags>
+      <tag>programming</tag>
+      <tag>scala</tag>
+      <tag>functional</tag>
+    </tags>
+  </book>
+  <!-- More books could be added here -->
+</library>
