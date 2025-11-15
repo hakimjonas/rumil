@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+        cache: 'sbt'
+
+    - name: Check formatting
+      run: sbt scalafmtCheckAll scalafmtSbtCheck
+
+    - name: Compile
+      run: sbt compile
+
+    - name: Run tests
+      run: sbt test
+
+    - name: Build documentation
+      run: sbt doc
