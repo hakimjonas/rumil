@@ -11,9 +11,9 @@ import java.time.format.DateTimeFormatter
 // ============================================================================
 
 /**
- * TOML v1.0.0 compliant parser.
+ * Parses a TOML document from a string.
  *
- * Supports:
+ * TOML v1.0.0 compliant parser supporting:
  * - All value types (string, integer, float, boolean, datetime, array, inline table)
  * - Tables and nested tables
  * - Array tables
@@ -21,22 +21,17 @@ import java.time.format.DateTimeFormatter
  * - Multi-line strings (basic and literal)
  * - Comments
  * - Full datetime support (RFC 3339)
+ *
+ * @param input TOML text
+ * @return Result containing parsed TOML document
  */
-object TomlParser {
+def parseToml(input: scala.Predef.String): Result[ParseError, TomlDocument] = {
+  tomlDocument.run(input)
+}
 
-  /**
-   * Parses a TOML document from a string.
-   *
-   * @param input TOML text
-   * @return Result containing parsed TOML document
-   */
-  def parse(input: scala.Predef.String): Result[ParseError, TomlDocument] = {
-    tomlDocument.run(input)
-  }
-
-  // ============================================================================
-  // Whitespace and Comments
-  // ============================================================================
+// ============================================================================
+// Whitespace and Comments
+// ============================================================================
 
   /**
    * TOML whitespace: space or tab.
@@ -141,13 +136,13 @@ object TomlParser {
    */
   private def multiLineBasicString: Parser[ParseError, scala.Predef.String] = {
     val escape = char('\\') *> (
-      char('"').as('"') |
-      char('\\').as('\\') |
-      char('b').as('\b') |
-      char('f').as('\f') |
-      char('n').as('\n') |
-      char('r').as('\r') |
-      char('t').as('\t') |
+      char('"').as("\"") |
+      char('\\').as("\\") |
+      char('b').as("\b") |
+      char('f').as("\f") |
+      char('n').as("\n") |
+      char('r').as("\r") |
+      char('t').as("\t") |
       newline.as("") // Line-ending backslash
     )
 
@@ -156,7 +151,7 @@ object TomlParser {
     for {
       _ <- string("\"\"\"")
       _ <- newline.optional // Skip immediate newline
-      chars <- (escape.map(c => if (c.isEmpty) "" else c.toString) | regularChar).many
+      chars <- (escape | regularChar).many
       _ <- string("\"\"\"")
     } yield chars.mkString
   }
@@ -449,4 +444,3 @@ object TomlParser {
       (isArrayTable = false, pairs = pairMap, subtables = Map.empty)
     }
   }
-}

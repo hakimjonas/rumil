@@ -1,5 +1,7 @@
 package parsers.json
 
+import scala.language.strictEquality
+
 // ============================================================================
 // JSON TYPES - RFC 8259 Compliant (Enums, No Case Classes)
 // ============================================================================
@@ -23,6 +25,9 @@ enum JsonValue {
   case Array(elements: List[JsonValue])
   case Object(fields: Map[String, JsonValue])
 }
+
+// CanEqual instance for strict equality
+given CanEqual[JsonValue, JsonValue] = CanEqual.derived
 
 /**
  * JSON parsing error types.

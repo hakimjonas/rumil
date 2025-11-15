@@ -8,6 +8,13 @@ import parser.syntax.*
 // ============================================================================
 
 /**
+ * Parses a hexadecimal digit (0-9, a-f, A-F).
+ */
+def hexDigit: Parser[ParseError, Char] = {
+  satisfy(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'), "hex digit")
+}
+
+/**
  * Parses a Unicode escape sequence (\uXXXX).
  *
  * Example: "\u0041" parses to 'A'
@@ -16,21 +23,14 @@ def unicodeEscape: Parser[ParseError, Char] = {
   for {
     _ <- char('\\')
     _ <- char('u')
-    d1 <- satisfy(_.isHexDigit, "hex digit")
-    d2 <- satisfy(_.isHexDigit, "hex digit")
-    d3 <- satisfy(_.isHexDigit, "hex digit")
-    d4 <- satisfy(_.isHexDigit, "hex digit")
+    d1 <- hexDigit
+    d2 <- hexDigit
+    d3 <- hexDigit
+    d4 <- hexDigit
   } yield {
     val hex = s"$d1$d2$d3$d4"
     Integer.parseInt(hex, 16).toChar
   }
-}
-
-/**
- * Parses a hexadecimal digit (0-9, a-f, A-F).
- */
-def hexDigit: Parser[ParseError, Char] = {
-  satisfy(c => c.isDigit || "abcdefABCDEF".contains(c), "hex digit")
 }
 
 /**
@@ -72,11 +72,12 @@ def floatingPoint: Parser[ParseError, Double] = {
       case None => whole.mkString
     }
     val value = base.toDouble
-    exp match {
+    val withExp = exp match {
       case Some(e) => value * math.pow(10, e)
       case None => value
     }
-  }.map(_ * s)
+    withExp * s
+  }
 }
 
 /**

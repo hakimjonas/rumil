@@ -1,5 +1,7 @@
 package parsers.protobuf
 
+import scala.language.strictEquality
+
 // ============================================================================
 // PROTOCOL BUFFERS TYPES - Proto3 Syntax (Enums, No Case Classes)
 // ============================================================================
@@ -16,6 +18,9 @@ enum ProtoType {
   case Map(keyType: ProtoType, valueType: ProtoType)
   case Repeated(elementType: ProtoType)
 }
+
+// CanEqual instances for strict equality
+given CanEqual[ProtoType, ProtoType] = CanEqual.derived
 
 /**
  * Field rule (proto3 only supports optional and repeated).
@@ -72,6 +77,8 @@ enum ProtoDefinition {
   case Package(name: scala.Predef.String)
   case Option(name: scala.Predef.String, value: scala.Predef.String)
 }
+
+given CanEqual[ProtoDefinition, ProtoDefinition] = CanEqual.derived
 
 /**
  * RPC method definition.

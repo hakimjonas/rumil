@@ -9,9 +9,9 @@ import parsers.common.*
 // ============================================================================
 
 /**
- * YAML 1.2 parser (simplified subset).
+ * Parses a YAML document from a string.
  *
- * Supports:
+ * YAML 1.2 parser (simplified subset) supporting:
  * - Scalars (strings, numbers, booleans, null)
  * - Sequences (block and flow style)
  * - Mappings (block and flow style)
@@ -20,22 +20,21 @@ import parsers.common.*
  *
  * Note: This is a simplified parser focusing on common YAML features.
  * Full YAML 1.2 spec includes anchors, aliases, tags, and more.
+ *
+ * @param input YAML text
+ * @return Result containing parsed YAML document
  */
-object YamlParser {
+def parseYaml(input: scala.Predef.String): Result[ParseError, YamlDocument] = {
+  yamlDocument.run(input)
+}
 
-  /**
-   * Parses a YAML document from a string.
-   *
-   * @param input YAML text
-   * @return Result containing parsed YAML document
-   */
-  def parse(input: scala.Predef.String): Result[ParseError, YamlDocument] = {
-    yamlDocument.run(input)
+// ============================================================================
+// Whitespace and Comments
+// ============================================================================
+
+  private def ws: Parser[ParseError, Unit] = {
+    satisfy(c => c == ' ' || c == '\t' || c == '\r' || c == '\n', "whitespace").many.void
   }
-
-  // ============================================================================
-  // Whitespace and Comments
-  // ============================================================================
 
   private def yamlComment: Parser[ParseError, Unit] = {
     char('#') *> satisfy(_ != '\n', "comment char").many *> (newline.void | eof)
@@ -189,4 +188,3 @@ object YamlParser {
       _ <- ws *> eof
     } yield (root = root, directives = List())
   }
-}

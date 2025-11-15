@@ -1,6 +1,7 @@
 package parsers.toml
 
 import java.time.{LocalDate, LocalTime, LocalDateTime, OffsetDateTime}
+import scala.language.strictEquality
 
 // ============================================================================
 // TOML TYPES - TOML v1.0.0 (Enums, Named Tuples, No Case Classes)
@@ -21,6 +22,9 @@ enum TomlValue {
   case Array(elements: List[TomlValue])
   case InlineTable(pairs: Map[scala.Predef.String, TomlValue])
 }
+
+// CanEqual instance for TomlValue
+given CanEqual[TomlValue, TomlValue] = CanEqual.derived
 
 /**
  * TOML table - collection of key-value pairs.

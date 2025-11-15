@@ -9,9 +9,9 @@ import parsers.common.*
 // ============================================================================
 
 /**
- * Well-formed XML parser with namespace support.
+ * Parses an XML document from a string.
  *
- * Supports:
+ * Well-formed XML parser with namespace support:
  * - Elements with start/end tags
  * - Self-closing elements
  * - Attributes (including namespace declarations)
@@ -21,30 +21,25 @@ import parsers.common.*
  * - Processing instructions
  * - XML declaration/prolog
  * - Namespace prefixes
+ *
+ * @param input XML text
+ * @param config Parsing configuration
+ * @return Result containing parsed XML document
  */
-object XmlParser {
+def parseXml(input: String, config: XmlConfig = defaultXmlConfig): Result[ParseError, XmlDocument] = {
+  xmlDocument(config).run(input)
+}
 
-  /**
-   * Parses an XML document from a string.
-   *
-   * @param input XML text
-   * @param config Parsing configuration
-   * @return Result containing parsed XML document
-   */
-  def parse(input: String, config: XmlConfig = defaultXmlConfig): Result[ParseError, XmlDocument] = {
-    xmlDocument(config).run(input)
-  }
+/**
+ * Parses just an XML element (fragment, not full document).
+ */
+def parseXmlFragment(input: String, config: XmlConfig = defaultXmlConfig): Result[ParseError, XmlNode] = {
+  (ws *> xmlElement(config) <* ws <* eof).run(input)
+}
 
-  /**
-   * Parses just an XML element (fragment, not full document).
-   */
-  def parseFragment(input: String, config: XmlConfig = defaultXmlConfig): Result[ParseError, XmlNode] = {
-    (ws *> xmlElement(config) <* ws <* eof).run(input)
-  }
-
-  // ============================================================================
-  // Whitespace and Basic Tokens
-  // ============================================================================
+// ============================================================================
+// Whitespace and Basic Tokens
+// ============================================================================
 
   /**
    * XML whitespace: space, tab, CR, LF.
@@ -387,14 +382,14 @@ object XmlParser {
     }
   }
 
-  // ============================================================================
-  // Utility Methods
-  // ============================================================================
+// ============================================================================
+// Utility Functions
+// ============================================================================
 
-  /**
-   * Formats an XML node as a string.
-   */
-  def format(node: XmlNode, indent: Int = 2, depth: Int = 0): String = {
+/**
+ * Formats an XML node as a string.
+ */
+def formatXml(node: XmlNode, indent: Int = 2, depth: Int = 0): String = {
     val indentStr = " " * (indent * depth)
 
     node match {
@@ -416,7 +411,7 @@ object XmlParser {
             val text = children.head.asInstanceOf[XmlNode.Text].content
             s"$indentStr<$nameStr$attrsStr>${escapeText(text)}</$nameStr>"
           } else {
-            val childrenStr = children.map(c => format(c, indent, depth + 1)).mkString("\n")
+            val childrenStr = children.map(c => formatXml(c, indent, depth + 1)).mkString("\n")
             s"$indentStr<$nameStr$attrsStr>\n$childrenStr\n$indentStr</$nameStr>"
           }
         }
@@ -472,12 +467,11 @@ object XmlParser {
       .replace("'", "&apos;")
   }
 
-  /**
-   * Formats a complete XML document.
-   */
-  def formatDocument(doc: XmlDocument, indent: Int = 2): String = {
-    val decl = s"""<?xml version="${doc.version}"${doc.encoding.map(e => s""" encoding="$e"""").getOrElse("")}?>"""
-    val root = format(doc.root, indent, 0)
-    s"$decl\n$root"
-  }
+/**
+ * Formats a complete XML document.
+ */
+def formatXmlDocument(doc: XmlDocument, indent: Int = 2): String = {
+  val decl = s"""<?xml version="${doc.version}"${doc.encoding.map(e => s""" encoding="$e"""").getOrElse("")}?>"""
+  val root = formatXml(doc.root, indent, 0)
+  s"$decl\n$root"
 }

@@ -9,51 +9,48 @@ import parsers.common.*
 // ============================================================================
 
 /**
- * RFC 4180 compliant CSV parser.
+ * Parses a CSV document with the given configuration.
  *
- * Supports:
+ * @param config CSV parsing configuration
+ * @return Parser that produces a CSV document
+ */
+def csvParser(config: CsvConfig = defaultCsvConfig): Parser[ParseError, CsvDocument] = {
+  csvDocument(config)
+}
+
+/**
+ * Parses CSV from a string.
+ *
+ * RFC 4180 compliant parser supporting:
  * - Quoted fields with embedded delimiters, quotes, and newlines
  * - Escaped quotes (doubled quotes: "")
  * - Configurable delimiters (CSV, TSV, etc.)
  * - Optional header detection
  * - Empty fields and lines
+ *
+ * @param input CSV text
+ * @param config CSV parsing configuration
+ * @return Result containing parsed CSV or errors
  */
-object CsvParser {
+def parseCsv(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, CsvDocument] = {
+  csvParser(config).run(input)
+}
 
-  /**
-   * Parses a CSV document with the given configuration.
-   *
-   * @param config CSV parsing configuration
-   * @return Parser that produces a CSV document
-   */
-  def parser(config: CsvConfig = defaultCsvConfig): Parser[ParseError, CsvDocument] = {
-    csvDocument(config)
-  }
+/**
+ * Parses TSV (Tab-Separated Values) from a string.
+ */
+def parseTsv(input: String): Result[ParseError, CsvDocument] = {
+  parseCsv(input, defaultTsvConfig)
+}
 
-  /**
-   * Convenience method to parse CSV from a string.
-   *
-   * @param input CSV text
-   * @param config CSV parsing configuration
-   * @return Result containing parsed CSV or errors
-   */
-  def parse(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, CsvDocument] = {
-    parser(config).run(input)
-  }
+// ============================================================================
+// Internal Parsers
+// ============================================================================
 
-  /**
-   * Parses TSV (Tab-Separated Values) from a string.
-   */
-  def parseTsv(input: String): Result[ParseError, CsvDocument] = {
-    parse(input, defaultTsvConfig)
-  }
-
-  // Internal parsers
-
-  /**
-   * Parses a complete CSV document.
-   */
-  private def csvDocument(config: CsvConfig): Parser[ParseError, CsvDocument] = {
+/**
+ * Parses a complete CSV document.
+ */
+private def csvDocument(config: CsvConfig): Parser[ParseError, CsvDocument] = {
     for {
       records <- csvRecord(config).sepBy(newline)
       _ <- eof
@@ -123,14 +120,14 @@ object CsvParser {
     ).many.map(_.mkString)
   }
 
-  /**
-   * Parses CSV and validates that all rows have the same number of columns.
-   *
-   * @param config CSV parsing configuration
-   * @return Parser that produces validated CSV with consistent columns
-   */
-  def parseStrict(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, CsvResult] = {
-    parse(input, config) match {
+/**
+ * Parses CSV and validates that all rows have the same number of columns.
+ *
+ * @param config CSV parsing configuration
+ * @return Parser that produces validated CSV with consistent columns
+ */
+def parseCsvStrict(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, CsvResult] = {
+  parseCsv(input, config) match {
       case Result.Success(records, consumed) => {
         if (records.isEmpty) {
           Result.Success(
@@ -169,13 +166,13 @@ object CsvParser {
     }
   }
 
-  /**
-   * Parses CSV with header detection.
-   *
-   * Returns a tuple of (headers, data rows).
-   */
-  def parseWithHeaders(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, (List[String], CsvDocument)] = {
-    parse(input, config) match {
+/**
+ * Parses CSV with header detection.
+ *
+ * Returns a tuple of (headers, data rows).
+ */
+def parseCsvWithHeaders(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, (List[String], CsvDocument)] = {
+  parseCsv(input, config) match {
       case Result.Success(records, consumed) => {
         records match {
           case Nil => Result.Success((List.empty, List.empty), consumed)
@@ -188,22 +185,21 @@ object CsvParser {
     }
   }
 
-  /**
-   * Parses CSV into a list of maps (each row as a map of header -> value).
-   *
-   * Useful for working with CSV as records with named fields.
-   */
-  def parseAsMaps(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, List[Map[String, String]]] = {
-    parseWithHeaders(input, config) match {
-      case Result.Success((headers, rows), consumed) => {
-        val maps = rows.map { row =>
-          headers.zip(row).toMap
-        }
-        Result.Success(maps, consumed)
+/**
+ * Parses CSV into a list of maps (each row as a map of header -> value).
+ *
+ * Useful for working with CSV as records with named fields.
+ */
+def parseCsvAsMaps(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseError, List[Map[String, String]]] = {
+  parseCsvWithHeaders(input, config) match {
+    case Result.Success((headers, rows), consumed) => {
+      val maps = rows.map { row =>
+        headers.zip(row).toMap
       }
-      case Result.Failure(errors, furthest) => {
-        Result.Failure(errors, furthest)
-      }
+      Result.Success(maps, consumed)
+    }
+    case Result.Failure(errors, furthest) => {
+      Result.Failure(errors, furthest)
     }
   }
 }

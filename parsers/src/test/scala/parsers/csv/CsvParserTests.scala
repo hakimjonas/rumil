@@ -12,23 +12,23 @@ class CsvParserTests extends FunSuite {
   // ============================================================================
 
   test("parse empty CSV") {
-    val result = CsvParser.parse("")
+    val result = parseCsv("")
     assertEquals(result.toOption, Some(List(List(""))))
   }
 
   test("parse single field") {
-    val result = CsvParser.parse("hello")
+    val result = parseCsv("hello")
     assertEquals(result.toOption, Some(List(List("hello"))))
   }
 
   test("parse single row with multiple fields") {
-    val result = CsvParser.parse("a,b,c")
+    val result = parseCsv("a,b,c")
     assertEquals(result.toOption, Some(List(List("a", "b", "c"))))
   }
 
   test("parse multiple rows") {
     val input = "a,b,c\n1,2,3\n4,5,6"
-    val result = CsvParser.parse(input)
+    val result = parseCsv(input)
     assertEquals(result.toOption, Some(List(
       List("a", "b", "c"),
       List("1", "2", "3"),
@@ -38,7 +38,7 @@ class CsvParserTests extends FunSuite {
 
   test("parse with CRLF line endings") {
     val input = "a,b,c\r\n1,2,3\r\n4,5,6"
-    val result = CsvParser.parse(input)
+    val result = parseCsv(input)
     assertEquals(result.toOption, Some(List(
       List("a", "b", "c"),
       List("1", "2", "3"),
@@ -51,32 +51,32 @@ class CsvParserTests extends FunSuite {
   // ============================================================================
 
   test("parse quoted field") {
-    val result = CsvParser.parse("\"hello\"")
+    val result = parseCsv("\"hello\"")
     assertEquals(result.toOption, Some(List(List("hello"))))
   }
 
   test("parse quoted field with comma") {
-    val result = CsvParser.parse("\"hello, world\"")
+    val result = parseCsv("\"hello, world\"")
     assertEquals(result.toOption, Some(List(List("hello, world"))))
   }
 
   test("parse quoted field with newline") {
-    val result = CsvParser.parse("\"hello\nworld\"")
+    val result = parseCsv("\"hello\nworld\"")
     assertEquals(result.toOption, Some(List(List("hello\nworld"))))
   }
 
   test("parse quoted field with escaped quotes") {
-    val result = CsvParser.parse("\"hello \"\"world\"\"\"")
+    val result = parseCsv("\"hello \"\"world\"\"\"")
     assertEquals(result.toOption, Some(List(List("hello \"world\""))))
   }
 
   test("parse mixed quoted and unquoted fields") {
-    val result = CsvParser.parse("a,\"b\",c")
+    val result = parseCsv("a,\"b\",c")
     assertEquals(result.toOption, Some(List(List("a", "b", "c"))))
   }
 
   test("parse empty quoted field") {
-    val result = CsvParser.parse("\"\",a,\"\"")
+    val result = parseCsv("\"\",a,\"\"")
     assertEquals(result.toOption, Some(List(List("", "a", ""))))
   }
 
@@ -86,31 +86,31 @@ class CsvParserTests extends FunSuite {
 
   test("RFC 4180 Example 1: standard fields") {
     val input = "aaa,bbb,ccc"
-    val result = CsvParser.parse(input)
+    val result = parseCsv(input)
     assertEquals(result.toOption, Some(List(List("aaa", "bbb", "ccc"))))
   }
 
   test("RFC 4180 Example 2: fields with quotes") {
     val input = "\"aaa\",\"bbb\",\"ccc\""
-    val result = CsvParser.parse(input)
+    val result = parseCsv(input)
     assertEquals(result.toOption, Some(List(List("aaa", "bbb", "ccc"))))
   }
 
   test("RFC 4180 Example 3: field with embedded comma") {
     val input = "\"aaa\",\"b,bb\",\"ccc\""
-    val result = CsvParser.parse(input)
+    val result = parseCsv(input)
     assertEquals(result.toOption, Some(List(List("aaa", "b,bb", "ccc"))))
   }
 
   test("RFC 4180 Example 4: field with embedded newline") {
     val input = "\"aaa\",\"b\nbb\",\"ccc\""
-    val result = CsvParser.parse(input)
+    val result = parseCsv(input)
     assertEquals(result.toOption, Some(List(List("aaa", "b\nbb", "ccc"))))
   }
 
   test("RFC 4180 Example 5: field with embedded quotes") {
     val input = "\"aaa\",\"b\"\"bb\",\"ccc\""
-    val result = CsvParser.parse(input)
+    val result = parseCsv(input)
     assertEquals(result.toOption, Some(List(List("aaa", "b\"bb", "ccc"))))
   }
 
@@ -120,13 +120,13 @@ class CsvParserTests extends FunSuite {
 
   test("parse TSV single row") {
     val input = "a\tb\tc"
-    val result = CsvParser.parseTsv(input)
+    val result = parseTsv(input)
     assertEquals(result.toOption, Some(List(List("a", "b", "c"))))
   }
 
   test("parse TSV multiple rows") {
     val input = "name\tage\tcity\nAlice\t30\tNYC\nBob\t25\tSF"
-    val result = CsvParser.parseTsv(input)
+    val result = parseTsv(input)
     assertEquals(result.toOption, Some(List(
       List("name", "age", "city"),
       List("Alice", "30", "NYC"),
@@ -140,7 +140,7 @@ class CsvParserTests extends FunSuite {
 
   test("parse with headers") {
     val input = "name,age,city\nAlice,30,NYC\nBob,25,SF"
-    val result = CsvParser.parseWithHeaders(input)
+    val result = parseCsvWithHeaders(input)
     assertEquals(result.toOption, Some((
       List("name", "age", "city"),
       List(
@@ -152,7 +152,7 @@ class CsvParserTests extends FunSuite {
 
   test("parse as maps") {
     val input = "name,age,city\nAlice,30,NYC\nBob,25,SF"
-    val result = CsvParser.parseAsMaps(input)
+    val result = parseCsvAsMaps(input)
     assertEquals(result.toOption, Some(List(
       Map("name" -> "Alice", "age" -> "30", "city" -> "NYC"),
       Map("name" -> "Bob", "age" -> "25", "city" -> "SF")
@@ -161,13 +161,13 @@ class CsvParserTests extends FunSuite {
 
   test("parse strict validates consistent columns") {
     val input = "a,b,c\n1,2,3\n4,5,6"
-    val result = CsvParser.parseStrict(input)
+    val result = parseCsvStrict(input)
     assert(result.isSuccess)
   }
 
   test("parse strict fails on inconsistent columns") {
     val input = "a,b,c\n1,2,3\n4,5"
-    val result = CsvParser.parseStrict(input)
+    val result = parseCsvStrict(input)
     assert(result.isFailure)
   }
 
@@ -184,7 +184,7 @@ class CsvParserTests extends FunSuite {
       skipEmptyLines = false
     )
     val input = "a;b;c\n1;2;3"
-    val result = CsvParser.parse(input, config)
+    val result = parseCsv(input, config)
     assertEquals(result.toOption, Some(List(
       List("a", "b", "c"),
       List("1", "2", "3")
@@ -200,7 +200,7 @@ class CsvParserTests extends FunSuite {
       skipEmptyLines = false
     )
     val input = " a , b , c "
-    val result = CsvParser.parse(input, config)
+    val result = parseCsv(input, config)
     assertEquals(result.toOption, Some(List(List("a", "b", "c"))))
   }
 
@@ -213,7 +213,7 @@ class CsvParserTests extends FunSuite {
       skipEmptyLines = true
     )
     val input = "a,b,c\n\n1,2,3"
-    val result = CsvParser.parse(input, config)
+    val result = parseCsv(input, config)
     assertEquals(result.toOption, Some(List(
       List("a", "b", "c"),
       List("1", "2", "3")
@@ -225,22 +225,22 @@ class CsvParserTests extends FunSuite {
   // ============================================================================
 
   test("parse empty fields") {
-    val result = CsvParser.parse(",,")
+    val result = parseCsv(",,")
     assertEquals(result.toOption, Some(List(List("", "", ""))))
   }
 
   test("parse single empty field") {
-    val result = CsvParser.parse("")
+    val result = parseCsv("")
     assertEquals(result.toOption, Some(List(List(""))))
   }
 
   test("parse row with trailing comma") {
-    val result = CsvParser.parse("a,b,")
+    val result = parseCsv("a,b,")
     assertEquals(result.toOption, Some(List(List("a", "b", ""))))
   }
 
   test("parse row with leading comma") {
-    val result = CsvParser.parse(",a,b")
+    val result = parseCsv(",a,b")
     assertEquals(result.toOption, Some(List(List("", "a", "b"))))
   }
 
@@ -254,7 +254,7 @@ class CsvParserTests extends FunSuite {
 "Doe, Jane",jane.doe@example.com,555-5678
 "O'Brien, Patrick",patrick.obrien@example.com,"""
 
-    val result = CsvParser.parseAsMaps(input)
+    val result = parseCsvAsMaps(input)
     assert(result.isSuccess)
     val maps = result.toOption.get
     assertEquals(maps.length, 3)
@@ -269,7 +269,7 @@ ABC-123,"Widget, Large","High-quality widget for industrial use
 Includes mounting hardware",29.99
 XYZ-789,"Gadget ""Pro""","Professional-grade gadget",199.99"""
 
-    val result = CsvParser.parseWithHeaders(input)
+    val result = parseCsvWithHeaders(input)
     assert(result.isSuccess)
     val (headers, rows) = result.toOption.get
     assertEquals(headers, List("SKU", "Product", "Description", "Price"))
@@ -286,7 +286,7 @@ XYZ-789,"Gadget ""Pro""","Professional-grade gadget",199.99"""
     val gen = Gen.listOfN(5, Gen.alphaNumStr.filter(s => s.nonEmpty && !s.contains(',')))
     val prop = forAll(gen) { fields =>
       val input = fields.mkString(",")
-      val result = CsvParser.parse(input)
+      val result = parseCsv(input)
       result.toOption.exists(csv => csv == List(fields))
     }
     prop.check()
@@ -296,7 +296,7 @@ XYZ-789,"Gadget ""Pro""","Professional-grade gadget",199.99"""
     val gen = Gen.alphaNumStr
     val prop = forAll(gen) { content =>
       val input = s"\"$content\""
-      val result = CsvParser.parse(input)
+      val result = parseCsv(input)
       result.toOption.exists(csv => csv == List(List(content)))
     }
     prop.check()
@@ -311,7 +311,7 @@ XYZ-789,"Gadget ""Pro""","Professional-grade gadget",199.99"""
       if (rows.isEmpty) {
         true // Empty input edge case
       } else {
-        val result = CsvParser.parse(input)
+        val result = parseCsv(input)
         result.toOption.exists(csv => csv.length == rows.length)
       }
     }

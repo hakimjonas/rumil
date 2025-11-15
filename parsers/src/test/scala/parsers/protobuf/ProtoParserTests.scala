@@ -8,7 +8,7 @@ class ProtoParserTests extends FunSuite {
 
   test("parse syntax statement") {
     val proto = """syntax = "proto3";"""
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
     assertEquals(file.syntax, "proto3")
@@ -18,7 +18,7 @@ class ProtoParserTests extends FunSuite {
     val proto = """syntax = "proto3";
 package example.v1;
 """
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
     assert(file.definitions.exists {
@@ -35,7 +35,7 @@ message Person {
   int32 age = 2;
 }
 """
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
     val msg = file.definitions.collectFirst {
@@ -53,7 +53,7 @@ message Container {
   repeated string items = 1;
 }
 """
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
   }
 
@@ -66,7 +66,7 @@ enum Status {
   INACTIVE = 2;
 }
 """
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
     val enumDef = file.definitions.collectFirst {
@@ -84,7 +84,7 @@ service Greeter {
   rpc SayHello (HelloRequest) returns (HelloReply);
 }
 """
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
     val service = file.definitions.collectFirst {
@@ -100,7 +100,7 @@ service Greeter {
 
 import "google/protobuf/timestamp.proto";
 """
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
   }
 
@@ -128,7 +128,7 @@ service UserService {
   rpc ListUsers (ListRequest) returns (stream User);
 }
 """
-    val result = ProtoParser.parse(proto)
+    val result = parseProto(proto)
     assert(result.isSuccess)
   }
 }

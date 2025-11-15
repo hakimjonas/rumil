@@ -12,7 +12,7 @@ class TomlParserTests extends FunSuite {
 
   test("parse simple string") {
     val toml = """key = "value""""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assert(doc.pairs.contains("key"))
@@ -20,7 +20,7 @@ class TomlParserTests extends FunSuite {
 
   test("parse integer") {
     val toml = """number = 42"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("number"), Integer(42))
@@ -28,13 +28,13 @@ class TomlParserTests extends FunSuite {
 
   test("parse negative integer") {
     val toml = """number = -17"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
   test("parse float") {
     val toml = """pi = 3.14"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("pi"), Float(3.14))
@@ -42,7 +42,7 @@ class TomlParserTests extends FunSuite {
 
   test("parse boolean true") {
     val toml = """flag = true"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("flag"), Boolean(true))
@@ -50,7 +50,7 @@ class TomlParserTests extends FunSuite {
 
   test("parse boolean false") {
     val toml = """flag = false"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("flag"), Boolean(false))
@@ -62,7 +62,7 @@ class TomlParserTests extends FunSuite {
 
   test("parse basic string") {
     val toml = """str = "hello world""""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("str"), String("hello world"))
@@ -70,7 +70,7 @@ class TomlParserTests extends FunSuite {
 
   test("parse string with escape") {
     val toml = """str = "line1\nline2""""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     val value = doc.pairs("str").asInstanceOf[String]
@@ -79,7 +79,7 @@ class TomlParserTests extends FunSuite {
 
   test("parse literal string") {
     val toml = """str = 'C:\Users\path'"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
@@ -89,7 +89,7 @@ multi
 line
 string\"\"\"
 """
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
@@ -99,7 +99,7 @@ string\"\"\"
 
   test("parse hex integer") {
     val toml = """hex = 0xFF"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("hex"), Integer(255))
@@ -107,7 +107,7 @@ string\"\"\"
 
   test("parse octal integer") {
     val toml = """oct = 0o755"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("oct"), Integer(493))
@@ -115,7 +115,7 @@ string\"\"\"
 
   test("parse binary integer") {
     val toml = """bin = 0b11111111"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("bin"), Integer(255))
@@ -123,19 +123,19 @@ string\"\"\"
 
   test("parse integer with underscores") {
     val toml = """num = 1_000_000"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
   test("parse float with exponent") {
     val toml = """num = 5e+22"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
   test("parse infinity") {
     val toml = """inf = inf"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     val value = doc.pairs("inf").asInstanceOf[Float]
@@ -144,7 +144,7 @@ string\"\"\"
 
   test("parse NaN") {
     val toml = """nan = nan"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     val value = doc.pairs("nan").asInstanceOf[Float]
@@ -157,7 +157,7 @@ string\"\"\"
 
   test("parse empty array") {
     val toml = """arr = []"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     val arr = doc.pairs("arr").asInstanceOf[Array]
@@ -166,7 +166,7 @@ string\"\"\"
 
   test("parse integer array") {
     val toml = """arr = [1, 2, 3]"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     val arr = doc.pairs("arr").asInstanceOf[Array]
@@ -175,25 +175,25 @@ string\"\"\"
 
   test("parse string array") {
     val toml = """arr = ["a", "b", "c"]"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
   test("parse mixed array") {
     val toml = """arr = [1, "two", 3.0]"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
   test("parse nested array") {
     val toml = """arr = [[1, 2], [3, 4]]"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
   test("parse array with trailing comma") {
     val toml = """arr = [1, 2, 3,]"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
@@ -203,7 +203,7 @@ string\"\"\"
 
   test("parse empty inline table") {
     val toml = """table = {}"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     val table = doc.pairs("table").asInstanceOf[InlineTable]
@@ -212,7 +212,7 @@ string\"\"\"
 
   test("parse inline table with values") {
     val toml = """point = { x = 1, y = 2 }"""
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     val table = doc.pairs("point").asInstanceOf[InlineTable]
@@ -228,7 +228,7 @@ string\"\"\"
     val toml = """# This is a comment
 key = "value" # inline comment
 """
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
   }
 
@@ -241,7 +241,7 @@ key = "value" # inline comment
 age = 30
 active = true
 """
-    val result = TomlParser.parse(toml)
+    val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
     assertEquals(doc.pairs("name"), String("Alice"))
@@ -268,7 +268,7 @@ connection_max = 5000
 enabled = true
 """
     // Simplified test - just check it parses without table support
-    val result = TomlParser.parse(toml.split("\n").take(2).mkString("\n") + "\n")
+    val result = parseToml(toml.split("\n").take(2).mkString("\n") + "\n")
     assert(result.isSuccess)
   }
 }

@@ -9,9 +9,9 @@ import parsers.common.*
 // ============================================================================
 
 /**
- * Protocol Buffers .proto file parser (proto3 syntax).
+ * Parses a .proto file from a string.
  *
- * Supports:
+ * Protocol Buffers .proto file parser (proto3 syntax) supporting:
  * - Message definitions
  * - Enum definitions
  * - Service definitions with RPC methods
@@ -19,22 +19,17 @@ import parsers.common.*
  * - Imports and packages
  * - Options
  * - Comments
+ *
+ * @param input .proto file content
+ * @return Result containing parsed proto file
  */
-object ProtoParser {
+def parseProto(input: scala.Predef.String): Result[ParseError, ProtoFile] = {
+  protoFile.run(input)
+}
 
-  /**
-   * Parses a .proto file from a string.
-   *
-   * @param input .proto file content
-   * @return Result containing parsed proto file
-   */
-  def parse(input: scala.Predef.String): Result[ParseError, ProtoFile] = {
-    protoFile.run(input)
-  }
-
-  // ============================================================================
-  // Whitespace and Comments
-  // ============================================================================
+// ============================================================================
+// Whitespace and Comments
+// ============================================================================
 
   private def ws: Parser[ParseError, Unit] = {
     satisfy(c => c == ' ' || c == '\t' || c == '\r' || c == '\n', "whitespace")
@@ -303,4 +298,3 @@ object ProtoParser {
       parser.runtime.interpret(fileParser, state)
     }
   }
-}
