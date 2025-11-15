@@ -3,8 +3,7 @@ package parsers.toml
 import parser.core.*
 import parser.syntax.*
 import parsers.common.*
-import java.time.{LocalDate, LocalTime, LocalDateTime, OffsetDateTime, ZoneOffset}
-import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalTime, LocalDateTime, OffsetDateTime}
 
 // ============================================================================
 // TOML PARSER - TOML v1.0.0 Specification
@@ -163,7 +162,7 @@ def parseToml(input: scala.Predef.String): Result[ParseError, TomlDocument] = {
     for {
       _ <- string("'''")
       _ <- newline.optional
-      chars <- satisfy(c => true, "any char").many
+      chars <- satisfy(_ => true, "any char").many
       _ <- string("'''")
     } yield {
       val content = chars.mkString
