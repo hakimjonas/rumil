@@ -29,7 +29,7 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("trace works with combinators") {
-    val parser = (char('a').trace("first") ~ char('b').trace("second"))
+    val parser = char('a').trace("first") ~ char('b').trace("second")
     val result = parser.run("ab")
     assertEquals(result.toOption, Some(('a', 'b')))
   }
@@ -63,7 +63,7 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("debug works with combinators") {
-    val parser = (digit.debug("first-digit") ~ digit.debug("second-digit"))
+    val parser = digit.debug("first-digit") ~ digit.debug("second-digit")
     val result = parser.run("42")
     assertEquals(result.toOption, Some(('4', '2')))
   }
@@ -122,7 +122,7 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("debug with optional combinator") {
-    val parser = digit.optional.debug("maybe-digit")
+    val parser  = digit.optional.debug("maybe-digit")
     val result1 = parser.run("5")
     val result2 = parser.run("x")
     assertEquals(result1.toOption, Some(Some('5')))

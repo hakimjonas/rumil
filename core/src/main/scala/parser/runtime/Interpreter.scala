@@ -180,7 +180,8 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           System.err.println(s"[DEBUG] $label: success, parsed $value")
           success
         case failure @ Result.Failure(errors, _) =>
-          System.err.println(s"[DEBUG] $label: failed with ${errors.headOption.getOrElse("unknown error")}")
+          System.err.println(
+            s"[DEBUG] $label: failed with ${errors.headOption.getOrElse("unknown error")}")
           failure
       }
 
