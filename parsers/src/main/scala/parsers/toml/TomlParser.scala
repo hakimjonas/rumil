@@ -120,63 +120,33 @@ private def literalString: Parser[ParseError, scala.Predef.String] = {
 /**
  * Multi-line basic string: """..."""
  *
- * Manually parses the entire string in one custom parser to avoid backtracking.
+ * Uses standard combinators with notFollowedBy to detect closing delimiter.
  */
-private def multiLineBasicString: Parser[ParseError, scala.Predef.String] =
-  Parser.Custom { state =>
-    val input = state.input
-    val startOffset = state.offset
+private def multiLineBasicString: Parser[ParseError, scala.Predef.String] = {
+  val escape = char('\\') *> (
+    char('"').as('"') |
+      char('\\').as('\\') |
+      char('b').as('\b') |
+      char('f').as('\f') |
+      char('n').as('\n') |
+      char('r').as('\r') |
+      char('t').as('\t') |
+      newline.as("") // Line-ending backslash - consumes the newline but contributes empty string
+  )
 
-    // Check for opening """
-    if (!input.substring(startOffset).startsWith("\"\"\"")) {
-      Result.Failure(List(ParseError.Custom("expected opening \"\"\"", state.location)), state.location)
-    } else {
-      var offset = startOffset + 3
+  // A content character is either an escape OR a regular character
+  // but we must NOT be at the closing delimiter
+  val contentChar =
+    escape.map(_.toString) |
+    (parser.core.notFollowedBy(string("\"\"\"")) *> satisfy(_ => true, "any char").map(_.toString))
 
-      // Skip optional immediate newline
-      if (offset < input.length && input.charAt(offset) == '\n') {
-        offset += 1
-      }
-
-      // Build content until we find closing """
-      val content = new StringBuilder
-      var done = false
-
-      while (!done && offset < input.length) {
-        val remaining = input.substring(offset)
-
-        if (remaining.startsWith("\"\"\"")) {
-          // Found closing delimiter
-          done = true
-          offset += 3
-        } else if (remaining.startsWith("\\") && offset + 1 < input.length) {
-          // Escape sequence
-          val ch = input.charAt(offset + 1)
-          ch match {
-            case '"'  => content.append('"'); offset += 2
-            case '\\' => content.append('\\'); offset += 2
-            case 'b'  => content.append('\b'); offset += 2
-            case 'f'  => content.append('\f'); offset += 2
-            case 'n'  => content.append('\n'); offset += 2
-            case 'r'  => content.append('\r'); offset += 2
-            case 't'  => content.append('\t'); offset += 2
-            case '\n' => offset += 2 // Line-ending backslash
-            case _    => content.append('\\').append(ch); offset += 2
-          }
-        } else {
-          // Regular character
-          content.append(input.charAt(offset))
-          offset += 1
-        }
-      }
-
-      if (!done) {
-        Result.Failure(List(ParseError.Custom("unclosed multi-line string", state.location)), state.location)
-      } else {
-        Result.Success(content.toString, offset - startOffset)
-      }
-    }
-  }
+  for {
+    _      <- string("\"\"\"")
+    _      <- newline.optional // Skip immediate newline after opening
+    chars  <- contentChar.many
+    _      <- string("\"\"\"")
+  } yield chars.mkString
+}
 
 /**
  * Multi-line literal string: '''...'''
