@@ -16,13 +16,22 @@ ThisBuild / developers := List(
   )
 )
 
+// Enable scalafix semantic rules
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
+
+// Command aliases for convenience
+addCommandAlias("testAll", ";core/test;parsers/test")
+addCommandAlias("prepare", ";scalafmtAll;scalafixAll")
+
 javacOptions ++= Seq(
   "--release", "25"
 )
 
-lazy val root = (project in file("."))
+// Core parser combinator library
+lazy val core = (project in file("core"))
   .settings(
-    name := "rumil",
+    name := "rumil-core",
 
     libraryDependencies ++= Seq(
       "org.scalacheck" %% "scalacheck" % "1.19.0" % Test,
@@ -54,3 +63,48 @@ lazy val root = (project in file("."))
 
     Test / fork := false
   )
+
+// Format parsers (CSV, JSON, XML, YAML, etc.)
+lazy val parsers = (project in file("parsers"))
+  .settings(
+    name := "rumil-parsers",
+
+    libraryDependencies ++= Seq(
+      "org.scalacheck" %% "scalacheck" % "1.19.0" % Test,
+      "org.scalameta" %% "munit" % "1.2.1" % Test
+    ),
+
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Xfatal-warnings",
+      "-Yexplicit-nulls",
+      "-language:strictEquality",
+      "-Wsafe-init",
+      "-Wunused:all",
+      "-Wvalue-discard",
+      "-explain",
+      "-no-indent",
+      "-old-syntax"
+    ),
+
+    javaOptions ++= Seq(
+      "-XX:+UseG1GC",
+      "-XX:MaxGCPauseMillis=50",
+      "-XX:+UseStringDeduplication",
+      "-XX:+ParallelRefProcEnabled",
+      "--sun-misc-unsafe-memory-access=allow"
+    ),
+
+    Test / fork := false
+  )
+  .dependsOn(core % "compile->compile;test->test")
+
+// Root aggregator project
+lazy val root = (project in file("."))
+  .settings(
+    name := "rumil",
+    publish / skip := true
+  )
+  .aggregate(core, parsers)
