@@ -1,300 +1,401 @@
 # Rumil Development Roadmap
 
-## Priority 1: Core Usability (Must Have)
+## Strategic Vision: Core / Adapter Architecture
 
-These features directly impact day-to-day user experience and make Rumil significantly more practical.
+Rumil is built on a **two-layer architecture** that serves dual purposes:
 
-### 1.1 Better Error Messages
+### **The Core Layer: Structural-First Design**
+A pure, principled parser combinator library using:
+- **Enums** for sum types (`Parser[E, A]`, `Result[E, A]`)
+- **Named Tuples** for product types (`Location`, `Span`)
+- **Controlled mutation** only in the interpreter shell (`ParserState`)
+
+This layer represents a **portable, minimal design** that prioritizes:
+- Correctness over convenience
+- Explicit structure over implicit magic
+- Type safety without ceremony
+
+**Philosophy:** "Structural-First Design" - building parsers from first principles using only the essential type constructs.
+
+### **The Adapter Layer: Idiomatic Scala Interop**
+An ergonomic compatibility layer (`rumil-interop`) that provides:
+- Automatic `Parser.derived[CaseClass]` for Scala case classes
+- `Decoder[A]` typeclass for JSON/XML/etc. → case class conversion
+- Seamless integration with the Scala ecosystem (Circe, Cats, etc.)
+
+**Philosophy:** "Meet users where they are" - provide idiomatic Scala ergonomics without compromising core purity.
+
+### **Why This Matters**
+This architecture enables:
+1. **Portfolio Value:** A production-ready Scala library with automatic derivation
+2. **Design Validation:** Testing principled architecture patterns in a real library
+3. **Thought Leadership:** Establishing "Structural-First Design" as a coherent philosophy
+4. **Maximum Reach:** Serving both functional purists and pragmatic Scala developers
+
+---
+
+## Priority 1: Public Launch & Core Prototype (Must Have)
+
+**Goal:** Deliver a complete, production-ready library that serves both as a useful Scala tool and a validation of Structural-First Design principles.
+
+### 1.1 Lossless, Resilient Parsing (Core Prototype)
 **Status:** Not Started
-**Effort:** Medium (1-2 weeks)
-**Impact:** High
+**Impact:** Critical
 
-- Error accumulation across multiple parse failures
-- Context stack showing parse path (e.g., "while parsing object key in JSON value")
-- Helpful suggestions based on common mistakes
-- Color-coded error output
-- Show snippet of input around error location
+**Combines:** Original items 1.3 (Position-Aware) + 3.3 (Error Recovery)
+
+This is the **true core prototype**. A resilient, GreenNode-producing parser that never panics and preserves all source information.
+
+**Features:**
+- `GreenNode` syntax tree with lossless round-trip property
+- Error recovery combinators (`skipUntil`, `recoverWith`, `optional`)
+- Multi-error accumulation (parse doesn't stop on first error)
+- Full position tracking (`Span`, `Location`) for every node
+- Fault-tolerant parsing suitable for IDE integration
 
 **Example:**
-```
-Error: Expected digit but found 'x'
-  while parsing number
-  in JSON array element
-  at line 3, column 12
+```scala
+// Resilient JSON parser that collects all errors
+val jsonParser: Parser[ParseError, (JsonValue, List[ParseError])]
 
-  10 |   "items": [
-  11 |     42,
-  12 |     5x7
-     |      ^ unexpected character
-  13 |   ]
-
-Suggestion: Did you mean '5.7' or '507'?
+// Produces GreenNode tree preserving whitespace, comments
+val syntaxTree: GreenNode = jsonParser.parseToSyntaxTree(input)
 ```
 
-### 1.2 Parser Debugging Tools
+**Why Critical:**
+- Differentiates Rumil from fastparse/cats-parse (most don't have lossless trees)
+- Enables IDE tooling (formatters, refactoring, syntax highlighting)
+- Validates core architecture under stress (error handling, backtracking)
+- Foundation for all advanced features
+
+**Marketing:** "Rumil produces lossless syntax trees like scalameta, making it ideal for building language tooling, not just parsing."
+
+---
+
+### 1.2 Idiomatic Scala Interop (Public Adapter)
 **Status:** Not Started
-**Effort:** Small (2-3 days)
+**Impact:** Critical
+
+**NEW ITEM** - This is the key to public adoption.
+
+Create `rumil-interop` module with automatic case class derivation:
+
+**Features:**
+```scala
+// Automatic parser derivation
+case class Person(name: String, age: Int)
+val parser: Parser[ParseError, Person] = Parser.derived[Person]
+
+// Decoder typeclass for structured data
+trait Decoder[A] {
+  def decode(value: JsonValue): Result[ParseError, A]
+}
+
+object Decoder {
+  inline def derived[A]: Decoder[A] = // automatic derivation
+}
+
+// Usage
+case class Config(host: String, port: Int, tls: Boolean)
+val config: Config = jsonString.parse.flatMap(Decoder[Config].decode)
+```
+
+**Implementation:**
+- Scala 3 inline/macro derivation
+- Automatic field name mapping
+- Nested case class support
+- Custom field transformations (`@JsonKey`, `@JsonIgnore`)
+- Integration with existing codecs (Circe compatibility layer)
+
+**Why Critical:**
+- Makes Rumil **100x more useful** to Scala community
+- Removes friction for new users ("just use case classes")
+- Enables ecosystem integration (JSON/XML → case classes)
+- Demonstrates pragmatism, not ideological rigidity
+
+**Marketing:** "Use Rumil with your existing case classes - automatic derivation just works."
+
+---
+
+### 1.3 "Two-Faced" Documentation & Examples (Public Branding)
+**Status:** Basic README exists
+**Impact:** Critical
+
+**Refocus:** Original item 3.1 (Tutorial) + new branding strategy
+
+The documentation must be the **public manifesto** for Structural-First Design.
+
+**Structure:**
+
+#### **Public Branding:**
+- Create clear brand: **"Structural-First Design"** or **"Principled Parsing"**
+- Explain philosophy without mentioning private implementation details
+- Position as thought leadership, not product feature
+
+#### **Dual-Track Tutorials:**
+
+Every tutorial shows **both approaches** side-by-side:
+
+**Example: Parsing JSON**
+
+```markdown
+## The Structural Way (Explicit, Portable)
+
+Uses pure combinators and named tuples. Maximum control.
+
+type JsonObject = List[(key: String, value: JsonValue)]
+
+val jsonObject: Parser[ParseError, JsonObject] =
+  (quotedString <* char(':') <* ws) ~ jsonValue
+
+**When to use:** Building language tooling, need lossless trees,
+maximum portability.
+
+---
+
+## The Idiomatic Way (Ergonomic, Scala-Friendly)
+
+Uses automatic derivation for case classes. Maximum convenience.
+
+case class User(name: String, age: Int, admin: Boolean)
+val userParser = Parser.derived[User]
+
+**When to use:** Standard CRUD apps, data validation,
+REST API parsing.
+```
+
+#### **Advanced Topics:**
+- **GreenNode Feature:** Market as "high-fidelity language tooling"
+- **Error Recovery:** Show IDE use case (syntax highlighting with errors)
+- **Performance:** Benchmarks vs fastparse/cats-parse
+- **Migration Guides:** From other libraries
+
+**Why Critical:**
+- First impressions matter - docs are the product
+- Establishes thought leadership on design philosophy
+- Shows both purist and pragmatist paths
+- Differentiates Rumil from competitors
+
+---
+
+### 1.4 Parser Debugging Tools (Development UX)
+**Status:** Not Started
 **Impact:** High
 
-- `trace(label: String)` combinator for execution visibility
-- `debug` mode that prints entire parse tree
-- Optional logging levels (INFO, DEBUG, TRACE)
-- Integration with standard logging frameworks
+**Keep from original 1.2** - Essential for debugging complex parsers.
 
-**Usage:**
+**Features:**
 ```scala
 val number = digit.many1.trace("number").map(_.mkString.toInt)
 val expr = (number ~ operator ~ number).debug("expression")
+
+// Output:
+// [TRACE] number: trying at offset 5
+// [TRACE] number: success, consumed "42" (2 chars)
+// [DEBUG] expression: trying at offset 5
+// [DEBUG] expression: success, parsed Add(42, 17)
 ```
 
-### 1.3 Position-Aware Parsing
+**Why Important:**
+- Invaluable during resilient parser development
+- Users will need this for their own parsers
+- Low effort, high value
+
+---
+
+## Priority 2: Grammar Power & Performance (Should Have)
+
+**Goal:** Make Rumil robust for complex, real-world grammars and production workloads.
+
+### 2.1 Left Recursion Support
 **Status:** Not Started
-**Effort:** Small (3-4 days)
-**Impact:** Medium
+**Impact:** High
 
-- `withPosition` combinator that captures span information
-- Return `(value: A, span: Span)` tuples
-- Enable source-mapped ASTs
-- Critical for IDE integration, syntax highlighting
+**Keep from original 2.3**
 
-**Usage:**
+Common grammars (arithmetic, function calls) are naturally left-recursive. Current workarounds (`chainl1`) are awkward.
+
+**Features:**
+- Automatic left-recursion detection
+- Seed-growth algorithm (Warth et al.)
+- Clear error messages for unhandled cases
+
+**Example:**
 ```scala
-val identifier = letter.many1.withPosition
-// Returns: Result[(String, Span)]
+// Currently requires chainl1 workaround
+val expr = chainl1(term, addOp)
+
+// With left-recursion support:
+lazy val expr: Parser[Expr] =
+  expr ~ addOp ~ term | term  // Just works!
 ```
 
-## Priority 2: Performance & Scalability (Should Have)
+---
 
-These features make Rumil viable for production use with real-world data.
-
-### 2.1 Streaming/Incremental Parsing
-**Status:** Not Started
-**Effort:** Large (3-4 weeks)
-**Impact:** High
-
-- Parse large files without loading entire string into memory
-- `parseStream` function working with `Iterator[Char]` or chunks
-- Backtracking with limited lookahead buffer
-- Critical for parsing logs, large JSON/XML files
-
-### 2.2 Memoization/Packrat Parsing
-**Status:** Not Started
-**Effort:** Medium (1-2 weeks)
-**Impact:** Medium
-
-- Cache parser results to avoid redundant work
-- `.memoize` combinator for opt-in memoization
-- Configurable cache size/eviction strategy
-- Trade memory for speed (especially valuable for recursive grammars)
-
-### 2.3 Left Recursion Support
-**Status:** Not Started
-**Effort:** Large (2-3 weeks)
-**Impact:** Medium
-
-- Detect left-recursive grammars
-- Automatic handling or clear error messages
-- Currently `chainl1`/`chainr1` work around this, but not general solution
-- Common pain point for expression grammars
-
-### 2.4 Performance Benchmarks Suite
+### 2.2 Comprehensive Benchmarks Suite
 **Status:** Basic benchmarks exist
-**Effort:** Medium (1 week)
-**Impact:** Medium
-
-- Comprehensive benchmark suite
-- Comparison against fastparse, cats-parse, parsley
-- Regression testing for performance
-- Identify optimization opportunities
-- Document performance characteristics
-
-## Priority 3: Developer Experience (Nice to Have)
-
-These features improve documentation and learning curve.
-
-### 3.1 Tutorial Documentation
-**Status:** Not Started
-**Effort:** Medium (1 week)
 **Impact:** High
 
-- Step-by-step tutorial building a realistic parser from scratch
-- Common patterns cookbook (expressions, lists, recursive structures)
-- Migration guides from other libraries (fastparse, cats-parse, Parsec)
-- Video tutorials or interactive examples
+**Keep from original 2.4**
 
-### 3.2 ScalaDoc API Documentation
-**Status:** Inline comments exist
-**Effort:** Small (2-3 days)
+**Goal:** Publicly prove Rumil is fast.
+
+**Benchmarks:**
+- vs fastparse (industry standard)
+- vs cats-parse (pure FP)
+- vs parsley (Haskell-inspired)
+- JSON, XML, TOML, CSV parsing
+- Expression evaluation
+- Error recovery overhead
+
+**Publish results** in README and docs.
+
+---
+
+### 2.3 Memoization / Packrat Parsing
+**Status:** Not Started
 **Impact:** Medium
 
-- Generate comprehensive API documentation
-- Publish to GitHub Pages
-- Link from main README
-- Include examples in ScalaDoc
+**Keep from original 2.2**
 
-### 3.3 Error Recovery Combinators
+Trade memory for speed in complex grammars.
+
+```scala
+val identifier = letter.many1.memoize  // Cache results
+```
+
+---
+
+## Priority 3: Advanced & Ecosystem Features (Nice to Have)
+
+**Goal:** Expand Rumil's reach after core product is proven.
+
+### 3.1 Streaming / Incremental Parsing
 **Status:** Not Started
-**Effort:** Medium (1 week)
+**Impact:** High (for specific use cases)
+
+**Keep from original 2.1**
+
+Parse massive files (logs, large JSON) without loading into memory.
+
+```scala
+val parser: Parser[Event] = eventParser
+val events: Iterator[Event] = parser.parseStream(fileIterator)
+```
+
+---
+
+### 3.2 Platform Expansion (Scala.js / Native)
+**Status:** Not Started
 **Impact:** Medium
 
-- `skipUntil(delimiter)` - skip malformed input
-- `recoverWith` improvements for better error handling
-- Partial parsing with error collection
-- Useful for fault-tolerant parsers (IDE use case)
+**Keep from original 5.1, 5.2**
 
-## Priority 4: Advanced Features (Future)
+- **Scala.js:** Browser-based parser playgrounds, web apps
+- **Scala Native:** CLI tools with fast startup, low memory
 
-These are specialized features for advanced use cases.
+Both expand the library's appeal for portfolio.
 
-### 4.1 Grammar Validation
+---
+
+### 3.3 Publishing & CI/CD
 **Status:** Not Started
-**Effort:** Large (3-4 weeks)
-**Impact:** Low
+**Impact:** Critical (for public launch)
 
-- Static analysis to detect infinite loops
-- Warn about ambiguous grammars
-- LL(k) grammar checking
-- Helpful for library authors, not end users
+**Keep from original 6.1, 6.2**
 
-### 4.2 Parser Generators
-**Status:** Not Started
-**Effort:** Large (4-6 weeks)
-**Impact:** Medium
-
-- EBNF/BNF to Rumil parser converter
-- Generate parsers from grammar files
-- Lower barrier to entry for non-Scala experts
-- Could be separate tool/project
-
-### 4.3 Custom Input Types
-**Status:** Currently `String` only
-**Effort:** Large (2-3 weeks)
-**Impact:** Low
-
-- Generic input type: `Parser[I, E, A]` instead of `Parser[E, A]`
-- Support `Array[Byte]`, custom token streams
-- More flexible but adds complexity
-- Breaking change to API
-
-## Priority 5: Platform Support (Ecosystem)
-
-Expand Rumil to other platforms and ecosystems.
-
-### 5.1 Scala.js Support
-**Status:** Not Started
-**Effort:** Small (1 week)
-**Impact:** Medium
-
-- Port to Scala.js for browser use
-- Minimal Java dependencies (only `java.time`) makes this feasible
-- Browser-based parser playgrounds
-- Expands audience significantly
-
-### 5.2 Scala Native Support
-**Status:** Not Started
-**Effort:** Medium (2 weeks)
-**Impact:** Low
-
-- Compile to native binaries
-- Fast startup, low memory footprint
-- Perfect for CLI tools
-- Requires eliminating `java.time` dependency
-
-### 5.3 Native Image Support (GraalVM)
-**Status:** Unknown
-**Effort:** Small (3-5 days)
-**Impact:** Medium
-
-- Test and document GraalVM native-image compatibility
-- Configuration files for reflection if needed
-- Fast startup for command-line tools
-- Low effort, high value if it works
-
-## Priority 6: Publishing & Distribution (Final Release)
-
-These are saved for when the library is production-ready.
-
-### 6.1 Publishing to Maven Central
-**Status:** Not Started
-**Effort:** Medium (1 week including setup)
-**Impact:** Critical
-
-- Sonatype account setup
-- GPG signing
-- Proper versioning (semantic versioning)
-- Release process documentation
-- CI/CD pipeline for releases
-
-### 6.2 Continuous Integration
-**Status:** Not Started
-**Effort:** Small (2-3 days)
-**Impact:** High
-
-- GitHub Actions for testing on every commit
-- Multi-version testing (Scala 3.7, 3.6, future versions)
+- Publish to Maven Central
+- GitHub Actions CI/CD
+- Automated releases
 - Code coverage reporting
-- Automated release builds
 
-### 6.3 Community & Governance
-**Status:** Not Started
-**Effort:** Ongoing
-**Impact:** Medium
+**Final step** for public release.
 
-- Contribution guidelines (CONTRIBUTING.md)
-- Code of conduct
-- Issue templates
-- Discussion forum or Discord
-- Release notes for each version
+---
 
-## Milestones
+## Milestones (Revised)
 
-### v0.1.0 - Initial Release ✅
-- Core parser combinator library
-- 40+ combinators
-- Monadic interface
-- Property-based tests
-- Basic examples
-- **Status:** COMPLETE
+### v0.2.0 - Public Launch Release 🚀
 
-### v0.2.0 - Usability Release
-- Better error messages (1.1)
-- Parser debugging tools (1.2)
-- Position-aware parsing (1.3)
-- Tutorial documentation (3.1)
+**Delivers:**
+- ✅ Lossless, resilient parsing with GreenNode (1.1)
+- ✅ Case class derivation in rumil-interop (1.2)
+- ✅ "Two-Faced" documentation with Structural-First branding (1.3)
+- ✅ Debugging tools (trace, debug) (1.4)
+- ✅ Comprehensive benchmarks (2.2)
 
-### v0.3.0 - Performance Release
-- Streaming/incremental parsing (2.1)
-- Memoization/packrat parsing (2.2)
-- Performance benchmarks (2.4)
+**Outcome:**
+- Production-ready Scala library
+- Proven Structural-First Design philosophy
+- Thought leadership established
+- Portfolio piece complete
 
-### v0.4.0 - Advanced Features
-- Left recursion support (2.3)
-- Error recovery combinators (3.3)
-- Grammar validation (4.1)
+---
 
-### v0.5.0 - Platform Expansion
-- Scala.js support (5.1)
-- Native image support (5.3)
+### v0.3.0 - Performance & Power Release
 
-### v1.0.0 - Production Release
-- Publishing to Maven Central (6.1)
-- CI/CD pipeline (6.2)
-- ScalaDoc published to GitHub Pages (3.2)
-- Complete documentation
-- Stable API guarantees
+**Delivers:**
+- ✅ Left recursion support (2.1)
+- ✅ Memoization/packrat parsing (2.3)
+- ✅ Streaming API (3.1)
 
-## Quick Wins
+**Outcome:**
+- Handles complex, real-world grammars
+- Competitive performance with fastparse
 
-These can be implemented quickly for immediate value:
+---
 
-1. **`trace` combinator** (1-2 days) - See debugging section 1.2
-2. **Basic position tracking** (2-3 days) - Extend `withPosition`
-3. **ScalaDoc generation** (1 day) - Already have good comments
-4. **Example parsers** (1 week) - More realistic examples beyond JSON/arithmetic
+### v0.4.0 - Platform Expansion
+
+**Delivers:**
+- ✅ Scala.js support (3.2)
+- ✅ Scala Native support (3.2)
+- ✅ Published to Maven Central (3.3)
+
+**Outcome:**
+- Multi-platform library
+- Publicly available on Maven Central
+
+---
+
+## Strategic Summary
+
+This roadmap achieves **dual goals** with maximum synergy:
+
+### For Your Portfolio:
+- **Public Launch (v0.2.0):** A production-ready Scala library with automatic case class derivation
+- **Benchmarks:** Publicly proven performance vs fastparse/cats-parse
+- **Documentation:** Establishes you as a thought leader on "Structural-First Design"
+- **Maven Central:** Widely available, professionally published
+
+### For Design Validation:
+- **Core Layer:** Tests Structural-First principles (enums, named tuples) under stress
+- **Resilient Parsing:** Validates architecture with complex error handling
+- **GreenNode:** Proves lossless tree concept in practice
+- **Multi-Platform:** Demonstrates true portability (JVM, JS, Native)
+
+### Risk Mitigation:
+- **Public Brand:** "Structural-First Design" establishes prior art for your philosophy
+- **Pragmatic Approach:** Adapter layer shows you're not dogmatic
+- **Portfolio First:** Build reputation before revealing high-risk platform plays
+
+---
+
+## Quick Wins (Immediate Value)
+
+These can be implemented quickly for rapid progress:
+
+1. **Basic GreenNode structure** - Foundation for 1.1
+2. **trace combinator** - Item 1.4
+3. **Case class derivation POC** - Validate 1.2 approach
+4. **Restructure docs** - Add "Two-Faced" section template
+
+---
 
 ## Notes
 
-- Priorities may shift based on user feedback and community needs
-- Some features may be split into separate libraries (e.g., parser generators)
-- Breaking changes should be minimized and well-documented
-- Each major feature should include comprehensive tests and documentation
+- **No Breaking Changes:** Maintain backward compatibility through v0.x series
+- **Community-Driven:** Priorities may shift based on user feedback
+- **Test Coverage:** Every feature requires comprehensive tests
+- **Documentation First:** No feature ships without examples and guides
+- **Progressive Disclosure:** Show simple path first, advanced options later
