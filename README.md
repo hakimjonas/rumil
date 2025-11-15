@@ -1,6 +1,6 @@
 # Rumil
 
-A pure functional parser combinator library for Scala 3.
+A functional parser combinator library for Scala 3.
 
 ## Overview
 
@@ -129,8 +129,8 @@ lazy val expr: Parser[ParseError, Int] = {
   Parser.Custom { state =>
     parser.runtime.interpret(
       term.chainl1(
-        (char('+').as((a: Int, b: Int) => a + b)) |
-        (char('-').as((a: Int, b: Int) => a - b))
+        char('+').as((a: Int, b: Int) => a + b) |
+          char('-').as((a: Int, b: Int) => a - b)
       ),
       state
     )
@@ -141,8 +141,8 @@ lazy val term: Parser[ParseError, Int] = {
   Parser.Custom { state =>
     parser.runtime.interpret(
       factor.chainl1(
-        (char('*').as((a: Int, b: Int) => a * b)) |
-        (char('/').as((a: Int, b: Int) => a / b))
+        char('*').as((a: Int, b: Int) => a * b) |
+          char('/').as((a: Int, b: Int) => a / b)
       ),
       state
     )
@@ -157,8 +157,8 @@ lazy val factor: Parser[ParseError, Int] = {
 }
 
 // Correctly handles precedence
-expr.run("2+3*4")    // Success(14, 5)   // 2 + (3*4)
-expr.run("(2+3)*4")  // Success(20, 7)   // (2+3) * 4
+expr.run("2+3*4") // Success(14, 5)   // 2 + (3*4)
+expr.run("(2+3)*4") // Success(20, 7)   // (2+3) * 4
 ```
 
 ### CSV Parser
@@ -191,48 +191,48 @@ csv.run(input)
 
 ### Primitive Parsers
 
-| Function | Description |
-|----------|-------------|
-| `char(c)` | Matches a specific character |
-| `string(s)` | Matches an exact string |
+| Function                  | Description                               |
+|---------------------------|-------------------------------------------|
+| `char(c)`                 | Matches a specific character              |
+| `string(s)`               | Matches an exact string                   |
 | `satisfy(pred, expected)` | Matches characters satisfying a predicate |
-| `digit` | Matches 0-9 |
-| `letter` | Matches a-z, A-Z |
-| `alphaNum` | Matches letters or digits |
-| `whitespace` | Matches whitespace characters |
-| `anyChar` | Matches any single character |
-| `eof` | Succeeds only at end of input |
+| `digit`                   | Matches 0-9                               |
+| `letter`                  | Matches a-z, A-Z                          |
+| `alphaNum`                | Matches letters or digits                 |
+| `whitespace`              | Matches whitespace characters             |
+| `anyChar`                 | Matches any single character              |
+| `eof`                     | Succeeds only at end of input             |
 
 ### Combinators
 
-| Combinator | Description |
-|------------|-------------|
-| `p1 ~ p2` | Sequence: parse p1 then p2, return both |
-| `p1 <* p2` | Parse both, keep left result |
-| `p1 *> p2` | Parse both, keep right result |
-| `p1 \| p2` | Alternative: try p1, if it fails try p2 |
-| `p.map(f)` | Transform parser result |
-| `p.flatMap(f)` | Monadic sequencing |
-| `p.many` | Zero or more repetitions |
-| `p.many1` | One or more repetitions |
-| `p.optional` | Zero or one occurrence |
-| `p.sepBy(sep)` | Parse p separated by sep |
+| Combinator      | Description                             |
+|-----------------|-----------------------------------------|
+| `p1 ~ p2`       | Sequence: parse p1 then p2, return both |
+| `p1 <* p2`      | Parse both, keep left result            |
+| `p1 *> p2`      | Parse both, keep right result           |
+| `p1 \| p2`      | Alternative: try p1, if it fails try p2 |
+| `p.map(f)`      | Transform parser result                 |
+| `p.flatMap(f)`  | Monadic sequencing                      |
+| `p.many`        | Zero or more repetitions                |
+| `p.many1`       | One or more repetitions                 |
+| `p.optional`    | Zero or one occurrence                  |
+| `p.sepBy(sep)`  | Parse p separated by sep                |
 | `p.sepBy1(sep)` | Parse p separated by sep (at least one) |
-| `p.endBy(end)` | Parse p terminated by end |
-| `p.count(n)` | Exactly n repetitions |
-| `p.chainl1(op)` | Left-associative operator chain |
-| `p.chainr1(op)` | Right-associative operator chain |
+| `p.endBy(end)`  | Parse p terminated by end               |
+| `p.count(n)`    | Exactly n repetitions                   |
+| `p.chainl1(op)` | Left-associative operator chain         |
+| `p.chainr1(op)` | Right-associative operator chain        |
 
 ### Error Handling
 
-| Function | Description |
-|----------|-------------|
-| `p.attempt` | Capture result as value (never fails) |
-| `p.recover(f)` | Provide fallback value on failure |
-| `p.recoverWith(f)` | Provide fallback parser on failure |
-| `p.named(name)` | Label parser for better error messages |
-| `lookAhead(p)` | Parse without consuming input |
-| `notFollowedBy(p)` | Succeed only if p fails |
+| Function           | Description                            |
+|--------------------|----------------------------------------|
+| `p.attempt`        | Capture result as value (never fails)  |
+| `p.recover(f)`     | Provide fallback value on failure      |
+| `p.recoverWith(f)` | Provide fallback parser on failure     |
+| `p.named(name)`    | Label parser for better error messages |
+| `lookAhead(p)`     | Parse without consuming input          |
+| `notFollowedBy(p)` | Succeed only if p fails                |
 
 ## Performance
 

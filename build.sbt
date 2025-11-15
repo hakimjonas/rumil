@@ -1,6 +1,20 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.7.4"
-ThisBuild / organization := "dev.fungal"
+ThisBuild / organization := "net.ghoula"
+ThisBuild / organizationName := "Hakim Ghoula"
+
+ThisBuild / licenses := List(
+  "MIT" -> url("https://opensource.org/licenses/MIT")
+)
+
+ThisBuild / developers := List(
+  Developer(
+    id = "hakimjonas",
+    name = "Hakim Jonas Ghoula",
+    email = "hakim@ghoula.net",
+    url = url("https://hakim.ghoula.net")
+  )
+)
 
 javacOptions ++= Seq(
   "--release", "25"
@@ -8,10 +22,10 @@ javacOptions ++= Seq(
 
 lazy val root = (project in file("."))
   .settings(
-    name := "parser-combinators",
+    name := "rumil",
 
     libraryDependencies ++= Seq(
-      "org.scalacheck" %% "scalacheck" % "1.18.1" % Test,
+      "org.scalacheck" %% "scalacheck" % "1.19.0" % Test,
       "org.scalameta" %% "munit" % "1.2.1" % Test
     ),
 

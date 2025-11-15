@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ScalaCompilerConfiguration">
     <option name="separateProdTestSources" value="true" />
-    <profile name="sbt 1" modules="Rumil,Rumil.main,Rumil.test,parser-combinators" />
-    <profile name="sbt 2" modules="parser-combinators.main,parser-combinators.test">
+    <profile name="sbt 1" modules="Rumil,Rumil.main,Rumil.test,parser-combinators,rumil" />
+    <profile name="sbt 2" modules="parser-combinators.main,parser-combinators.test,rumil.main,rumil.test">
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
       <option name="featureWarnings" value="true" />
