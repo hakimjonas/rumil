@@ -18,14 +18,14 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '21'
+        java-version: '25'
         cache: 'sbt'
 
     - name: Setup sbt
       run: |
         curl -fL https://github.com/coursier/launchers/raw/master/cs-x86_64-pc-linux.gz | gzip -d > cs
         chmod +x cs
-        ./cs setup --yes --jvm 21
+        ./cs setup --yes --jvm 25
         echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
 
     - name: Check formatting
