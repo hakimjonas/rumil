@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ScalaCompilerConfiguration">
+    <option name="separateProdTestSources" value="true" />
+    <profile name="sbt 1" modules="Rumil,Rumil.main,Rumil.test,parser-combinators" />
+    <profile name="sbt 2" modules="parser-combinators.main,parser-combinators.test">
+      <option name="deprecationWarnings" value="true" />
+      <option name="uncheckedWarnings" value="true" />
+      <option name="featureWarnings" value="true" />
+      <parameters>
+        <parameter value="-Xfatal-warnings" />
+        <parameter value="-Yexplicit-nulls" />
+        <parameter value="-language:strictEquality" />
+        <parameter value="-Wsafe-init" />
+        <parameter value="-Wunused:all" />
+        <parameter value="-Wvalue-discard" />
+        <parameter value="-explain" />
+        <parameter value="-no-indent" />
+        <parameter value="-old-syntax" />
+      </parameters>
+    </profile>
+  </component>
+</project>
