@@ -2,6 +2,7 @@ package parsers.xml
 
 import munit.FunSuite
 import parser.core.*
+import parser.syntax.*
 
 class XmlParserTests extends FunSuite {
   import XmlNode.*

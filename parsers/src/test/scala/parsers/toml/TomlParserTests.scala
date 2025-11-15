@@ -2,6 +2,7 @@ package parsers.toml
 
 import munit.FunSuite
 import parser.core.*
+import parser.syntax.*
 
 class TomlParserTests extends FunSuite {
   import TomlValue.*

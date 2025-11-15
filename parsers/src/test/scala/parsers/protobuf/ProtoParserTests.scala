@@ -2,6 +2,7 @@ package parsers.protobuf
 
 import munit.FunSuite
 import parser.core.*
+import parser.syntax.*
 
 class ProtoParserTests extends FunSuite {
   import ProtoDefinition.*
@@ -21,10 +22,13 @@ package example.v1;
     val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
-    assert(file.definitions.exists {
-      case Package(name) => name == "example.v1"
-      case _ => false
-    })
+    assert(
+      file.definitions.exists {
+        case Package(name) => name == "example.v1"
+        case _ => false
+      },
+      "Expected package definition for example.v1"
+    )
   }
 
   test("parse simple message") {

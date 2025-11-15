@@ -2,6 +2,7 @@ package parsers.yaml
 
 import munit.FunSuite
 import parser.core.*
+import parser.syntax.*
 
 class YamlParserTests extends FunSuite {
   import YamlValue.*
