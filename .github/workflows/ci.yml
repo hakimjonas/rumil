@@ -21,6 +21,13 @@ jobs:
         java-version: '21'
         cache: 'sbt'
 
+    - name: Setup sbt
+      run: |
+        curl -fL https://github.com/coursier/launchers/raw/master/cs-x86_64-pc-linux.gz | gzip -d > cs
+        chmod +x cs
+        ./cs setup --yes --jvm 21
+        echo "$HOME/.local/share/coursier/bin" >> $GITHUB_PATH
+
     - name: Check formatting
       run: sbt scalafmtCheckAll scalafmtSbtCheck
 
