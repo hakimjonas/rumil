@@ -62,10 +62,22 @@ def parseYaml(input: scala.Predef.String): Result[ParseError, YamlDocument] = {
   }
 
   private def yamlNumber: Parser[ParseError, YamlValue] = {
+    // Try to parse as integer first (no decimal point, no exponent)
     val integer = signedInt.map(n => YamlValue.Integer(n.toLong))
     val float = floatingPoint.map(YamlValue.Float.apply)
 
-    float | integer
+    // Parser.Custom to peek ahead and decide which parser to use
+    Parser.Custom { state =>
+      val remaining = state.input.substring(state.offset)
+      // Check if the number contains '.' or 'e'/'E' (float indicators)
+      val hasDecimalOrExp = remaining.takeWhile(c => c.isDigit || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E')
+
+      if (hasDecimalOrExp.contains('.') || hasDecimalOrExp.toLowerCase.contains('e')) {
+        parser.runtime.interpret(float, state)
+      } else {
+        parser.runtime.interpret(integer, state)
+      }
+    }
   }
 
   private def plainString: Parser[ParseError, YamlValue] = {
@@ -180,11 +192,11 @@ def parseYaml(input: scala.Predef.String): Result[ParseError, YamlDocument] = {
   private def yamlDocument: Parser[ParseError, YamlDocument] = {
     for {
       _ <- blankLine.many
-      _ <- (string("---") *> newline).optional
+      _ <- (string("---") <* newline.optional).optional
       _ <- blankLine.many
       root <- yamlValue
       _ <- blankLine.many
-      _ <- (string("...") *> newline).optional
+      _ <- (string("...") <* newline.optional).optional
       _ <- ws *> eof
     } yield (root = root, directives = List())
   }

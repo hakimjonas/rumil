@@ -22,7 +22,7 @@ import parsers.common.*
  * @return Result containing parsed JSON value or errors
  */
 def parseJson(input: String): Result[ParseError, JsonValue] = {
-  jsonValue.run(input)
+  (ws *> jsonValue <* ws <* eof).run(input)
 }
 
 // ============================================================================
@@ -188,7 +188,7 @@ private def lexeme[A](p: Parser[ParseError, A]): Parser[ParseError, A] = {
    *
    * Format: [ [value *(, value)] ]
    */
-  private def jsonArray: Parser[ParseError, JsonValue] = {
+  private lazy val jsonArray: Parser[ParseError, JsonValue] = {
     (for {
       _ <- lexeme(char('['))
       elements <- jsonValue.sepBy(lexeme(char(',')))
@@ -202,7 +202,7 @@ private def lexeme[A](p: Parser[ParseError, A]): Parser[ParseError, A] = {
    * Format: { [member *(, member)] }
    * Member: string : value
    */
-  private def jsonObject: Parser[ParseError, JsonValue] = {
+  private lazy val jsonObject: Parser[ParseError, JsonValue] = {
     val member = for {
       key <- lexeme(rawString)
       _ <- lexeme(char(':'))
@@ -225,18 +225,13 @@ private def lexeme[A](p: Parser[ParseError, A]): Parser[ParseError, A] = {
    *
    * A JSON text is a serialized value (object, array, number, string, true, false, null).
    */
-  private def jsonValue: Parser[ParseError, JsonValue] = {
-    Parser.Custom { state =>
-      val valueParser =
-        jsonNull |
-        jsonBool |
-        jsonNumber |
-        jsonString |
-        jsonArray |
-        jsonObject
-
-      parser.runtime.interpret(ws *> valueParser <* ws <* eof, state)
-    }
+  private lazy val jsonValue: Parser[ParseError, JsonValue] = {
+    (jsonNull |
+     jsonBool |
+     jsonNumber |
+     jsonString |
+     jsonArray |
+     jsonObject).named("value")
   }
 
 // ============================================================================
