@@ -114,6 +114,40 @@ def parseXmlFragment(input: String, config: XmlConfig = defaultXmlConfig): Resul
   }
 
   // ============================================================================
+  // Helper: Parse until delimiter
+  // ============================================================================
+
+  /**
+   * Consumes characters until the specified delimiter is found.
+   */
+  private def untilString(delimiter: String): Parser[ParseError, String] = {
+    Parser.Custom { state =>
+      val input = state.input.substring(state.offset)
+      val idx = input.indexOf(delimiter)
+
+      if (idx >= 0) {
+        val content = input.substring(0, idx)
+        val newState = (
+          input = state.input,
+          offset = state.offset + idx,
+          line = state.line + content.count(_ == '\n'),
+          column = if (content.contains('\n')) {
+            content.reverse.takeWhile(_ != '\n').length + 1
+          } else {
+            state.column + idx
+          }
+        )
+        Result.Success(content, newState.offset)
+      } else {
+        Result.Failure(
+          List(ParseError.Custom(s"Expected delimiter: $delimiter", (line = state.line, column = state.column, offset = state.offset))),
+          (line = state.line, column = state.column, offset = state.offset)
+        )
+      }
+    }
+  }
+
+  // ============================================================================
   // Comments and Processing Instructions
   // ============================================================================
 
@@ -123,16 +157,9 @@ def parseXmlFragment(input: String, config: XmlConfig = defaultXmlConfig): Resul
   private def xmlComment: Parser[ParseError, XmlNode] = {
     for {
       _ <- string("<!--")
-      content <- satisfy(_ => true, "any char").many.flatMap { chars =>
-        val str = chars.mkString
-        if (str.contains("--")) {
-          fail(ParseError.Custom("'--' not allowed in comments", (line = 0, column = 0, offset = 0)))
-        } else {
-          succeed(str)
-        }
-      }
+      content <- untilString("-->")
       _ <- string("-->")
-    } yield XmlNode.Comment(content)
+    } yield XmlNode.Comment(content.trim)
   }
 
   /**
@@ -158,15 +185,7 @@ def parseXmlFragment(input: String, config: XmlConfig = defaultXmlConfig): Resul
   private def cdataSection: Parser[ParseError, XmlNode] = {
     for {
       _ <- string("<![CDATA[")
-      content <- satisfy(_ => true, "any char").many.flatMap { chars =>
-        val str = chars.mkString
-        val idx = str.indexOf("]]>")
-        if (idx >= 0) {
-          succeed(str.substring(0, idx))
-        } else {
-          fail(ParseError.Custom("Unclosed CDATA section", (line = 0, column = 0, offset = 0)))
-        }
-      }
+      content <- untilString("]]>")
       _ <- string("]]>")
     } yield XmlNode.CData(content)
   }
@@ -337,7 +356,14 @@ def parseXmlFragment(input: String, config: XmlConfig = defaultXmlConfig): Resul
         textContent(config)
       )
 
-      val contentParser = (ws *> nodeParser <* ws).many.map { nodes =>
+      // Only strip whitespace around nodes if not preserving it
+      val wrappedParser = if (config.preserveWhitespace) {
+        nodeParser
+      } else {
+        ws *> nodeParser <* ws
+      }
+
+      val contentParser = wrappedParser.many.map { nodes =>
         // Filter out empty text nodes if not preserving whitespace
         if (config.preserveWhitespace) {
           nodes

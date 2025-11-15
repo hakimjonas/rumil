@@ -189,19 +189,12 @@ private def lexeme[A](p: Parser[ParseError, A]): Parser[ParseError, A] = {
    * Format: [ [value *(, value)] ]
    */
   private def jsonArray: Parser[ParseError, JsonValue] = {
-    Parser.Custom { state =>
-      val arrayParser = for {
-        _ <- lexeme(char('['))
-        elements <- parser.runtime.interpret(jsonValue, state).toOption match {
-          case Some(_) => jsonValue.sepBy(lexeme(char(',')))
-          case None => succeed(List.empty[JsonValue])
-        }
-        _ <- lexeme(char(']'))
-      } yield JsonValue.Array(elements)
-
-      parser.runtime.interpret(arrayParser, state)
-    }
-  }.named("array")
+    (for {
+      _ <- lexeme(char('['))
+      elements <- jsonValue.sepBy(lexeme(char(',')))
+      _ <- lexeme(char(']'))
+    } yield JsonValue.Array(elements)).named("array")
+  }
 
   /**
    * Parses JSON object.
@@ -210,22 +203,18 @@ private def lexeme[A](p: Parser[ParseError, A]): Parser[ParseError, A] = {
    * Member: string : value
    */
   private def jsonObject: Parser[ParseError, JsonValue] = {
-    Parser.Custom { state =>
-      val member = for {
-        key <- lexeme(rawString)
-        _ <- lexeme(char(':'))
-        value <- jsonValue
-      } yield (key, value)
+    val member = for {
+      key <- lexeme(rawString)
+      _ <- lexeme(char(':'))
+      value <- jsonValue
+    } yield (key, value)
 
-      val objectParser = for {
-        _ <- lexeme(char('{'))
-        pairs <- member.sepBy(lexeme(char(',')))
-        _ <- lexeme(char('}'))
-      } yield JsonValue.Object(pairs.toMap)
-
-      parser.runtime.interpret(objectParser, state)
-    }
-  }.named("object")
+    (for {
+      _ <- lexeme(char('{'))
+      pairs <- member.sepBy(lexeme(char(',')))
+      _ <- lexeme(char('}'))
+    } yield JsonValue.Object(pairs.toMap)).named("object")
+  }
 
   // ============================================================================
   // Main parser

@@ -53,7 +53,7 @@ def parseYaml(input: scala.Predef.String): Result[ParseError, YamlDocument] = {
   // ============================================================================
 
   private def yamlNull: Parser[ParseError, YamlValue] = {
-    (string("null") | string("~") | string("")).as(YamlValue.Null)
+    (string("null") | string("~")).as(YamlValue.Null)
   }
 
   private def yamlBoolean: Parser[ParseError, YamlValue] = {

@@ -56,7 +56,7 @@ private def csvDocument(config: CsvConfig): Parser[ParseError, CsvDocument] = {
       _ <- eof
     } yield {
       if (config.skipEmptyLines) {
-        records.filter(_.nonEmpty)
+        records.filter(row => row.nonEmpty && !row.forall(_.isEmpty))
       } else {
         records
       }
