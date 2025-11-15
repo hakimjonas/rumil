@@ -413,6 +413,52 @@ def recoverWith[E, E2, A](p: Parser[E, A])(f: E => Parser[E2, A]): Parser[E2, A]
 inline def named[A](p: Parser[ParseError, A], name: String): Parser[ParseError, A] =
   Parser.Named(p, name)
 
+// Debugging
+
+/**
+ * Adds tracing output to a parser for debugging.
+ *
+ * Prints trace messages to stderr showing parse attempts, successes,
+ * and failures. Does not modify the parser's behavior, only adds
+ * logging side effects.
+ *
+ * @param p The parser to trace
+ * @param label The label to include in trace messages
+ * @return A parser with identical behavior but trace output
+ *
+ * Example:
+ * {{{
+ * trace(digit, "number").run("5")
+ * // [TRACE] number: trying at offset 0
+ * // [TRACE] number: success, consumed 1 chars
+ * // Success('5', 1)
+ * }}}
+ */
+inline def trace[E, A](p: Parser[E, A], label: String): Parser[E, A] =
+  Parser.Trace(p, label)
+
+/**
+ * Adds debug output to a parser showing parsed values.
+ *
+ * Prints debug messages to stderr showing parse attempts with offsets,
+ * successful values, and error details. Does not modify the parser's
+ * behavior, only adds logging side effects.
+ *
+ * @param p The parser to debug
+ * @param label The label to include in debug messages
+ * @return A parser with identical behavior but debug output
+ *
+ * Example:
+ * {{{
+ * debug(digit, "number").run("5")
+ * // [DEBUG] number: trying at offset 0
+ * // [DEBUG] number: success, parsed '5'
+ * // Success('5', 1)
+ * }}}
+ */
+inline def debug[E, A](p: Parser[E, A], label: String): Parser[E, A] =
+  Parser.Debug(p, label)
+
 // Operators
 
 /**
