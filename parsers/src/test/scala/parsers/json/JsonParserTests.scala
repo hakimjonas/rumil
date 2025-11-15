@@ -3,7 +3,7 @@ package parsers.json
 import munit.FunSuite
 import parser.core.*
 import parser.syntax.*
-import org.scalacheck.{Prop, Gen, Arbitrary}
+import org.scalacheck.{Prop, Gen}
 import org.scalacheck.Prop.forAll
 
 class JsonParserTests extends FunSuite {

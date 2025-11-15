@@ -3,7 +3,7 @@ package parsers.csv
 import munit.FunSuite
 import parser.core.*
 import parser.syntax.*
-import org.scalacheck.{Prop, Gen, Arbitrary}
+import org.scalacheck.{Prop, Gen}
 import org.scalacheck.Prop.forAll
 
 class CsvParserTests extends FunSuite {
@@ -265,10 +265,9 @@ class CsvParserTests extends FunSuite {
   }
 
   test("parse real-world product catalog") {
-    val input = """SKU,Product,Description,Price
-ABC-123,"Widget, Large","High-quality widget for industrial use
-Includes mounting hardware",29.99
-XYZ-789,"Gadget ""Pro""","Professional-grade gadget",199.99""""
+    val input = "SKU,Product,Description,Price\n" +
+      "ABC-123,\"Widget, Large\",\"High-quality widget for industrial use\nIncludes mounting hardware\",29.99\n" +
+      "XYZ-789,\"Gadget \"\"Pro\"\"\",\"Professional-grade gadget\",199.99"
 
     val result = parseCsvWithHeaders(input)
     assert(result.isSuccess)
