@@ -1,6 +1,7 @@
 package parsers.toml
 
-import java.time.{LocalDate, LocalTime, LocalDateTime, OffsetDateTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
+
 import scala.language.strictEquality
 
 // ============================================================================
@@ -73,6 +74,5 @@ type KeyPath = List[scala.Predef.String]
 /**
  * Parses a dotted key into a key path.
  */
-def parseKeyPath(key: scala.Predef.String): KeyPath = {
+def parseKeyPath(key: scala.Predef.String): KeyPath =
   key.split('.').toList.filter(_.nonEmpty)
-}

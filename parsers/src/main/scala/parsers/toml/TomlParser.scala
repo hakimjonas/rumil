@@ -120,62 +120,63 @@ private def literalString: Parser[ParseError, scala.Predef.String] = {
 /**
  * Multi-line basic string: """..."""
  *
- * Simplified approach: Use lookahead to check for closing delimiter.
- * Parse chars until we see the closing """.
+ * Manually parses the entire string in one custom parser to avoid backtracking.
  */
-private def multiLineBasicString: Parser[ParseError, scala.Predef.String] = {
-  val escape = char('\\') *> (
-    char('"').as("\"") |
-      char('\\').as("\\") |
-      char('b').as("\b") |
-      char('f').as("\f") |
-      char('n').as("\n") |
-      char('r').as("\r") |
-      char('t').as("\t") |
-      newline.as("") // Line-ending backslash
-  )
-
-  // Content: keep parsing until we see """ (using NotFollowedBy wouldn't work here)
-  // Simple solution: parse escape or any char, then check if we're at closing delimiter
-  val content = Parser.Custom[ParseError, scala.Predef.String] { state =>
+private def multiLineBasicString: Parser[ParseError, scala.Predef.String] =
+  Parser.Custom { state =>
+    val input = state.input
     val startOffset = state.offset
-    val builder = new StringBuilder
-    var done = false
 
-    while (!done && state.offset < state.input.length) {
-      // Check if we're at closing """
-      if (state.input.substring(state.offset).startsWith("\"\"\"")) {
-        done = true
-      } else {
-        // Parse one character (escape or regular)
-        val escapeResult = parser.runtime.interpret(escape, state)
-        escapeResult match {
-          case Result.Success(value, _) =>
-            // Escape parser already advanced the state
-            builder.append(value)
-          case Result.Failure(_, _) =>
-            // Not an escape, try regular char
-            if (state.offset < state.input.length) {
-              val ch = state.input.charAt(state.offset)
-              builder.append(ch)
-              state.advance()
-            } else {
-              done = true
-            }
+    // Check for opening """
+    if (!input.substring(startOffset).startsWith("\"\"\"")) {
+      Result.Failure(List(ParseError.Custom("expected opening \"\"\"", state.location)), state.location)
+    } else {
+      var offset = startOffset + 3
+
+      // Skip optional immediate newline
+      if (offset < input.length && input.charAt(offset) == '\n') {
+        offset += 1
+      }
+
+      // Build content until we find closing """
+      val content = new StringBuilder
+      var done = false
+
+      while (!done && offset < input.length) {
+        val remaining = input.substring(offset)
+
+        if (remaining.startsWith("\"\"\"")) {
+          // Found closing delimiter
+          done = true
+          offset += 3
+        } else if (remaining.startsWith("\\") && offset + 1 < input.length) {
+          // Escape sequence
+          val ch = input.charAt(offset + 1)
+          ch match {
+            case '"'  => content.append('"'); offset += 2
+            case '\\' => content.append('\\'); offset += 2
+            case 'b'  => content.append('\b'); offset += 2
+            case 'f'  => content.append('\f'); offset += 2
+            case 'n'  => content.append('\n'); offset += 2
+            case 'r'  => content.append('\r'); offset += 2
+            case 't'  => content.append('\t'); offset += 2
+            case '\n' => offset += 2 // Line-ending backslash
+            case _    => content.append('\\').append(ch); offset += 2
+          }
+        } else {
+          // Regular character
+          content.append(input.charAt(offset))
+          offset += 1
         }
       }
+
+      if (!done) {
+        Result.Failure(List(ParseError.Custom("unclosed multi-line string", state.location)), state.location)
+      } else {
+        Result.Success(content.toString, offset - startOffset)
+      }
     }
-
-    Result.Success(builder.toString, state.offset - startOffset)
   }
-
-  for {
-    _      <- string("\"\"\"")
-    _      <- newline.optional // Skip immediate newline
-    chars  <- content
-    _      <- string("\"\"\"")
-  } yield chars
-}
 
 /**
  * Multi-line literal string: '''...'''
@@ -406,18 +407,13 @@ private def inlineTable: Parser[ParseError, TomlValue] =
  * - Datetime is greedy and has a String fallback, so it must come late
  */
 private def tomlValue: Parser[ParseError, TomlValue] =
-  Parser.Custom { state =>
-    val valueParser =
-      tomlString |
-        tomlBoolean |  // Before datetime/numbers
-        tomlFloat |    // Before integer (3.14 should match float, not fail on integer)
-        tomlInteger |  // Before datetime
-        tomlArray |
-        inlineTable |
-        tomlDateTime   // Last - greedy with String fallback
-
-    parser.runtime.interpret(valueParser, state)
-  }
+  tomlString |
+    tomlBoolean |  // Before datetime/numbers
+    tomlFloat |    // Before integer (3.14 should match float, not fail on integer)
+    tomlInteger |  // Before datetime
+    tomlArray |
+    inlineTable |
+    tomlDateTime   // Last - greedy with String fallback
 
 // ============================================================================
 // Key-Value Pairs

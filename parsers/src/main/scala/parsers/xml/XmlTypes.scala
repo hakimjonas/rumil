@@ -20,20 +20,18 @@ given CanEqual[QName, QName] = CanEqual.derived
 /**
  * Helper to create a QName from a string.
  */
-def qname(name: String): QName = {
+def qname(name: String): QName =
   name.split(':').toList match {
-    case List(local) => (prefix = None, localName = local)
+    case List(local)      => (prefix = None, localName = local)
     case List(pre, local) => (prefix = Some(pre), localName = local)
-    case _ => (prefix = None, localName = name)
+    case _                => (prefix = None, localName = name)
   }
-}
 
 /**
  * Helper to create a QName with explicit prefix.
  */
-def qnameWith(prefix: String, localName: String): QName = {
+def qnameWith(prefix: String, localName: String): QName =
   (prefix = Some(prefix), localName = localName)
-}
 
 /**
  * XML attribute.
@@ -55,6 +53,7 @@ type NamespaceDecl = (prefix: Option[String], uri: String)
  * XML node types.
  */
 enum XmlNode {
+
   /**
    * Element with name, attributes, and children.
    */
@@ -106,7 +105,7 @@ type XmlDocument = (
 /**
  * Default XML document header values.
  */
-val defaultXmlVersion: String = "1.0"
+val defaultXmlVersion: String          = "1.0"
 val defaultXmlEncoding: Option[String] = Some("UTF-8")
 
 /**
@@ -148,9 +147,9 @@ val strictXmlConfig: XmlConfig = (
  * Predefined XML entities.
  */
 val xmlEntities: Map[String, String] = Map(
-  "lt" -> "<",
-  "gt" -> ">",
-  "amp" -> "&",
+  "lt"   -> "<",
+  "gt"   -> ">",
+  "amp"  -> "&",
   "quot" -> "\"",
   "apos" -> "'"
 )

@@ -28,7 +28,7 @@ given CanEqual[ProtoType, ProtoType] = CanEqual.derived
 enum FieldRule {
   case Optional
   case Repeated
-  case Singular  // Default in proto3
+  case Singular // Default in proto3
 }
 
 /**

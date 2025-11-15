@@ -1,8 +1,8 @@
 package parsers.yaml
 
 import munit.FunSuite
-import parser.core.*
-import parser.syntax.*
+import parser.core._
+import parser.syntax._
 
 class YamlParserTests extends FunSuite {
   import YamlValue.*
@@ -64,7 +64,7 @@ class YamlParserTests extends FunSuite {
   }
 
   test("parse block sequence") {
-    val yaml = """- item1
+    val yaml   = """- item1
 - item2
 - item3
 """
@@ -75,7 +75,7 @@ class YamlParserTests extends FunSuite {
   }
 
   test("parse block mapping") {
-    val yaml = """name: Alice
+    val yaml   = """name: Alice
 age: 30
 city: NYC
 """
@@ -86,7 +86,7 @@ city: NYC
   }
 
   test("parse with document markers") {
-    val yaml = """---
+    val yaml   = """---
 name: test
 ..."""
     val result = parseYaml(yaml)
@@ -94,7 +94,7 @@ name: test
   }
 
   test("parse with comments") {
-    val yaml = """# This is a comment
+    val yaml   = """# This is a comment
 name: Alice # inline comment
 """
     val result = parseYaml(yaml)

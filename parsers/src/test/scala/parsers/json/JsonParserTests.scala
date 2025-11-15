@@ -1,10 +1,10 @@
 package parsers.json
 
 import munit.FunSuite
-import parser.core.*
-import parser.syntax.*
-import org.scalacheck.{Prop, Gen}
 import org.scalacheck.Prop.forAll
+import org.scalacheck.{Gen, Prop}
+import parser.core._
+import parser.syntax._
 
 class JsonParserTests extends FunSuite {
   import JsonValue.*
@@ -152,20 +152,28 @@ class JsonParserTests extends FunSuite {
 
   test("parse array with mixed types") {
     val result = parseJson("[1,\"hello\",true,null]")
-    assertEquals(result.toOption, Some(Array(List(
-      Number(1),
-      Str("hello"),
-      Bool(true),
-      Null
-    ))))
+    assertEquals(
+      result.toOption,
+      Some(
+        Array(
+          List(
+            Number(1),
+            Str("hello"),
+            Bool(true),
+            Null
+          ))))
   }
 
   test("parse nested arrays") {
     val result = parseJson("[[1,2],[3,4]]")
-    assertEquals(result.toOption, Some(Array(List(
-      Array(List(Number(1), Number(2))),
-      Array(List(Number(3), Number(4)))
-    ))))
+    assertEquals(
+      result.toOption,
+      Some(
+        Array(
+          List(
+            Array(List(Number(1), Number(2))),
+            Array(List(Number(3), Number(4)))
+          ))))
   }
 
   test("parse array with whitespace") {
@@ -189,42 +197,62 @@ class JsonParserTests extends FunSuite {
 
   test("parse object with multiple fields") {
     val result = parseJson("""{"name":"Alice","age":30}""")
-    assertEquals(result.toOption, Some(Object(Map(
-      "name" -> Str("Alice"),
-      "age" -> Number(30)
-    ))))
+    assertEquals(
+      result.toOption,
+      Some(
+        Object(
+          Map(
+            "name" -> Str("Alice"),
+            "age"  -> Number(30)
+          ))))
   }
 
   test("parse object with mixed value types") {
     val result = parseJson("""{"str":"hello","num":42,"bool":true,"null":null}""")
-    assertEquals(result.toOption, Some(Object(Map(
-      "str" -> Str("hello"),
-      "num" -> Number(42),
-      "bool" -> Bool(true),
-      "null" -> Null
-    ))))
+    assertEquals(
+      result.toOption,
+      Some(
+        Object(
+          Map(
+            "str"  -> Str("hello"),
+            "num"  -> Number(42),
+            "bool" -> Bool(true),
+            "null" -> Null
+          ))))
   }
 
   test("parse nested objects") {
     val result = parseJson("""{"outer":{"inner":"value"}}""")
-    assertEquals(result.toOption, Some(Object(Map(
-      "outer" -> Object(Map("inner" -> Str("value")))
-    ))))
+    assertEquals(
+      result.toOption,
+      Some(
+        Object(
+          Map(
+            "outer" -> Object(Map("inner" -> Str("value")))
+          ))))
   }
 
   test("parse object with array value") {
     val result = parseJson("""{"numbers":[1,2,3]}""")
-    assertEquals(result.toOption, Some(Object(Map(
-      "numbers" -> Array(List(Number(1), Number(2), Number(3)))
-    ))))
+    assertEquals(
+      result.toOption,
+      Some(
+        Object(
+          Map(
+            "numbers" -> Array(List(Number(1), Number(2), Number(3)))
+          ))))
   }
 
   test("parse object with whitespace") {
     val result = parseJson("""{ "name" : "Alice" , "age" : 30 }""")
-    assertEquals(result.toOption, Some(Object(Map(
-      "name" -> Str("Alice"),
-      "age" -> Number(30)
-    ))))
+    assertEquals(
+      result.toOption,
+      Some(
+        Object(
+          Map(
+            "name" -> Str("Alice"),
+            "age"  -> Number(30)
+          ))))
   }
 
   // ============================================================================
@@ -234,12 +262,12 @@ class JsonParserTests extends FunSuite {
   test("RFC 8259: JSON text must be object or array") {
     // Actually RFC 8259 allows any value at top level
     val tests = List(
-      "null" -> Null,
-      "true" -> Bool(true),
-      "42" -> Number(42),
+      "null"      -> Null,
+      "true"      -> Bool(true),
+      "42"        -> Number(42),
       "\"hello\"" -> Str("hello"),
-      "[]" -> Array(List()),
-      "{}" -> Object(Map())
+      "[]"        -> Array(List()),
+      "{}"        -> Object(Map())
     )
 
     tests.foreach { case (input, expected) =>
@@ -307,7 +335,7 @@ class JsonParserTests extends FunSuite {
   }
 
   test("parse deeply nested structure") {
-    val json = """{"a":{"b":{"c":{"d":{"e":"value"}}}}}"""
+    val json   = """{"a":{"b":{"c":{"d":{"e":"value"}}}}}"""
     val result = parseJson(json)
     assert(result.isSuccess)
   }
@@ -377,14 +405,14 @@ class JsonParserTests extends FunSuite {
   }
 
   test("format object compact") {
-    val obj = Object(Map("name" -> Str("Alice"), "age" -> Number(30)))
+    val obj    = Object(Map("name" -> Str("Alice"), "age" -> Number(30)))
     val result = formatJson(obj)
     assert(result.contains("\"name\":\"Alice\""))
     assert(result.contains("\"age\":30"))
   }
 
   test("format with pretty print") {
-    val obj = Object(Map("name" -> Str("Alice"), "items" -> Array(List(Number(1), Number(2)))))
+    val obj    = Object(Map("name" -> Str("Alice"), "items" -> Array(List(Number(1), Number(2)))))
     val result = formatJson(obj, prettyFormat)
     assert(result.contains("\n"))
   }
@@ -395,10 +423,10 @@ class JsonParserTests extends FunSuite {
 
   test("round-trip: parse and format") {
     val original = """{"name":"Alice","age":30,"active":true}"""
-    val result = parseJson(original)
+    val result   = parseJson(original)
     assert(result.isSuccess)
     val formatted = formatJson(result.toOption.get)
-    val reparsed = parseJson(formatted)
+    val reparsed  = parseJson(formatted)
     assertEquals(reparsed, result)
   }
 
@@ -461,7 +489,7 @@ class JsonParserTests extends FunSuite {
 
     val prop = forAll(valueGen) { value =>
       val formatted = formatJson(value)
-      val parsed = parseJson(formatted)
+      val parsed    = parseJson(formatted)
       parsed.toOption.contains(value)
     }
     prop.check()

@@ -1,14 +1,14 @@
 package parsers.protobuf
 
 import munit.FunSuite
-import parser.core.*
-import parser.syntax.*
+import parser.core._
+import parser.syntax._
 
 class ProtoParserTests extends FunSuite {
   import ProtoDefinition.*
 
   test("parse syntax statement") {
-    val proto = """syntax = "proto3";"""
+    val proto  = """syntax = "proto3";"""
     val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
@@ -16,7 +16,7 @@ class ProtoParserTests extends FunSuite {
   }
 
   test("parse package statement") {
-    val proto = """syntax = "proto3";
+    val proto  = """syntax = "proto3";
 package example.v1;
 """
     val result = parseProto(proto)
@@ -25,14 +25,14 @@ package example.v1;
     assert(
       file.definitions.exists {
         case Package(name) => name == "example.v1"
-        case _ => false
+        case _             => false
       },
       "Expected package definition for example.v1"
     )
   }
 
   test("parse simple message") {
-    val proto = """syntax = "proto3";
+    val proto  = """syntax = "proto3";
 
 message Person {
   string name = 1;
@@ -42,8 +42,8 @@ message Person {
     val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
-    val msg = file.definitions.collectFirst {
-      case m: Message => m
+    val msg = file.definitions.collectFirst { case m: Message =>
+      m
     }
     assert(msg.isDefined)
     assertEquals(msg.get.name, "Person")
@@ -51,7 +51,7 @@ message Person {
   }
 
   test("parse message with repeated field") {
-    val proto = """syntax = "proto3";
+    val proto  = """syntax = "proto3";
 
 message Container {
   repeated string items = 1;
@@ -62,7 +62,7 @@ message Container {
   }
 
   test("parse enum") {
-    val proto = """syntax = "proto3";
+    val proto  = """syntax = "proto3";
 
 enum Status {
   UNKNOWN = 0;
@@ -73,8 +73,8 @@ enum Status {
     val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
-    val enumDef = file.definitions.collectFirst {
-      case e: Enum => e
+    val enumDef = file.definitions.collectFirst { case e: Enum =>
+      e
     }
     assert(enumDef.isDefined)
     assertEquals(enumDef.get.name, "Status")
@@ -82,7 +82,7 @@ enum Status {
   }
 
   test("parse service with RPC") {
-    val proto = """syntax = "proto3";
+    val proto  = """syntax = "proto3";
 
 service Greeter {
   rpc SayHello (HelloRequest) returns (HelloReply);
@@ -91,8 +91,8 @@ service Greeter {
     val result = parseProto(proto)
     assert(result.isSuccess)
     val file = result.toOption.get
-    val service = file.definitions.collectFirst {
-      case s: Service => s
+    val service = file.definitions.collectFirst { case s: Service =>
+      s
     }
     assert(service.isDefined)
     assertEquals(service.get.name, "Greeter")
@@ -100,7 +100,7 @@ service Greeter {
   }
 
   test("parse import") {
-    val proto = """syntax = "proto3";
+    val proto  = """syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 """
@@ -109,7 +109,7 @@ import "google/protobuf/timestamp.proto";
   }
 
   test("parse complete proto file") {
-    val proto = """syntax = "proto3";
+    val proto  = """syntax = "proto3";
 
 package example;
 
