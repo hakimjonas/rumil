@@ -347,35 +347,31 @@ def parseXmlFragment(input: String, config: XmlConfig = defaultXmlConfig): Resul
    * Parses XML content (child nodes of an element).
    */
   private def xmlContent(config: XmlConfig): Parser[ParseError, List[XmlNode]] = {
-    Parser.Custom { state =>
-      val nodeParser = (
-        (if (config.parseComments) xmlComment else fail(ParseError.Custom("", (line=0,column=0,offset=0)))) |
-        (if (config.parseProcessingInstructions) processingInstruction else fail(ParseError.Custom("", (line=0,column=0,offset=0)))) |
-        cdataSection |
-        xmlElement(config) |
-        textContent(config)
-      )
+    val nodeParser = (
+      cdataSection |
+      (if (config.parseComments) xmlComment else fail(ParseError.Custom("", (line=0,column=0,offset=0)))) |
+      (if (config.parseProcessingInstructions) processingInstruction else fail(ParseError.Custom("", (line=0,column=0,offset=0)))) |
+      xmlElement(config) |
+      textContent(config)
+    )
 
-      // Only strip whitespace around nodes if not preserving it
-      val wrappedParser = if (config.preserveWhitespace) {
-        nodeParser
+    // Only strip whitespace around nodes if not preserving it
+    val wrappedParser = if (config.preserveWhitespace) {
+      nodeParser
+    } else {
+      ws *> nodeParser <* ws
+    }
+
+    wrappedParser.many.map { nodes =>
+      // Filter out empty text nodes if not preserving whitespace
+      if (config.preserveWhitespace) {
+        nodes
       } else {
-        ws *> nodeParser <* ws
-      }
-
-      val contentParser = wrappedParser.many.map { nodes =>
-        // Filter out empty text nodes if not preserving whitespace
-        if (config.preserveWhitespace) {
-          nodes
-        } else {
-          nodes.filter {
-            case XmlNode.Text(content) => content.nonEmpty
-            case _ => true
-          }
+        nodes.filter {
+          case XmlNode.Text(content) => content.nonEmpty
+          case _ => true
         }
       }
-
-      parser.runtime.interpret(contentParser, state)
     }
   }
 
