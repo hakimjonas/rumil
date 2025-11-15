@@ -115,34 +115,10 @@ private def xmlDecl: Parser[ParseError, (String, Option[String], Option[Boolean]
 /**
  * Consumes characters until the specified delimiter is found.
  */
-private def untilString(delimiter: String): Parser[ParseError, String] =
-  Parser.Custom { state =>
-    val input = state.input.substring(state.offset)
-    val idx   = input.indexOf(delimiter)
-
-    if (idx >= 0) {
-      val content = input.substring(0, idx)
-      val newState = (
-        input = state.input,
-        offset = state.offset + idx,
-        line = state.line + content.count(_ == '\n'),
-        column = if (content.contains('\n')) {
-          content.reverse.takeWhile(_ != '\n').length + 1
-        } else {
-          state.column + idx
-        }
-      )
-      Result.Success(content, newState.offset)
-    } else {
-      Result.Failure(
-        List(
-          ParseError.Custom(
-            s"Expected delimiter: $delimiter",
-            (line = state.line, column = state.column, offset = state.offset))),
-        (line = state.line, column = state.column, offset = state.offset)
-      )
-    }
-  }
+private def untilString(delimiter: String): Parser[ParseError, String] = {
+  val char = parser.core.notFollowedBy(string(delimiter)) *> satisfy(_ => true, "any char")
+  char.many.map(_.mkString)
+}
 
 // ============================================================================
 // Comments and Processing Instructions
@@ -298,29 +274,25 @@ private def selfClosingElement(config: XmlConfig): Parser[ParseError, XmlNode] =
  * Parses element with content: <name attrs>content</name>
  */
 private def normalElement(config: XmlConfig): Parser[ParseError, XmlNode] =
-  Parser.Custom { state =>
-    val elementParser = for {
-      _         <- char('<')
-      name      <- qualifiedName
-      attrs     <- attributes(config)
-      _         <- ws
-      _         <- char('>')
-      children  <- xmlContent(config)
-      _         <- string("</")
-      _         <- ws
-      closeName <- qualifiedName
-      _         <- ws
-      _         <- char('>')
-    } yield
-    // Verify matching tags
-    if (name == closeName) {
-      XmlNode.Element(name, attrs, children)
-    } else {
-      // This would ideally be a parse error, but we'll allow it for now
-      XmlNode.Element(name, attrs, children)
-    }
-
-    parser.runtime.interpret(elementParser, state)
+  for {
+    _         <- char('<')
+    name      <- qualifiedName
+    attrs     <- attributes(config)
+    _         <- ws
+    _         <- char('>')
+    children  <- xmlContent(config)
+    _         <- string("</")
+    _         <- ws
+    closeName <- qualifiedName
+    _         <- ws
+    _         <- char('>')
+  } yield
+  // Verify matching tags
+  if (name == closeName) {
+    XmlNode.Element(name, attrs, children)
+  } else {
+    // This would ideally be a parse error, but we'll allow it for now
+    XmlNode.Element(name, attrs, children)
   }
 
 /**

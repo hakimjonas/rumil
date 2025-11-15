@@ -87,7 +87,7 @@ class TomlParserTests extends FunSuite {
   test("parse multi-line basic string") {
     // Use string interpolation to inject literal """ without escaping
     val triple = "\"\"\""
-    val toml = s"str = $triple\nmulti\nline\nstring$triple\n"
+    val toml   = s"str = $triple\nmulti\nline\nstring$triple\n"
     val result = parseToml(toml)
     assert(result.isSuccess)
   }

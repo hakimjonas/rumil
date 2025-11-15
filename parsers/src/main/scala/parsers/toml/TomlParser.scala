@@ -138,13 +138,14 @@ private def multiLineBasicString: Parser[ParseError, scala.Predef.String] = {
   // but we must NOT be at the closing delimiter
   val contentChar =
     escape.map(_.toString) |
-    (parser.core.notFollowedBy(string("\"\"\"")) *> satisfy(_ => true, "any char").map(_.toString))
+      (parser.core.notFollowedBy(string("\"\"\"")) *> satisfy(_ => true, "any char")
+        .map(_.toString))
 
   for {
-    _      <- string("\"\"\"")
-    _      <- newline.optional // Skip immediate newline after opening
-    chars  <- contentChar.many
-    _      <- string("\"\"\"")
+    _     <- string("\"\"\"")
+    _     <- newline.optional // Skip immediate newline after opening
+    chars <- contentChar.many
+    _     <- string("\"\"\"")
   } yield chars.mkString
 }
 
@@ -190,7 +191,8 @@ private def tomlInteger: Parser[ParseError, TomlValue] = {
 
   val decimal = for {
     negative <- char('-').optional
-    digits   <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1.map(_.filter(_ != '_').mkString)
+    digits <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1
+                .map(_.filter(_ != '_').mkString)
   } yield {
     val sign = if (negative.isDefined) -1L else 1L
     sign * digits.toLong
@@ -215,10 +217,14 @@ private def tomlFloat: Parser[ParseError, TomlValue] = {
   // Float with decimal point (and optional exponent): 3.14, 3.14e10
   val withFraction = for {
     negative <- char('-').optional | char('+').optional
-    whole    <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1.map(_.filter(_ != '_').mkString)
-    _        <- char('.')  // REQUIRED decimal point
-    frac     <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1.map(_.filter(_ != '_').mkString)
-    exp      <- (oneOf("eE") *> (char('-') | char('+')).optional ~ satisfy(c => c.isDigit || c == '_', "digit or underscore").many1.map(_.filter(_ != '_').mkString)).optional
+    whole <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1
+               .map(_.filter(_ != '_').mkString)
+    _ <- char('.') // REQUIRED decimal point
+    frac <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1
+              .map(_.filter(_ != '_').mkString)
+    exp <- (oneOf("eE") *> (char('-') | char('+')).optional ~ satisfy(
+             c => c.isDigit || c == '_',
+             "digit or underscore").many1.map(_.filter(_ != '_').mkString)).optional
   } yield {
     val sign = negative match {
       case Some('-') => "-"
@@ -236,8 +242,11 @@ private def tomlFloat: Parser[ParseError, TomlValue] = {
   // Float with only exponent (no decimal point): 5e22
   val onlyExponent = for {
     negative <- char('-').optional | char('+').optional
-    whole    <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1.map(_.filter(_ != '_').mkString)
-    exp      <- oneOf("eE") *> (char('-') | char('+')).optional ~ satisfy(c => c.isDigit || c == '_', "digit or underscore").many1.map(_.filter(_ != '_').mkString)
+    whole <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1
+               .map(_.filter(_ != '_').mkString)
+    exp <- oneOf("eE") *> (char('-') | char('+')).optional ~ satisfy(
+             c => c.isDigit || c == '_',
+             "digit or underscore").many1.map(_.filter(_ != '_').mkString)
   } yield {
     val sign = negative match {
       case Some('-') => "-"
@@ -378,12 +387,12 @@ private def inlineTable: Parser[ParseError, TomlValue] =
  */
 private def tomlValue: Parser[ParseError, TomlValue] =
   tomlString |
-    tomlBoolean |  // Before datetime/numbers
-    tomlFloat |    // Before integer (3.14 should match float, not fail on integer)
-    tomlInteger |  // Before datetime
+    tomlBoolean | // Before datetime/numbers
+    tomlFloat |   // Before integer (3.14 should match float, not fail on integer)
+    tomlInteger | // Before datetime
     tomlArray |
     inlineTable |
-    tomlDateTime   // Last - greedy with String fallback
+    tomlDateTime // Last - greedy with String fallback
 
 // ============================================================================
 // Key-Value Pairs
@@ -435,9 +444,9 @@ private def skipBlankAndComments: Parser[ParseError, Unit] =
  */
 private def tomlDocument: Parser[ParseError, TomlDocument] =
   for {
-    _     <- skipBlankAndComments  // Skip leading blank lines and comments
-    pairs <- keyValue.sepBy(skipBlankAndComments)  // Parse key-values separated by blanks/comments
-    _     <- skipBlankAndComments  // Trailing whitespace
+    _     <- skipBlankAndComments                 // Skip leading blank lines and comments
+    pairs <- keyValue.sepBy(skipBlankAndComments) // Parse key-values separated by blanks/comments
+    _     <- skipBlankAndComments                 // Trailing whitespace
     _     <- eof
   } yield {
     val pairMap = pairs.foldLeft(Map.empty[scala.Predef.String, TomlValue]) {

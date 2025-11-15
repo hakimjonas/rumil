@@ -30,24 +30,24 @@ def parseProto(input: scala.Predef.String): Result[ParseError, ProtoFile] =
 // Whitespace and Comments
 // ============================================================================
 
-private def ws: Parser[ParseError, Unit] =
-  satisfy(c => c == ' ' || c == '\t' || c == '\r' || c == '\n', "whitespace").many.void
+// Single whitespace character
+private def ws1: Parser[ParseError, Unit] =
+  satisfy(c => c == ' ' || c == '\t' || c == '\r' || c == '\n', "whitespace").void
 
 private def lineComment: Parser[ParseError, Unit] =
   string("//") *> satisfy(_ != '\n', "comment char").many *> (newline.void | eof)
 
-private def blockComment: Parser[ParseError, Unit] =
-  string("/*") *> satisfy(_ => true, "any char").many.flatMap { chars =>
-    val str = chars.mkString
-    if (str.contains("*/")) {
-      string("*/").void
-    } else {
-      fail(ParseError.Custom("Unclosed comment", (line = 0, column = 0, offset = 0)))
-    }
-  }
+private def blockComment: Parser[ParseError, Unit] = {
+  val commentChar =
+    parser.core.notFollowedBy(string("*/")) *> satisfy(_ => true, "comment char")
 
+  string("/*") *> commentChar.many *> string("*/").void
+}
+
+// Skip any combination of whitespace and comments
+// Each alternative must consume at least one character
 private def skip: Parser[ParseError, Unit] =
-  (ws | lineComment | blockComment).many.void
+  (ws1 | lineComment | blockComment).many.void
 
 // ============================================================================
 // Identifiers and Keywords
@@ -104,10 +104,7 @@ private def mapType: Parser[ParseError, ProtoType] =
   } yield ProtoType.Map(keyType, valueType)
 
 private def protoType: Parser[ParseError, ProtoType] =
-  Parser.Custom { state =>
-    val typeParser = mapType | scalarType | messageType
-    parser.runtime.interpret(typeParser, state)
-  }
+  mapType | scalarType | messageType
 
 // ============================================================================
 // Fields
@@ -141,15 +138,11 @@ private def field: Parser[ParseError, ProtoField] =
 // ============================================================================
 
 private def messageBody: Parser[ParseError, List[ProtoField]] =
-  Parser.Custom { state =>
-    val bodyParser = for {
-      _      <- skip *> char('{') *> skip
-      fields <- field.many
-      _      <- skip *> char('}') *> skip
-    } yield fields
-
-    parser.runtime.interpret(bodyParser, state)
-  }
+  for {
+    _      <- skip *> char('{') *> skip
+    fields <- field.many
+    _      <- skip *> char('}') *> skip
+  } yield fields
 
 private def messageDef: Parser[ParseError, ProtoDefinition] =
   for {
@@ -210,17 +203,13 @@ private def rpcMethod: Parser[ParseError, ProtoMethod] =
   )
 
 private def serviceDef: Parser[ParseError, ProtoDefinition] =
-  Parser.Custom { state =>
-    val serviceParser = for {
-      _       <- skip *> string("service") *> skip
-      name    <- protoIdentifier
-      _       <- skip *> char('{') *> skip
-      methods <- rpcMethod.many
-      _       <- skip *> char('}') *> skip
-    } yield ProtoDefinition.Service(name, methods)
-
-    parser.runtime.interpret(serviceParser, state)
-  }
+  for {
+    _       <- skip *> string("service") *> skip
+    name    <- protoIdentifier
+    _       <- skip *> char('{') *> skip
+    methods <- rpcMethod.many
+    _       <- skip *> char('}') *> skip
+  } yield ProtoDefinition.Service(name, methods)
 
 // ============================================================================
 // Top-Level Statements
@@ -255,24 +244,22 @@ private def importStatement: Parser[ParseError, ProtoDefinition] =
 // Proto File
 // ============================================================================
 
-private def protoFile: Parser[ParseError, ProtoFile] =
-  Parser.Custom { state =>
-    val fileParser = for {
-      _      <- skip
-      syntax <- syntaxStatement.optional
-      _      <- skip
-      definitions <- (
-                       packageStatement |
-                         importStatement |
-                         messageDef |
-                         enumDef |
-                         serviceDef
-                     ).many
-      _ <- skip *> eof
-    } yield (
-      syntax = syntax.getOrElse("proto3"),
-      definitions = definitions
-    )
+private def protoFile: Parser[ParseError, ProtoFile] = {
+  val definitionParser =
+    packageStatement |
+      importStatement |
+      messageDef |
+      enumDef |
+      serviceDef
 
-    parser.runtime.interpret(fileParser, state)
-  }
+  for {
+    _           <- skip
+    syntax      <- syntaxStatement.optional
+    _           <- skip
+    definitions <- definitionParser.sepBy(skip)
+    _           <- skip *> eof
+  } yield (
+    syntax = syntax.getOrElse("proto3"),
+    definitions = definitions
+  )
+}
