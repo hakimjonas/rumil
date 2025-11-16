@@ -118,6 +118,8 @@ enum TokenKind {
   case Whitespace, Comment, EOF
 }
 
+given CanEqual[TokenKind, TokenKind] = CanEqual.derived
+
 /**
  * Syntax node classification for abstract syntax trees.
  *
@@ -127,6 +129,8 @@ enum SyntaxKind {
   case SourceFile, Function, TypeDef, Expression
   case Block, Statement, Pattern, Literal
 }
+
+given CanEqual[SyntaxKind, SyntaxKind] = CanEqual.derived
 
 /**
  * Immutable syntax tree node for lossless parsing.
@@ -141,4 +145,80 @@ enum SyntaxKind {
 enum GreenNode {
   case Token(kind: TokenKind, text: String, span: Span)
   case Tree(kind: SyntaxKind, children: Vector[GreenNode])
+}
+
+object GreenNode {
+
+  /**
+   * Creates a token node.
+   *
+   * @param kind The token classification
+   * @param text The raw source text
+   * @param span The source location span
+   * @return A token node
+   */
+  def token(kind: TokenKind, text: String, span: Span): GreenNode =
+    Token(kind, text, span)
+
+  /**
+   * Creates a tree node from children.
+   *
+   * @param kind The syntax node classification
+   * @param children The child nodes
+   * @return A tree node containing the children
+   */
+  def tree(kind: SyntaxKind, children: GreenNode*): GreenNode =
+    Tree(kind, children.toVector)
+
+  /**
+   * Gets the text span covered by this node.
+   *
+   * For tokens, returns the token's span directly.
+   * For trees, computes the span from first child's start to last child's end.
+   * Empty trees return a zero-width span at position (1, 1, 0).
+   *
+   * @param node The node to get the span from
+   * @return The span covered by the node
+   */
+  def span(node: GreenNode): Span = node match {
+    case Token(_, _, span) => span
+    case Tree(_, children) =>
+      if (children.isEmpty) {
+        (start = (line = 1, column = 1, offset = 0), end = (line = 1, column = 1, offset = 0))
+      } else {
+        val first = span(children.head)
+        val last  = span(children.last)
+        (start = first.start, end = last.end)
+      }
+  }
+
+  /**
+   * Reconstructs source text from the tree.
+   *
+   * This is the lossless property: toSource preserves exact input.
+   * Tokens return their text, trees concatenate their children.
+   *
+   * @param node The node to reconstruct source from
+   * @return The reconstructed source text
+   */
+  def toSource(node: GreenNode): String = node match {
+    case Token(_, text, _) => text
+    case Tree(_, children) => children.map(toSource).mkString
+  }
+
+  /**
+   * Traverses the tree in pre-order.
+   *
+   * Applies the given function to each node, visiting parents before children.
+   *
+   * @param node The root node to traverse from
+   * @param f The function to apply to each node
+   */
+  def traverse(node: GreenNode)(f: GreenNode => Unit): Unit = {
+    f(node)
+    node match {
+      case Token(_, _, _)    => ()
+      case Tree(_, children) => children.foreach(traverse(_)(f))
+    }
+  }
 }
