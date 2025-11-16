@@ -20,7 +20,22 @@ Rumil is a parser combinator library for Scala 3, designed for correctness, effi
 Add to your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.example" %% "rumil" % "0.1.0"
+// Core parser combinators (required)
+libraryDependencies += "net.ghoula" %% "rumil-core" % "0.2.0"
+
+// Interop layer with Decoder typeclass (optional, for case class derivation)
+libraryDependencies += "net.ghoula" %% "rumil-interop" % "0.2.0"
+
+// JSON parser (optional, included for convenience)
+libraryDependencies += "net.ghoula" %% "rumil-parsers" % "0.2.0"
+```
+
+Or with scala-cli:
+
+```scala
+//> using dep "net.ghoula::rumil-core:0.2.0"
+//> using dep "net.ghoula::rumil-interop:0.2.0"
+//> using dep "net.ghoula::rumil-parsers:0.2.0"
 ```
 
 ## Philosophy: Two Paths to Parsing
@@ -34,7 +49,7 @@ Pure combinators with named tuples and enums. Maximum control and portability.
 - **Use when:** Building language tooling, need lossless trees, maximum type safety
 - **Style:** Explicit, composable, portable
 
-### The Idiomatic Way (Coming Soon)
+### The Idiomatic Way
 
 Automatic derivation for Scala case classes. Maximum convenience.
 
@@ -48,8 +63,8 @@ Both approaches use the same core library - choose based on your needs.
 ### The Structural Way
 
 ```scala
-import parser.syntax.*
-import parser.core.*
+import parser.core._
+import parser.syntax._
 
 // Parse a simple number
 val number = digit.many1.map(_.mkString.toInt)
@@ -64,18 +79,27 @@ val pair = char('(') *> number ~ (char(',') *> number) <* char(')')
 pair.run("(1,2)")  // Success((1, 2), 7)
 ```
 
-### The Idiomatic Way (Coming in v0.2.0)
+### The Idiomatic Way
 
 ```scala
-import parser.interop.*
+import parser.core._
+import parser.interop.Decoder
+import parser.interop.JsonDecoders.given
+import parsers.json.{JsonParser, JsonValue}
 
-// Automatic parser derivation for case classes
-case class Point(x: Int, y: Int)
-val pointParser = Parser.derived[Point]
-
-// Parse JSON to case classes
+// Parse JSON to case classes with automatic derivation
 case class User(name: String, age: Int, admin: Boolean)
-val user = parseJson(input).flatMap(Decoder[User].decode)
+given Decoder[JsonValue, User] = Decoder.derived
+
+val input = """{"name": "Alice", "age": 30, "admin": true}"""
+
+// Parse JSON string to JsonValue
+val jsonResult = JsonParser.parseValue.run(input)
+
+// Decode JsonValue to case class
+val userResult = jsonResult.flatMap(json =>
+  Decoder[JsonValue, User].decode(json)
+)
 ```
 
 ## Core Concepts
@@ -133,8 +157,8 @@ val parser = for {
 Explicit control using combinators and named tuples:
 
 ```scala
-import parser.syntax.*
-import parser.core.*
+import parser.core._
+import parser.syntax._
 
 enum JsonValue {
   case Null
@@ -161,20 +185,37 @@ val jsonString =
 
 **When to use:** Building JSON tools, need custom representations, maximum control
 
-#### The Idiomatic Way (Coming in v0.2.0)
+#### The Idiomatic Way
 
 Automatic parsing to case classes:
 
 ```scala
-import parser.interop.*
+import parser.core._
+import parser.interop.Decoder
+import parser.interop.JsonDecoders.given
+import parsers.json.{JsonParser, JsonValue}
 
 case class Person(name: String, age: Int)
-val person = parseJson(input).flatMap(Decoder[Person].decode)
+given Decoder[JsonValue, Person] = Decoder.derived
+
+val input = """{"name": "Alice", "age": 30}"""
+val jsonResult = JsonParser.parseValue.run(input)
+val personResult = jsonResult.flatMap(json =>
+  Decoder[JsonValue, Person].decode(json)
+)
 
 // With nested structures
 case class Address(street: String, city: String, zip: String)
 case class User(name: String, email: String, address: Address)
-val user = parseJson(input).flatMap(Decoder[User].decode)
+
+given Decoder[JsonValue, Address] = Decoder.derived
+given Decoder[JsonValue, User] = Decoder.derived
+
+val nestedInput = """{"name": "Bob", "email": "bob@example.com", "address": {"street": "123 Main St", "city": "Springfield", "zip": "12345"}}"""
+val nestedJsonResult = JsonParser.parseValue.run(nestedInput)
+val userResult = nestedJsonResult.flatMap(json =>
+  Decoder[JsonValue, User].decode(json)
+)
 ```
 
 **When to use:** REST APIs, configuration parsing, standard CRUD
@@ -184,8 +225,8 @@ val user = parseJson(input).flatMap(Decoder[User].decode)
 #### The Structural Way
 
 ```scala
-import parser.syntax.*
-import parser.core.*
+import parser.core._
+import parser.syntax._
 
 lazy val expr: Parser[ParseError, Int] = {
   Parser.Custom { state =>
@@ -225,30 +266,27 @@ expr.run("(2+3)*4") // Success(20, 7)   // (2+3) * 4
 
 **When to use:** Building language parsers, need custom AST representation
 
-#### The Idiomatic Way (Coming in v0.2.0)
+#### The Idiomatic Way
 
 ```scala
-import parser.interop.*
+import parser.core._
+import parser.syntax._
 
-enum Expr derives Parser {
-  case Num(value: Int)
-  case Add(left: Expr, right: Expr)
-  case Mul(left: Expr, right: Expr)
-}
+// For now, use the structural approach for expression parsing
+// Automatic derivation for expression ASTs is planned for a future release
 
-val exprParser = Parser.derived[Expr]
-val result = exprParser.run("2 + 3 * 4")
+// See the structural example above for a working implementation
 ```
 
-**When to use:** Calculator apps, expression evaluators, quick prototyping
+**When to use:** Calculator apps, expression evaluators (use structural approach for now)
 
 ### CSV Parser
 
 #### The Structural Way
 
 ```scala
-import parser.syntax.*
-import parser.core.*
+import parser.core._
+import parser.syntax._
 
 val cell = satisfy(_ != ',', "cell char").many.map(_.mkString)
 val row = cell.sepBy(char(','))
@@ -272,13 +310,29 @@ csv.run(input)
 
 **When to use:** Custom CSV dialects, need raw string data
 
-#### The Idiomatic Way (Coming in v0.2.0)
+#### The Idiomatic Way
 
 ```scala
-import parser.interop.*
+// CSV parsing with automatic case class derivation is planned for a future release
+// For now, use the structural approach shown above to parse CSV files
+// Then manually map the parsed data to case classes
+
+import parser.core._
+import parser.syntax._
 
 case class Person(name: String, age: Int, city: String)
-val people: List[Person] = parseCsv[Person](input)
+
+// Parse using structural approach
+val cell = satisfy(_ != ',', "cell char").many.map(_.mkString)
+val row = cell.sepBy(char(','))
+val csv = row.endBy(char('\n'))
+
+// Then map to case classes
+val result = csv.run(input).map { rows =>
+  rows.tail.map { row =>
+    Person(row(0), row(1).toInt, row(2))
+  }
+}
 ```
 
 **When to use:** Standard CSV files, database imports, data analysis
@@ -287,13 +341,15 @@ val people: List[Person] = parseCsv[Person](input)
 
 | Requirement | Recommended Approach |
 |-------------|---------------------|
-| Parsing to case classes | Idiomatic (v0.2.0+) |
+| Parsing JSON to case classes | Idiomatic (Decoder.derived) |
 | Building language tools | Structural |
 | Lossless syntax trees | Structural |
-| REST API parsing | Idiomatic (v0.2.0+) |
+| REST API parsing | Idiomatic (Decoder.derived) |
 | Custom data structures | Structural |
 | Maximum type safety | Structural |
-| Quick prototyping | Idiomatic (v0.2.0+) |
+| Error recovery / resilient parsing | Structural |
+| Debugging parsers | Both (debug combinators work everywhere) |
+| IDE tooling / lossless trees | Structural |
 
 ## API Reference
 
@@ -352,8 +408,8 @@ val people: List[Person] = parseCsv[Person](input)
 The debugging combinators help you understand parser behavior during development:
 
 ```scala
-import parser.syntax.*
-import parser.core.*
+import parser.core._
+import parser.syntax._
 
 // Trace shows parse attempts and consumption
 val number = digit.many1.trace("number").map(_.mkString.toInt)
