@@ -78,4 +78,130 @@ object Primitives {
     }
     (negativeDouble | positiveDouble).named("Double")
   }
+
+  /**
+   * Parser for Char values.
+   *
+   * Parses a single character enclosed in single quotes.
+   * Format: 'a', 'b', etc.
+   */
+  given Parser[ParseError, Char] =
+    (char('\'') *> anyChar <* char('\'')).named("Char")
+
+  /**
+   * Parser for Byte values.
+   *
+   * Parses one or more digits and converts to Byte.
+   * Handles positive and negative bytes.
+   */
+  given Parser[ParseError, Byte] = {
+    val positiveByte = digit.many1.map(_.mkString.toByte)
+    val negativeByte = char('-') *> digit.many1.map(chars => (-chars.mkString.toInt).toByte)
+    (negativeByte | positiveByte).named("Byte")
+  }
+
+  /**
+   * Parser for Short values.
+   *
+   * Parses one or more digits and converts to Short.
+   * Handles positive and negative shorts.
+   */
+  given Parser[ParseError, Short] = {
+    val positiveShort = digit.many1.map(_.mkString.toShort)
+    val negativeShort = char('-') *> digit.many1.map(chars => (-chars.mkString.toInt).toShort)
+    (negativeShort | positiveShort).named("Short")
+  }
+
+  /**
+   * Parser for BigInt values.
+   *
+   * Parses one or more digits and converts to BigInt.
+   * Handles positive and negative BigInts.
+   */
+  given Parser[ParseError, BigInt] = {
+    val positiveBigInt = digit.many1.map(chars => BigInt(chars.mkString))
+    val negativeBigInt = char('-') *> digit.many1.map(chars => BigInt("-" + chars.mkString))
+    (negativeBigInt | positiveBigInt).named("BigInt")
+  }
+
+  /**
+   * Parser for BigDecimal values.
+   *
+   * Parses floating point numbers in format: [-]digits.digits
+   * Converts to BigDecimal for arbitrary precision.
+   */
+  given Parser[ParseError, BigDecimal] = {
+    val wholePart      = digit.many1
+    val fractionalPart = char('.') *> digit.many1
+    val positiveBigDecimal = (wholePart ~ fractionalPart).map { case (whole, frac) =>
+      BigDecimal(s"${whole.mkString}.${frac.mkString}")
+    }
+    val negativeBigDecimal = char('-') *> (wholePart ~ fractionalPart).map { case (whole, frac) =>
+      BigDecimal(s"-${whole.mkString}.${frac.mkString}")
+    }
+    (negativeBigDecimal | positiveBigDecimal).named("BigDecimal")
+  }
+
+  /**
+   * Parser for Option[A] values.
+   *
+   * Parses explicit Scala Option syntax:
+   * - Some(value) - where value is parsed using the given parser for A
+   * - None - represents absence of a value
+   *
+   * Examples:
+   * - Some(42) -> Some(42)
+   * - None -> None
+   */
+  given [A](using p: Parser[ParseError, A]): Parser[ParseError, Option[A]] = {
+    val someParser = string("Some(") *> p <* char(')')
+    val noneParser = string("None").as(None)
+    (someParser.map(Some(_)) | noneParser).named("Option")
+  }
+
+  /**
+   * Parser for List[A] values.
+   *
+   * Parses explicit Scala List constructor syntax:
+   * - List() - empty list
+   * - List(a) - single element
+   * - List(a,b,c) - multiple elements separated by commas
+   *
+   * Elements are parsed using the given parser for A.
+   */
+  given [A](using p: Parser[ParseError, A]): Parser[ParseError, List[A]] = {
+    val elementsParser = p.sepBy(char(','))
+    (string("List(") *> elementsParser <* char(')')).named("List")
+  }
+
+  /**
+   * Parser for Seq[A] values.
+   *
+   * Parses explicit Scala Seq constructor syntax:
+   * - Seq() - empty sequence
+   * - Seq(a) - single element
+   * - Seq(a,b,c) - multiple elements separated by commas
+   *
+   * Elements are parsed using the given parser for A.
+   */
+  given [A](using p: Parser[ParseError, A]): Parser[ParseError, Seq[A]] = {
+    val elementsParser = p.sepBy(char(','))
+    (string("Seq(") *> elementsParser <* char(')')).named("Seq")
+  }
+
+  /**
+   * Parser for Vector[A] values.
+   *
+   * Parses explicit Scala Vector constructor syntax:
+   * - Vector() - empty vector
+   * - Vector(a) - single element
+   * - Vector(a,b,c) - multiple elements separated by commas
+   *
+   * Elements are parsed using the given parser for A.
+   */
+  given [A](using p: Parser[ParseError, A]): Parser[ParseError, Vector[A]] = {
+    val elementsParser = p.sepBy(char(','))
+    (string("Vector(") *> elementsParser <* char(')')).named("Vector")
+      .map(_.toVector)
+  }
 }
