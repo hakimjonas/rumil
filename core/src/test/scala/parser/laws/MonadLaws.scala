@@ -36,9 +36,10 @@ object ResultMonadLaws extends Properties("Result Monad Laws") {
     val right = f(a)
 
     (left, right) match {
-      case (PResult.Success(v1, _), PResult.Success(v2, _)) => v1 == v2
-      case (PResult.Failure(_, _), PResult.Failure(_, _))   => true
-      case _                                                => false
+      case (PResult.Success(v1, _), PResult.Success(v2, _))       => v1 == v2
+      case (PResult.Partial(v1, _, _), PResult.Partial(v2, _, _)) => v1 == v2
+      case (PResult.Failure(_, _), PResult.Failure(_, _))         => true
+      case _                                                      => false
     }
   }
 
@@ -47,9 +48,10 @@ object ResultMonadLaws extends Properties("Result Monad Laws") {
     val left = M.flatMap(m)(M.pure)
 
     (left, m) match {
-      case (PResult.Success(v1, _), PResult.Success(v2, _)) => v1 == v2
-      case (PResult.Failure(_, _), PResult.Failure(_, _))   => true
-      case _                                                => false
+      case (PResult.Success(v1, _), PResult.Success(v2, _))       => v1 == v2
+      case (PResult.Partial(v1, _, _), PResult.Partial(v2, _, _)) => v1 == v2
+      case (PResult.Failure(_, _), PResult.Failure(_, _))         => true
+      case _                                                      => false
     }
   }
 
@@ -61,9 +63,10 @@ object ResultMonadLaws extends Properties("Result Monad Laws") {
       val right = M.flatMap(m)((x: Int) => M.flatMap(f(x))(g))
 
       (left, right) match {
-        case (PResult.Success(v1, _), PResult.Success(v2, _)) => v1 == v2
-        case (PResult.Failure(_, _), PResult.Failure(_, _))   => true
-        case _                                                => false
+        case (PResult.Success(v1, _), PResult.Success(v2, _))       => v1 == v2
+        case (PResult.Partial(v1, _, _), PResult.Partial(v2, _, _)) => v1 == v2
+        case (PResult.Failure(_, _), PResult.Failure(_, _))         => true
+        case _                                                      => false
       }
   }
 }
@@ -88,9 +91,10 @@ object ResultFunctorLaws extends Properties("Result Functor Laws") {
     val left = F.map(fa)(x => x)
 
     (left, fa) match {
-      case (PResult.Success(v1, _), PResult.Success(v2, _)) => v1 == v2
-      case (PResult.Failure(_, _), PResult.Failure(_, _))   => true
-      case _                                                => false
+      case (PResult.Success(v1, _), PResult.Success(v2, _))       => v1 == v2
+      case (PResult.Partial(v1, _, _), PResult.Partial(v2, _, _)) => v1 == v2
+      case (PResult.Failure(_, _), PResult.Failure(_, _))         => true
+      case _                                                      => false
     }
   }
 
@@ -103,9 +107,10 @@ object ResultFunctorLaws extends Properties("Result Functor Laws") {
     val right = F.map(fa)(f.andThen(g))
 
     (left, right) match {
-      case (PResult.Success(v1, _), PResult.Success(v2, _)) => v1 == v2
-      case (PResult.Failure(_, _), PResult.Failure(_, _))   => true
-      case _                                                => false
+      case (PResult.Success(v1, _), PResult.Success(v2, _))       => v1 == v2
+      case (PResult.Partial(v1, _, _), PResult.Partial(v2, _, _)) => v1 == v2
+      case (PResult.Failure(_, _), PResult.Failure(_, _))         => true
+      case _                                                      => false
     }
   }
 }
@@ -120,6 +125,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
   property("succeed always succeeds") = Prop.forAll { (a: Int, input: String) =>
     succeed(a).run(input) match {
       case PResult.Success(value, consumed) => value == a && consumed == 0
+      case PResult.Partial(_, _, _)         => false
       case PResult.Failure(_, _)            => false
     }
   }
@@ -128,6 +134,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
   property("fail always fails") = Prop.forAll { (error: String, input: String) =>
     fail(error).run(input) match {
       case PResult.Success(_, _)      => false
+      case PResult.Partial(_, _, _)   => false
       case PResult.Failure(errors, _) => errors.contains(error)
     }
   }
@@ -136,6 +143,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
   property("char succeeds on match") = Prop.forAll { (c: Char) =>
     char(c).run(c.toString) match {
       case PResult.Success(value, consumed) => value == c && consumed == 1
+      case PResult.Partial(_, _, _)         => false
       case PResult.Failure(_, _)            => false
     }
   }
@@ -144,8 +152,9 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
   property("char fails on mismatch") = Prop.forAll { (c1: Char, c2: Char) =>
     (c1 != c2) ==> {
       char(c1).run(c2.toString) match {
-        case PResult.Success(_, _) => false
-        case PResult.Failure(_, _) => true
+        case PResult.Success(_, _)    => false
+        case PResult.Partial(_, _, _) => false
+        case PResult.Failure(_, _)    => true
       }
     }
   }
@@ -155,6 +164,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
     s.nonEmpty ==> {
       string(s).run(s) match {
         case PResult.Success(value, consumed) => value == s && consumed == s.length
+        case PResult.Partial(_, _, _)         => false
         case PResult.Failure(_, _)            => false
       }
     }
@@ -166,6 +176,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
       val p = char('a') | char(s.head)
       p.run(s) match {
         case PResult.Success(value, _) => value == s.head
+        case PResult.Partial(_, _, _)  => false
         case PResult.Failure(_, _)     => s.head != 'a'
       }
     }
@@ -176,6 +187,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
     val input = "aaab"
     char('a').many.run(input) match {
       case PResult.Success(value, consumed) => value == List('a', 'a', 'a') && consumed == 3
+      case PResult.Partial(_, _, _)         => false
       case PResult.Failure(_, _)            => false
     }
   }
@@ -184,12 +196,14 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
   property("many1 requires at least one") = {
     val success = char('a').many1.run("aaa") match {
       case PResult.Success(value, _) => value == List('a', 'a', 'a')
+      case PResult.Partial(_, _, _)  => false
       case PResult.Failure(_, _)     => false
     }
 
     val failure = char('a').many1.run("bbb") match {
-      case PResult.Success(_, _) => false
-      case PResult.Failure(_, _) => true
+      case PResult.Success(_, _)    => false
+      case PResult.Partial(_, _, _) => false
+      case PResult.Failure(_, _)    => true
     }
 
     success && failure
@@ -200,6 +214,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
     (n >= 0 && n <= 9) ==> {
       digit.map(_.toString.toInt).run(n.toString) match {
         case PResult.Success(value, _) => value == n
+        case PResult.Partial(_, _, _)  => false
         case PResult.Failure(_, _)     => false
       }
     }
@@ -214,6 +229,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
 
     p.run("ab") match {
       case PResult.Success(value, consumed) => value == "ab" && consumed == 2
+      case PResult.Partial(_, _, _)         => false
       case PResult.Failure(_, _)            => false
     }
   }
@@ -223,6 +239,7 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
     char('a').optional.run(input) match {
       case PResult.Success(Some('a'), 1) => input.headOption.contains('a')
       case PResult.Success(None, 0)      => input.headOption.forall(_ != 'a')
+      case PResult.Partial(_, _, _)      => false
       case _                             => false
     }
   }
@@ -258,13 +275,15 @@ object CombinatorLaws extends Properties("Combinator Laws") {
     char('a').many.run(input) match {
       case PResult.Success(value, consumed) =>
         value.length == 4 && consumed == 4
-      case PResult.Failure(_, _) => false
+      case PResult.Partial(_, _, _) => false
+      case PResult.Failure(_, _)    => false
     }
   }
 
   // sepBy with zero elements
   property("sepBy accepts empty") = digit.sepBy(char(',')).run("") match {
     case PResult.Success(value, consumed) => value.isEmpty && consumed == 0
+    case PResult.Partial(_, _, _)         => false
     case PResult.Failure(_, _)            => false
   }
 
@@ -272,7 +291,8 @@ object CombinatorLaws extends Properties("Combinator Laws") {
   property("sepBy parses separated elements") = digit.sepBy(char(',')).run("1,2,3") match {
     case PResult.Success(value, consumed) =>
       value == List('1', '2', '3') && consumed == 5
-    case PResult.Failure(_, _) => false
+    case PResult.Partial(_, _, _) => false
+    case PResult.Failure(_, _)    => false
   }
 
   // zipLeft discards right
@@ -280,6 +300,7 @@ object CombinatorLaws extends Properties("Combinator Laws") {
     val p = char('a') <* char('b')
     p.run("ab") match {
       case PResult.Success(value, consumed) => value == 'a' && consumed == 2
+      case PResult.Partial(_, _, _)         => false
       case PResult.Failure(_, _)            => false
     }
   }
@@ -289,6 +310,7 @@ object CombinatorLaws extends Properties("Combinator Laws") {
     val p = char('a') *> char('b')
     p.run("ab") match {
       case PResult.Success(value, consumed) => value == 'b' && consumed == 2
+      case PResult.Partial(_, _, _)         => false
       case PResult.Failure(_, _)            => false
     }
   }
@@ -298,6 +320,7 @@ object CombinatorLaws extends Properties("Combinator Laws") {
     val p = char('a') ~ char('b')
     p.run("ab") match {
       case PResult.Success(value, consumed) => value == ('a', 'b') && consumed == 2
+      case PResult.Partial(_, _, _)         => false
       case PResult.Failure(_, _)            => false
     }
   }

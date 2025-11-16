@@ -168,6 +168,10 @@ object Parser {
             // Reconstruct the case class from field values
             val product = ${ mirror }.fromProduct(Tuple.fromArray(fieldValues.toArray))
             Result.Success(product, consumed)
+          case Result.Partial(fieldValues, errors, consumed) =>
+            // Reconstruct the case class from field values even with errors
+            val product = ${ mirror }.fromProduct(Tuple.fromArray(fieldValues.toArray))
+            Result.Partial(product, errors, consumed)
           case Result.Failure(errors, furthest) =>
             Result.Failure(errors, furthest)
         }

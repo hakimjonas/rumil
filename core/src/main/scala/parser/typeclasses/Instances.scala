@@ -26,8 +26,19 @@ given [E]: Monad[[A] =>> Result[E, A]] with {
         f(value) match {
           case Result.Success(value2, consumed2) =>
             Result.Success(value2, consumed1 + consumed2)
+          case Result.Partial(value2, errors2, consumed2) =>
+            Result.Partial(value2, errors2, consumed1 + consumed2)
           case Result.Failure(errors, furthest) =>
             Result.Failure(errors, furthest)
+        }
+      case Result.Partial(value, errors1, consumed1) =>
+        f(value) match {
+          case Result.Success(value2, consumed2) =>
+            Result.Partial(value2, errors1, consumed1 + consumed2)
+          case Result.Partial(value2, errors2, consumed2) =>
+            Result.Partial(value2, errors1 ++ errors2, consumed1 + consumed2)
+          case Result.Failure(errors2, furthest) =>
+            Result.Failure(errors1 ++ errors2, furthest)
         }
       case Result.Failure(errors, furthest) =>
         Result.Failure(errors, furthest)
@@ -58,6 +69,9 @@ given [E: Show, A: Show]: Show[Result[E, A]] with {
     result match {
       case Result.Success(value, consumed) =>
         s"Success(${summon[Show[A]].show(value)}, consumed=$consumed)"
+      case Result.Partial(value, errors, consumed) =>
+        val errStrs = errors.map(summon[Show[E]].show).mkString("\n  ")
+        s"Partial(${summon[Show[A]].show(value)}, consumed=$consumed) with errors:\n  $errStrs"
       case Result.Failure(errors, furthest) =>
         val errStrs = errors.map(summon[Show[E]].show).mkString("\n  ")
         s"Failure at ${summon[Show[Location]].show(furthest)}:\n  $errStrs"

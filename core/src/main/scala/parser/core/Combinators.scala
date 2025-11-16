@@ -367,9 +367,11 @@ def recover[E, A](p: Parser[E, A])(f: E => A): Parser[Nothing, A] =
     attempt(p),
     (result: Result[E, A]) =>
       result match {
-        case Result.Success(value, _)  => value
-        case Result.Failure(errors, _) => f(errors.head)
-      })
+        case Result.Success(value, _)    => value
+        case Result.Partial(value, _, _) => value
+        case Result.Failure(errors, _)   => f(errors.head)
+      }
+  )
 
 /**
  * Recovers from parse failures by providing a fallback parser.
@@ -391,9 +393,11 @@ def recoverWith[E, E2, A](p: Parser[E, A])(f: E => Parser[E2, A]): Parser[E2, A]
     attempt(p),
     (result: Result[E, A]) =>
       result match {
-        case Result.Success(value, _)  => succeed(value)
-        case Result.Failure(errors, _) => f(errors.head)
-      })
+        case Result.Success(value, _)    => succeed(value)
+        case Result.Partial(value, _, _) => succeed(value)
+        case Result.Failure(errors, _)   => f(errors.head)
+      }
+  )
 
 /**
  * Labels a parser with a name for better error messages.

@@ -152,6 +152,22 @@ def parseCsvStrict(
             )
         }
       }
+    case Result.Partial(records, errors, consumed) =>
+      // Partial success - validate structure but preserve errors
+      if (records.isEmpty) {
+        Result.Partial(
+          (records = records, rowCount = 0, columnCount = 0),
+          errors,
+          consumed
+        )
+      } else {
+        val maxCols = records.map(_.length).maxOption.getOrElse(0)
+        Result.Partial(
+          (records = records, rowCount = records.length, columnCount = maxCols),
+          errors,
+          consumed
+        )
+      }
     case Result.Failure(errors, furthest) =>
       Result.Failure(errors, furthest)
   }
@@ -169,6 +185,11 @@ def parseCsvWithHeaders(
       records match {
         case Nil             => Result.Success((List.empty, List.empty), consumed)
         case headers :: data => Result.Success((headers, data), consumed)
+      }
+    case Result.Partial(records, errors, consumed) =>
+      records match {
+        case Nil             => Result.Partial((List.empty, List.empty), errors, consumed)
+        case headers :: data => Result.Partial((headers, data), errors, consumed)
       }
     case Result.Failure(errors, furthest) =>
       Result.Failure(errors, furthest)
@@ -188,6 +209,11 @@ def parseCsvAsMaps(
         headers.zip(row).toMap
       }
       Result.Success(maps, consumed)
+    case Result.Partial((headers, rows), errors, consumed) =>
+      val maps = rows.map { row =>
+        headers.zip(row).toMap
+      }
+      Result.Partial(maps, errors, consumed)
     case Result.Failure(errors, furthest) =>
       Result.Failure(errors, furthest)
   }
