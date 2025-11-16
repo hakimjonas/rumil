@@ -104,7 +104,7 @@ class LeftRecursionTests extends FunSuite {
         char('y').map(_.toString)
     }
 
-    lazy val b: Parser[ParseError, String] = recursive { a }
+    lazy val b: Parser[ParseError, String] = recursive(a)
 
     assertEquals(a.run("yxxx").toOption, Some("yxxx"))
     assertEquals(a.run("y").toOption, Some("y"))
@@ -118,18 +118,18 @@ class LeftRecursionTests extends FunSuite {
   test("existing chainl1 still works") {
     val num = digit.map(_.toString.toInt)
     val add = char('+').as((a: Int, b: Int) => a + b)
-    val p = num.chainl1(add)
+    val p   = num.chainl1(add)
     assertEquals(p.run("1+2+3").toOption, Some(6))
   }
 
   test("left recursion with optional parts") {
     // Grammar: expr = expr '+' num | num
+    val num = digit.map(_.toString.toInt)
+
     lazy val expr: Parser[ParseError, Int] = recursive {
       (expr ~ char('+') ~ num).map { case ((l, _), r) => l + r } |
         num
     }
-
-    val num = digit.map(_.toString.toInt)
 
     assertEquals(expr.run("5").toOption, Some(5))
     assertEquals(expr.run("1+2+3+4").toOption, Some(10))

@@ -42,6 +42,8 @@ type Span = (start: Location, end: Location)
  */
 type MemoKey = (parserId: Int, position: Int)
 
+given CanEqual[MemoKey, MemoKey] = CanEqual.derived
+
 /**
  * Entry in the memoization table.
  *
@@ -53,10 +55,12 @@ type MemoKey = (parserId: Int, position: Int)
  * - Growing: Left-recursive parse being grown from seed
  */
 enum MemoEntry[+E, +A] {
-  case InProgress
-  case Completed[E, A](result: Result[E, A], consumed: Int)
-  case Growing[E, A](seed: Result[E, A], consumed: Int)
+  case InProgress                                           extends MemoEntry[Nothing, Nothing]
+  case Completed[E, A](result: Result[E, A], consumed: Int) extends MemoEntry[E, A]
+  case Growing[E, A](seed: Result[E, A], consumed: Int)     extends MemoEntry[E, A]
 }
+
+given CanEqual[MemoEntry[?, ?], MemoEntry[?, ?]] = CanEqual.derived
 
 // ============================================================================
 // ENUMS - Sum Types

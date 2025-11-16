@@ -1,6 +1,7 @@
 package parser.runtime
 
 import parser.core._
+import parser.core.given
 
 // ============================================================================
 // Ref - Controlled Mutation (Eru Pattern)
@@ -125,6 +126,22 @@ final class ParserState private[runtime] (
     memo(key) = entry
 
   /**
+   * Clears all memoized entries at a specific position.
+   *
+   * This is used during seed growth to ensure parsers re-parse
+   * instead of returning stale memoized results.
+   *
+   * @param position The position to clear memos for
+   * @param except Optional key to exclude from clearing (the parser being grown)
+   */
+  def clearMemosAt(position: Int, except: MemoKey): Unit = {
+    val keysToRemove = memo.keys.filter { key =>
+      key.position == position && key != except
+    }.toList
+    keysToRemove.foreach(memo.remove)
+  }
+
+  /**
    * Checks if a parser is currently in progress at a position.
    *
    * Used for detecting left recursion cycles.
@@ -140,16 +157,18 @@ final class ParserState private[runtime] (
    *
    * @param key The memoization key
    */
-  def enterRecursion(key: MemoKey): Unit =
-    recursionStack.add(key)
+  def enterRecursion(key: MemoKey): Unit = {
+    val _ = recursionStack.add(key)
+  }
 
   /**
    * Marks a parser as no longer in progress at a position.
    *
    * @param key The memoization key
    */
-  def exitRecursion(key: MemoKey): Unit =
-    recursionStack.remove(key)
+  def exitRecursion(key: MemoKey): Unit = {
+    val _ = recursionStack.remove(key)
+  }
 
   def remaining: String = input.substring(offsetRef.get)
 

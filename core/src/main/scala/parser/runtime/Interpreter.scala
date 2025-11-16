@@ -1,6 +1,7 @@
 package parser.runtime
 
 import parser.core._
+import parser.core.given
 
 // ============================================================================
 // INTERPRETER - Executes Parser Descriptions
@@ -12,6 +13,13 @@ import parser.core._
  * Thread-safe counter for assigning unique IDs to recursive parsers.
  */
 private val nextParserId = new java.util.concurrent.atomic.AtomicInteger(0)
+
+/**
+ * Gets the next unique parser ID.
+ *
+ * This is used by the recursive() combinator to generate unique IDs.
+ */
+def getNextParserId(): Int = nextParserId.getAndIncrement()
 
 /**
  * Runs a parser on input, producing a result.
@@ -81,8 +89,10 @@ private def parseWithMemo[E, A](
       return result.asInstanceOf[Result[E, A]]
 
     case Some(MemoEntry.InProgress) =>
-      // Left recursion detected! Return failure as initial seed
-      return Result.Failure(List(), state.location)
+      // Left recursion detected! Mark as growing with failure seed
+      val seed = Result.Failure(List(), state.location)
+      state.setMemo(key, MemoEntry.Growing(seed, 0))
+      return seed
 
     case Some(MemoEntry.Growing(seed, consumed)) =>
       // Currently growing, return current seed
@@ -90,17 +100,17 @@ private def parseWithMemo[E, A](
       return seed.asInstanceOf[Result[E, A]]
 
     case None =>
-      // Not memoized, continue with parsing
+    // Not memoized, continue with parsing
   }
 
   // Mark as in progress for cycle detection
   state.setMemo(key, MemoEntry.InProgress)
   state.enterRecursion(key)
 
-  val startPos = state.offset
+  val startPos      = state.offset
   val startSnapshot = state.save
-  val result = interpret(parser(), state)
-  val consumed = state.offset - startPos
+  val result        = interpret(parser(), state)
+  val consumed      = state.offset - startPos
 
   state.exitRecursion(key)
 
@@ -113,7 +123,7 @@ private def parseWithMemo[E, A](
 
     case _ =>
       // Was left-recursive (seed was used), grow it
-      growSeed(parserId, parser, state, key, startSnapshot, result, consumed)
+      growSeed(parser, state, key, startSnapshot, result, consumed)
   }
 }
 
@@ -123,7 +133,6 @@ private def parseWithMemo[E, A](
  * Repeatedly re-parses while we make progress (consume more input).
  * Stops when no more progress is made and returns the largest parse.
  *
- * @param parserId Unique parser ID
  * @param parser The parser to grow
  * @param state Mutable parse state
  * @param key Memoization key
@@ -133,7 +142,6 @@ private def parseWithMemo[E, A](
  * @return The grown result
  */
 private def growSeed[E, A](
-  parserId: Int,
   parser: () => Parser[E, A],
   state: ParserState,
   key: MemoKey,
@@ -141,7 +149,7 @@ private def growSeed[E, A](
   initialResult: Result[E, A],
   initialConsumed: Int
 ): Result[E, A] = {
-  var seed = initialResult
+  var seed         = initialResult
   var seedConsumed = initialConsumed
 
   // Keep growing while we make progress
@@ -152,8 +160,12 @@ private def growSeed[E, A](
     // Mark current seed in memo table
     state.setMemo(key, MemoEntry.Growing(seed, seedConsumed))
 
+    // Clear memoization for all parsers at the start position to allow growth
+    // This ensures called parsers re-parse instead of returning stale results
+    state.clearMemosAt(startSnapshot.offset, except = key)
+
     // Re-parse
-    val result = interpret(parser(), state)
+    val result   = interpret(parser(), state)
     val consumed = state.offset - startSnapshot.offset
 
     // Check if we made progress

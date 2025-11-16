@@ -553,6 +553,6 @@ def chainr1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
  * }}}
  */
 def recursive[E, A](parser: => Parser[E, A]): Parser[E, A] = {
-  val id = parser.runtime.nextParserId.getAndIncrement()
+  val id = _root_.parser.runtime.getNextParserId()
   Parser.Recursive(id, () => parser)
 }
