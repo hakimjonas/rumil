@@ -49,8 +49,8 @@ import parser.syntax._
   // Example 2: Using .recover for fallback values
   println("\n--- Example 2: .recover (Fallback Values) ---")
 
-  val numberWithDefault = strictNumber.recover { errors =>
-    println(s"  Parse failed: $errors, using default value 0")
+  val numberWithDefault = strictNumber.recover { error =>
+    println(s"  Parse failed: $error, using default value 0")
     0
   }
 
