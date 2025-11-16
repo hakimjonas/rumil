@@ -162,6 +162,29 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           Result.Failure(enhanced, furthest)
       }
 
+    case Parser.Trace(p, label) =>
+      System.err.println(s"[TRACE] $label: trying at offset ${state.offset}")
+      interpret(p, state) match {
+        case success @ Result.Success(_, consumed) =>
+          System.err.println(s"[TRACE] $label: success, consumed $consumed chars")
+          success
+        case failure @ Result.Failure(_, _) =>
+          System.err.println(s"[TRACE] $label: failed")
+          failure
+      }
+
+    case Parser.Debug(p, label) =>
+      System.err.println(s"[DEBUG] $label: trying at offset ${state.offset}")
+      interpret(p, state) match {
+        case success @ Result.Success(value, _) =>
+          System.err.println(s"[DEBUG] $label: success, parsed $value")
+          success
+        case failure @ Result.Failure(errors, _) =>
+          System.err.println(
+            s"[DEBUG] $label: failed with ${errors.headOption.getOrElse("unknown error")}")
+          failure
+      }
+
     case Parser.Custom(runFn) =>
       runFn(state)
   }

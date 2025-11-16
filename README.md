@@ -234,6 +234,52 @@ csv.run(input)
 | `lookAhead(p)`     | Parse without consuming input          |
 | `notFollowedBy(p)` | Succeed only if p fails                |
 
+### Debugging
+
+| Function        | Description                                    |
+|-----------------|------------------------------------------------|
+| `p.trace(name)` | Print trace messages showing parse progress    |
+| `p.debug(name)` | Print debug messages with parsed values/errors |
+
+The debugging combinators help you understand parser behavior during development:
+
+```scala
+import parser.syntax.*
+import parser.core.*
+
+// Trace shows parse attempts and consumption
+val number = digit.many1.trace("number").map(_.mkString.toInt)
+number.run("42")
+// [TRACE] number: trying at offset 0
+// [TRACE] number: success, consumed 2 chars
+
+// Debug shows actual parsed values
+val expr = (number ~ char('+') ~ number).debug("expression")
+expr.run("1+2")
+// [DEBUG] expression: trying at offset 0
+// [DEBUG] expression: success, parsed ((1,+),2)
+
+// Combine multiple debug points
+val complex = char('(').trace("open") *>
+  number.debug("left") ~
+  char(',').trace("comma") *>
+  number.debug("right") <*
+  char(')').trace("close")
+complex.run("(5,3)")
+// [TRACE] open: trying at offset 0
+// [TRACE] open: success, consumed 1 chars
+// [DEBUG] left: trying at offset 1
+// [DEBUG] left: success, parsed 5
+// [TRACE] comma: trying at offset 2
+// [TRACE] comma: success, consumed 1 chars
+// [DEBUG] right: trying at offset 3
+// [DEBUG] right: success, parsed 3
+// [TRACE] close: trying at offset 4
+// [TRACE] close: success, consumed 1 chars
+```
+
+Note: Debug output goes to stderr, keeping it separate from normal program output.
+
 ## Performance
 
 Implementation characteristics:

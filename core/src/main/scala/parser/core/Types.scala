@@ -68,6 +68,8 @@ enum Parser[+E, +A] {
   case LookAhead[E, A](parser: Parser[E, A])                         extends Parser[E, A]
   case NotFollowedBy[A](parser: Parser[ParseError, A])               extends Parser[ParseError, Unit]
   case Named[A](parser: Parser[ParseError, A], name: String)         extends Parser[ParseError, A]
+  case Trace[E, A](parser: Parser[E, A], label: String)              extends Parser[E, A]
+  case Debug[E, A](parser: Parser[E, A], label: String)              extends Parser[E, A]
   case Custom[E, A](run: parser.runtime.ParserState => Result[E, A]) extends Parser[E, A]
 }
 

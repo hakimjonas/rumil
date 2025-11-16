@@ -45,3 +45,8 @@ build/
 
 ### Scala ###
 .bsp/
+
+### Debug/Test Files ###
+hs_err_pid*.log
+*.sc
+**/test-output.log

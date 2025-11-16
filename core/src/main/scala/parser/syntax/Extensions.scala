@@ -85,6 +85,13 @@ extension [E, A](p: Parser[E, A]) {
   inline def recoverWith[E2](f: E => Parser[E2, A]): Parser[E2, A] =
     parser.core.recoverWith(p)(f)
 
+  // Debugging
+  inline def trace(label: String): Parser[E, A] =
+    parser.core.trace(p, label)
+
+  inline def debug(label: String): Parser[E, A] =
+    parser.core.debug(p, label)
+
   // Execution
   inline def run(input: String): Result[E, A] =
     parser.runtime.run(p, input)
