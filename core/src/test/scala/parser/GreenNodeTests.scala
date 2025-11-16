@@ -1,7 +1,7 @@
 package parser
 
 import munit.FunSuite
-import parser.core.*
+import parser.core.{given, *}
 import parser.core.GreenNode.*
 import parser.core.GreenNodeOps.*
 

@@ -118,6 +118,8 @@ enum TokenKind {
   case Whitespace, Comment, EOF
 }
 
+given CanEqual[TokenKind, TokenKind] = CanEqual.derived
+
 /**
  * Syntax node classification for abstract syntax trees.
  *
@@ -127,6 +129,8 @@ enum SyntaxKind {
   case SourceFile, Function, TypeDef, Expression
   case Block, Statement, Pattern, Literal
 }
+
+given CanEqual[SyntaxKind, SyntaxKind] = CanEqual.derived
 
 /**
  * Immutable syntax tree node for lossless parsing.

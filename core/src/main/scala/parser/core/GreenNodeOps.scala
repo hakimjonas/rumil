@@ -55,7 +55,7 @@ object GreenNodeOps {
    * @return An expression tree node
    */
   def expression(children: GreenNode*): GreenNode =
-    tree(SyntaxKind.Expression, children: _*)
+    tree(SyntaxKind.Expression, children*)
 
   /**
    * Creates a statement tree.
@@ -64,5 +64,5 @@ object GreenNodeOps {
    * @return A statement tree node
    */
   def statement(children: GreenNode*): GreenNode =
-    tree(SyntaxKind.Statement, children: _*)
+    tree(SyntaxKind.Statement, children*)
 }
