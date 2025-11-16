@@ -95,8 +95,9 @@ object Primitives {
    * Handles positive and negative bytes.
    */
   given Parser[ParseError, Byte] = {
-    val positiveByte = digit.many1.map(_.mkString.toByte)
-    val negativeByte = char('-') *> digit.many1.map(chars => (-chars.mkString.toInt).toByte)
+    val positiveByte: Parser[ParseError, Byte] = digit.many1.map(_.mkString.toByte)
+    val negativeByte: Parser[ParseError, Byte] =
+      char('-') *> digit.many1.map(chars => ("-" + chars.mkString).toByte)
     (negativeByte | positiveByte).named("Byte")
   }
 
@@ -107,8 +108,9 @@ object Primitives {
    * Handles positive and negative shorts.
    */
   given Parser[ParseError, Short] = {
-    val positiveShort = digit.many1.map(_.mkString.toShort)
-    val negativeShort = char('-') *> digit.many1.map(chars => (-chars.mkString.toInt).toShort)
+    val positiveShort: Parser[ParseError, Short] = digit.many1.map(_.mkString.toShort)
+    val negativeShort: Parser[ParseError, Short] =
+      char('-') *> digit.many1.map(chars => ("-" + chars.mkString).toShort)
     (negativeShort | positiveShort).named("Short")
   }
 
@@ -201,7 +203,8 @@ object Primitives {
    */
   given [A](using p: Parser[ParseError, A]): Parser[ParseError, Vector[A]] = {
     val elementsParser = p.sepBy(char(','))
-    (string("Vector(") *> elementsParser <* char(')')).named("Vector")
+    (string("Vector(") *> elementsParser <* char(')'))
+      .named("Vector")
       .map(_.toVector)
   }
 }

@@ -570,10 +570,10 @@ class DerivationTests extends FunSuite {
 
   test("parse ComplexNested with nested optional case class") {
     val parser = summon[Parser[ParseError, ComplexNested]]
-    parser.run("ComplexNested(42,Vector(tag1,tag2),Some(Config(localhost,8080,true)))") match {
+    parser.run("ComplexNested(42,Vector(alpha,beta),Some(Config(localhost,8080,true)))") match {
       case Result.Success(cn, _) =>
         assertEquals(cn.id, 42)
-        assertEquals(cn.tags, Vector("tag1", "tag2"))
+        assertEquals(cn.tags, Vector("alpha", "beta"))
         assert(cn.metadata.isDefined)
         assertEquals(cn.metadata.get.host, "localhost")
         assertEquals(cn.metadata.get.port, 8080)
