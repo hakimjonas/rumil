@@ -125,7 +125,7 @@ lazy val interop = (project in file("interop"))
     Test / fork := false
   )
   .dependsOn(
-    core % "compile->compile;test->test",
+    core    % "compile->compile;test->test",
     parsers % "compile->compile;test->test"
   )
 
