@@ -96,13 +96,19 @@ enum ParseError {
  *
  * Cases:
  * - Success: Parser succeeded, contains value and characters consumed
+ * - Partial: Parser partially succeeded with errors (resilient parsing)
  * - Failure: Parser failed, contains errors and furthest location reached
+ *
+ * The Partial case enables error recovery - the parser produces a result
+ * (often a GreenNode tree with error markers) while collecting errors.
+ * This allows IDE tooling to work with partially-valid code.
  *
  * The furthest location is used for error reporting to show the most
  * specific parse failure point.
  */
 enum Result[+E, +A] {
   case Success(value: A, consumed: Int)
+  case Partial(value: A, errors: List[E], consumed: Int)
   case Failure(errors: List[E], furthest: Location)
 }
 
@@ -116,6 +122,7 @@ enum TokenKind {
   case LeftParen, RightParen, LeftBrace, RightBrace
   case Comma, Semicolon, Colon, Arrow
   case Whitespace, Comment, EOF
+  case Error  // Marks error regions during resilient parsing
 }
 
 given CanEqual[TokenKind, TokenKind] = CanEqual.derived

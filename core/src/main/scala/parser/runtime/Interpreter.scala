@@ -66,7 +66,10 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
       interpret(source, state) match {
         case Result.Success(value, consumed) =>
           Result.Success(f(value), consumed)
-        case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
+        case Result.Partial(value, errors, consumed) =>
+          Result.Partial(f(value), errors, consumed)
+        case Result.Failure(errors, furthest) =>
+          Result.Failure(errors, furthest)
       }
 
     case Parser.FlatMap(source, f) =>
@@ -75,19 +78,34 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           interpret(f(value), state) match {
             case Result.Success(value2, consumed2) =>
               Result.Success(value2, consumed1 + consumed2)
-            case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
+            case Result.Partial(value2, errors2, consumed2) =>
+              Result.Partial(value2, errors2, consumed1 + consumed2)
+            case Result.Failure(errors, furthest) =>
+              Result.Failure(errors, furthest)
           }
-        case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
+        case Result.Partial(value, errors1, consumed1) =>
+          interpret(f(value), state) match {
+            case Result.Success(value2, consumed2) =>
+              Result.Partial(value2, errors1, consumed1 + consumed2)
+            case Result.Partial(value2, errors2, consumed2) =>
+              Result.Partial(value2, errors1 ++ errors2, consumed1 + consumed2)
+            case Result.Failure(errors2, furthest) =>
+              Result.Failure(errors1 ++ errors2, furthest)
+          }
+        case Result.Failure(errors, furthest) =>
+          Result.Failure(errors, furthest)
       }
 
     case Parser.Or(left, right) =>
       val snapshot = state.save
       interpret(left, state) match {
         case success @ Result.Success(_, _) => success
+        case partial @ Result.Partial(_, _, _) => partial
         case Result.Failure(leftErrors, leftFurthest) =>
           state.restore(snapshot)
           interpret(right, state) match {
             case success @ Result.Success(_, _) => success
+            case partial @ Result.Partial(_, _, _) => partial
             case Result.Failure(rightErrors, rightFurthest) =>
               if (leftFurthest.offset > rightFurthest.offset) {
                 Result.Failure(leftErrors, leftFurthest)
@@ -110,6 +128,8 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
       interpret(p, state) match {
         case Result.Success(value, consumed) =>
           Result.Success(Some(value), consumed)
+        case Result.Partial(value, errors, consumed) =>
+          Result.Partial(Some(value), errors, consumed)
         case Result.Failure(_, _) =>
           state.restore(snapshot)
           Result.Success(None, 0)
@@ -120,6 +140,8 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
       interpret(p, state) match {
         case success @ Result.Success(_, _) =>
           Result.Success(success, 0)
+        case partial @ Result.Partial(_, _, _) =>
+          Result.Success(partial, 0)
         case failure @ Result.Failure(_, _) =>
           state.restore(snapshot)
           Result.Success(failure, 0)
@@ -131,6 +153,9 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
         case Result.Success(value, _) =>
           state.restore(snapshot)
           Result.Success(value, 0)
+        case Result.Partial(value, errors, _) =>
+          state.restore(snapshot)
+          Result.Partial(value, errors, 0)
         case failure @ Result.Failure(_, _) =>
           state.restore(snapshot)
           failure
@@ -145,6 +170,12 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
             List(ParseError.Custom("Unexpected success", state.location)),
             state.location
           )
+        case Result.Partial(_, _, _) =>
+          state.restore(snapshot)
+          Result.Failure(
+            List(ParseError.Custom("Unexpected partial success", state.location)),
+            state.location
+          )
         case Result.Failure(_, _) =>
           state.restore(snapshot)
           Result.Success((), 0)
@@ -153,6 +184,7 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
     case Parser.Named(p, name) =>
       interpret(p, state) match {
         case success @ Result.Success(_, _) => success
+        case partial @ Result.Partial(_, _, _) => partial
         case Result.Failure(errors, furthest) =>
           val enhanced = errors.map {
             case ParseError.Unexpected(found, expected, loc) =>
@@ -168,6 +200,9 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
         case success @ Result.Success(_, consumed) =>
           System.err.println(s"[TRACE] $label: success, consumed $consumed chars")
           success
+        case partial @ Result.Partial(_, errors, consumed) =>
+          System.err.println(s"[TRACE] $label: partial success, consumed $consumed chars, ${errors.length} errors")
+          partial
         case failure @ Result.Failure(_, _) =>
           System.err.println(s"[TRACE] $label: failed")
           failure
@@ -179,6 +214,10 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
         case success @ Result.Success(value, _) =>
           System.err.println(s"[DEBUG] $label: success, parsed $value")
           success
+        case partial @ Result.Partial(value, errors, _) =>
+          System.err.println(
+            s"[DEBUG] $label: partial success, parsed $value with ${errors.length} errors")
+          partial
         case failure @ Result.Failure(errors, _) =>
           System.err.println(
             s"[DEBUG] $label: failed with ${errors.headOption.getOrElse("unknown error")}")
@@ -202,18 +241,24 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
  */
 private def interpretMany[E, A](p: Parser[E, A], state: ParserState): Result[E, List[A]] = {
   @scala.annotation.tailrec
-  def loop(acc: List[A], totalConsumed: Int): Result[E, List[A]] = {
+  def loop(acc: List[A], accErrors: List[E], totalConsumed: Int): Result[E, List[A]] = {
     val snapshot = state.save
     interpret(p, state) match {
       case Result.Success(value, consumed) =>
-        loop(value :: acc, totalConsumed + consumed)
+        loop(value :: acc, accErrors, totalConsumed + consumed)
+      case Result.Partial(value, errors, consumed) =>
+        loop(value :: acc, accErrors ++ errors, totalConsumed + consumed)
       case Result.Failure(_, _) =>
         state.restore(snapshot)
-        Result.Success(acc.reverse, totalConsumed)
+        if (accErrors.isEmpty) {
+          Result.Success(acc.reverse, totalConsumed)
+        } else {
+          Result.Partial(acc.reverse, accErrors, totalConsumed)
+        }
     }
   }
 
-  loop(Nil, 0)
+  loop(Nil, Nil, 0)
 }
 
 /**
@@ -232,8 +277,19 @@ private def interpretMany1[E, A](p: Parser[E, A], state: ParserState): Result[E,
       interpretMany(p, state) match {
         case Result.Success(tail, consumed2) =>
           Result.Success(head :: tail, consumed1 + consumed2)
+        case Result.Partial(tail, errors, consumed2) =>
+          Result.Partial(head :: tail, errors, consumed1 + consumed2)
         case Result.Failure(errors, furthest) =>
           Result.Failure(errors, furthest)
+      }
+    case Result.Partial(head, errors1, consumed1) =>
+      interpretMany(p, state) match {
+        case Result.Success(tail, consumed2) =>
+          Result.Partial(head :: tail, errors1, consumed1 + consumed2)
+        case Result.Partial(tail, errors2, consumed2) =>
+          Result.Partial(head :: tail, errors1 ++ errors2, consumed1 + consumed2)
+        case Result.Failure(errors2, furthest) =>
+          Result.Failure(errors1 ++ errors2, furthest)
       }
     case Result.Failure(errors, furthest) =>
       Result.Failure(errors, furthest)
