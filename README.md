@@ -23,7 +23,29 @@ Add to your `build.sbt`:
 libraryDependencies += "com.example" %% "rumil" % "0.1.0"
 ```
 
+## Philosophy: Two Paths to Parsing
+
+Rumil offers two complementary approaches:
+
+### The Structural Way
+
+Pure combinators with named tuples and enums. Maximum control and portability.
+
+- **Use when:** Building language tooling, need lossless trees, maximum type safety
+- **Style:** Explicit, composable, portable
+
+### The Idiomatic Way (Coming Soon)
+
+Automatic derivation for Scala case classes. Maximum convenience.
+
+- **Use when:** Standard data parsing, REST APIs, configuration files
+- **Style:** Ergonomic, concise, Scala-friendly
+
+Both approaches use the same core library - choose based on your needs.
+
 ## Quick Start
+
+### The Structural Way
 
 ```scala
 import parser.syntax.*
@@ -40,6 +62,20 @@ expr.run("1+2+3")  // Success(6, 5)
 // Combine parsers with operators
 val pair = char('(') *> number ~ (char(',') *> number) <* char(')')
 pair.run("(1,2)")  // Success((1, 2), 7)
+```
+
+### The Idiomatic Way (Coming in v0.2.0)
+
+```scala
+import parser.interop.*
+
+// Automatic parser derivation for case classes
+case class Point(x: Int, y: Int)
+val pointParser = Parser.derived[Point]
+
+// Parse JSON to case classes
+case class User(name: String, age: Int, admin: Boolean)
+val user = parseJson(input).flatMap(Decoder[User].decode)
 ```
 
 ## Core Concepts
@@ -90,7 +126,11 @@ val parser = for {
 
 ## Examples
 
-### JSON Parser
+### Parsing JSON
+
+#### The Structural Way
+
+Explicit control using combinators and named tuples:
 
 ```scala
 import parser.syntax.*
@@ -119,7 +159,29 @@ val jsonString =
     .map(chars => JsonValue.Str(chars.mkString))
 ```
 
+**When to use:** Building JSON tools, need custom representations, maximum control
+
+#### The Idiomatic Way (Coming in v0.2.0)
+
+Automatic parsing to case classes:
+
+```scala
+import parser.interop.*
+
+case class Person(name: String, age: Int)
+val person = parseJson(input).flatMap(Decoder[Person].decode)
+
+// With nested structures
+case class Address(street: String, city: String, zip: String)
+case class User(name: String, email: String, address: Address)
+val user = parseJson(input).flatMap(Decoder[User].decode)
+```
+
+**When to use:** REST APIs, configuration parsing, standard CRUD
+
 ### Arithmetic with Precedence
+
+#### The Structural Way
 
 ```scala
 import parser.syntax.*
@@ -161,7 +223,28 @@ expr.run("2+3*4") // Success(14, 5)   // 2 + (3*4)
 expr.run("(2+3)*4") // Success(20, 7)   // (2+3) * 4
 ```
 
+**When to use:** Building language parsers, need custom AST representation
+
+#### The Idiomatic Way (Coming in v0.2.0)
+
+```scala
+import parser.interop.*
+
+enum Expr derives Parser {
+  case Num(value: Int)
+  case Add(left: Expr, right: Expr)
+  case Mul(left: Expr, right: Expr)
+}
+
+val exprParser = Parser.derived[Expr]
+val result = exprParser.run("2 + 3 * 4")
+```
+
+**When to use:** Calculator apps, expression evaluators, quick prototyping
+
 ### CSV Parser
+
+#### The Structural Way
 
 ```scala
 import parser.syntax.*
@@ -186,6 +269,31 @@ csv.run(input)
 //   consumed
 // )
 ```
+
+**When to use:** Custom CSV dialects, need raw string data
+
+#### The Idiomatic Way (Coming in v0.2.0)
+
+```scala
+import parser.interop.*
+
+case class Person(name: String, age: Int, city: String)
+val people: List[Person] = parseCsv[Person](input)
+```
+
+**When to use:** Standard CSV files, database imports, data analysis
+
+## Choosing an Approach
+
+| Requirement | Recommended Approach |
+|-------------|---------------------|
+| Parsing to case classes | Idiomatic (v0.2.0+) |
+| Building language tools | Structural |
+| Lossless syntax trees | Structural |
+| REST API parsing | Idiomatic (v0.2.0+) |
+| Custom data structures | Structural |
+| Maximum type safety | Structural |
+| Quick prototyping | Idiomatic (v0.2.0+) |
 
 ## API Reference
 
