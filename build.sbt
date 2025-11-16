@@ -94,10 +94,42 @@ lazy val parsers = (project in file("parsers"))
   )
   .dependsOn(core % "compile->compile;test->test")
 
+// Idiomatic Scala interop (case class derivation)
+lazy val interop = (project in file("interop"))
+  .settings(
+    name := "rumil-interop",
+    libraryDependencies ++= Seq(
+      "org.scalameta" %% "munit" % "1.2.1" % Test
+    ),
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Xfatal-warnings",
+      "-Yexplicit-nulls",
+      "-language:strictEquality",
+      "-Wsafe-init",
+      "-Wunused:all",
+      "-Wvalue-discard",
+      "-explain",
+      "-no-indent",
+      "-old-syntax"
+    ),
+    javaOptions ++= Seq(
+      "-XX:+UseG1GC",
+      "-XX:MaxGCPauseMillis=50",
+      "-XX:+UseStringDeduplication",
+      "-XX:+ParallelRefProcEnabled",
+      "--sun-misc-unsafe-memory-access=allow"
+    ),
+    Test / fork := false
+  )
+  .dependsOn(core % "compile->compile;test->test")
+
 // Root aggregator project
 lazy val root = (project in file("."))
   .settings(
     name           := "rumil",
     publish / skip := true
   )
-  .aggregate(core, parsers)
+  .aggregate(core, parsers, interop)
