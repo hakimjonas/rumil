@@ -124,7 +124,10 @@ lazy val interop = (project in file("interop"))
     ),
     Test / fork := false
   )
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(
+    core % "compile->compile;test->test",
+    parsers % "compile->compile;test->test"
+  )
 
 // Root aggregator project
 lazy val root = (project in file("."))
