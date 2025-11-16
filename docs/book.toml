@@ -1,0 +1,10 @@
+[book]
+title = "Rumil Documentation"
+authors = ["Hakim Jonas Ghoula"]
+language = "en"
+multilingual = false
+src = "."
+
+[output.html]
+git-repository-url = "https://github.com/hakimjonas/rumil"
+edit-url-template = "https://github.com/hakimjonas/rumil/edit/main/docs/{path}"

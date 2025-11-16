@@ -1,5 +1,10 @@
 # Rumil
 
+[![CI](https://github.com/hakimjonas/rumil/workflows/CI/badge.svg)](https://github.com/hakimjonas/rumil/actions)
+[![codecov](https://codecov.io/gh/hakimjonas/rumil/branch/main/graph/badge.svg)](https://codecov.io/gh/hakimjonas/rumil)
+[![Maven Central](https://img.shields.io/maven-central/v/net.ghoula/rumil-core_3.svg)](https://maven-badges.herokuapp.com/maven-central/net.ghoula/rumil-core_3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A functional parser combinator library for Scala 3.
 
 ## Overview
