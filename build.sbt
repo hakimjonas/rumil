@@ -24,25 +24,25 @@ ThisBuild / scmInfo := Some(
 )
 
 ThisBuild / description := "A Scala 3 parser combinator library with structural-first design and idiomatic interop"
-ThisBuild / homepage := Some(url("https://github.com/hakimjonas/rumil"))
+ThisBuild / homepage    := Some(url("https://github.com/hakimjonas/rumil"))
 
 // Publishing configuration
 ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
-sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
-ThisBuild / sonatypeProfileName := "net.ghoula"
+sonatypeRepository                 := "https://s01.oss.sonatype.org/service/local"
+ThisBuild / sonatypeProfileName    := "net.ghoula"
 
 ThisBuild / publishMavenStyle := true
-ThisBuild / publishTo := sonatypePublishToBundle.value
-ThisBuild / versionScheme := Some("early-semver")
+ThisBuild / publishTo         := sonatypePublishToBundle.value
+ThisBuild / versionScheme     := Some("early-semver")
 
 // Enable scalafix semantic rules
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 // Code coverage settings
-ThisBuild / coverageEnabled := false // Only enable via `sbt coverage` command
+ThisBuild / coverageEnabled          := false // Only enable via `sbt coverage` command
 ThisBuild / coverageMinimumStmtTotal := 80
-ThisBuild / coverageFailOnMinimum := false
+ThisBuild / coverageFailOnMinimum    := false
 
 // Command aliases for convenience
 addCommandAlias("testAll", ";core/test;parsers/test")
@@ -50,9 +50,9 @@ addCommandAlias("prepare", ";scalafmtAll;scalafmtSbt;scalafixAll")
 
 // Publishing settings for modules
 lazy val publishSettings = Seq(
-  publishMavenStyle := true,
+  publishMavenStyle      := true,
   Test / publishArtifact := false,
-  pomIncludeRepository := { _ => false }
+  pomIncludeRepository   := { _ => false }
 )
 
 javacOptions ++= Seq(
