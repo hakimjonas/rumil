@@ -22,7 +22,7 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 // Command aliases for convenience
 addCommandAlias("testAll", ";core/test;parsers/test")
-addCommandAlias("prepare", ";scalafmtAll;scalafixAll")
+addCommandAlias("prepare", ";scalafmtAll;scalafmtSbt;scalafixAll")
 
 javacOptions ++= Seq(
   "--release",
@@ -124,7 +124,10 @@ lazy val interop = (project in file("interop"))
     ),
     Test / fork := false
   )
-  .dependsOn(core % "compile->compile;test->test")
+  .dependsOn(
+    core    % "compile->compile;test->test",
+    parsers % "compile->compile;test->test"
+  )
 
 // Root aggregator project
 lazy val root = (project in file("."))
