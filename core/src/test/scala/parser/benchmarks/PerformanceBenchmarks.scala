@@ -44,7 +44,7 @@ class PerformanceBenchmarks extends FunSuite {
 
   test("benchmark: parse 100 numbers with separators") {
     val numbers = (0 until 100).mkString(",")
-    val parser  = digit.many1.sepBy(char(','))
+    val parser  = digit.manyNonEmpty.separatedBy(char(','))
 
     val elapsed = time("Parse 100 comma-separated numbers") {
       (0 until 100).foreach { _ =>
@@ -61,7 +61,7 @@ class PerformanceBenchmarks extends FunSuite {
 
     lazy val value: Parser[ParseError, String] =
       Parser.Custom { state =>
-        val num = digit.many1.map(_.mkString)
+        val num = digit.manyNonEmpty.map(_.mkString)
         val arr = Parser.Custom { s =>
           parser.runtime.interpret(
             char('[') *> value <* char(']'),
@@ -86,7 +86,7 @@ class PerformanceBenchmarks extends FunSuite {
     lazy val expr: Parser[ParseError, Int] =
       Parser.Custom { state =>
         parser.runtime.interpret(
-          term.chainl1(
+          term.chainLeft1(
             (char('+').as((a: Int, b: Int) => a + b)) |
               (char('-').as((a: Int, b: Int) => a - b))
           ),
@@ -97,7 +97,7 @@ class PerformanceBenchmarks extends FunSuite {
     lazy val term: Parser[ParseError, Int] =
       Parser.Custom { state =>
         parser.runtime.interpret(
-          factor.chainl1(
+          factor.chainLeft1(
             (char('*').as((a: Int, b: Int) => a * b)) |
               (char('/').as((a: Int, b: Int) => a / b))
           ),
@@ -106,7 +106,7 @@ class PerformanceBenchmarks extends FunSuite {
       }
 
     lazy val factor: Parser[ParseError, Int] = {
-      val number = digit.many1.map(_.mkString.toInt)
+      val number = digit.manyNonEmpty.map(_.mkString.toInt)
       number | Parser.Custom { state =>
         parser.runtime.interpret(char('(') *> expr <* char(')'), state)
       }
@@ -123,9 +123,9 @@ class PerformanceBenchmarks extends FunSuite {
 
   test("benchmark: many1 with backtracking") {
     val input  = "a" * 1000
-    val parser = char('a').many1
+    val parser = char('a').manyNonEmpty
 
-    val elapsed = time("Parse 1000 'a' characters with many1") {
+    val elapsed = time("Parse 1000 'a' characters with manyNonEmpty") {
       (0 until 100).foreach { _ =>
         parser.run(input)
       }
@@ -162,11 +162,11 @@ class PerformanceBenchmarks extends FunSuite {
     assert(elapsed < 5000, s"Too slow: ${elapsed}ms")
   }
 
-  test("benchmark: sepBy1 parsing") {
+  test("benchmark: separatedByNonEmpty parsing") {
     val input  = (1 to 50).mkString(",")
-    val parser = digit.many1.sepBy1(char(','))
+    val parser = digit.manyNonEmpty.separatedByNonEmpty(char(','))
 
-    val elapsed = time("Parse 50 separated numbers with sepBy1") {
+    val elapsed = time("Parse 50 separated numbers with separatedByNonEmpty") {
       (0 until 100).foreach { _ =>
         parser.run(input)
       }

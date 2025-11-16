@@ -192,15 +192,15 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
     }
   }
 
-  // many1 requires at least one
-  property("many1 requires at least one") = {
-    val success = char('a').many1.run("aaa") match {
+  // manyNonEmpty requires at least one
+  property("manyNonEmpty requires at least one") = {
+    val success = char('a').manyNonEmpty.run("aaa") match {
       case PResult.Success(value, _) => value == List('a', 'a', 'a')
       case PResult.Partial(_, _, _)  => false
       case PResult.Failure(_, _)     => false
     }
 
-    val failure = char('a').many1.run("bbb") match {
+    val failure = char('a').manyNonEmpty.run("bbb") match {
       case PResult.Success(_, _)    => false
       case PResult.Partial(_, _, _) => false
       case PResult.Failure(_, _)    => true
@@ -281,19 +281,20 @@ object CombinatorLaws extends Properties("Combinator Laws") {
   }
 
   // sepBy with zero elements
-  property("sepBy accepts empty") = digit.sepBy(char(',')).run("") match {
+  property("separatedBy accepts empty") = digit.separatedBy(char(',')).run("") match {
     case PResult.Success(value, consumed) => value.isEmpty && consumed == 0
     case PResult.Partial(_, _, _)         => false
     case PResult.Failure(_, _)            => false
   }
 
   // sepBy with elements
-  property("sepBy parses separated elements") = digit.sepBy(char(',')).run("1,2,3") match {
-    case PResult.Success(value, consumed) =>
-      value == List('1', '2', '3') && consumed == 5
-    case PResult.Partial(_, _, _) => false
-    case PResult.Failure(_, _)    => false
-  }
+  property("separatedBy parses separated elements") =
+    digit.separatedBy(char(',')).run("1,2,3") match {
+      case PResult.Success(value, consumed) =>
+        value == List('1', '2', '3') && consumed == 5
+      case PResult.Partial(_, _, _) => false
+      case PResult.Failure(_, _)    => false
+    }
 
   // zipLeft discards right
   property("zipLeft discards right") = {

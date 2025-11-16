@@ -60,7 +60,7 @@ private def protoIdentifier: Parser[ParseError, scala.Predef.String] =
   } yield s"$first${rest.mkString}"
 
 private def fullIdentifier: Parser[ParseError, scala.Predef.String] =
-  protoIdentifier.sepBy1(char('.')).map(_.mkString("."))
+  protoIdentifier.separatedByNonEmpty(char('.')).map(_.mkString("."))
 
 // ============================================================================
 // Types
@@ -256,7 +256,7 @@ private def protoFile: Parser[ParseError, ProtoFile] = {
     _           <- skip
     syntax      <- syntaxStatement.optional
     _           <- skip
-    definitions <- definitionParser.sepBy(skip)
+    definitions <- definitionParser.separatedBy(skip)
     _           <- skip *> eof
   } yield (
     syntax = syntax.getOrElse("proto3"),

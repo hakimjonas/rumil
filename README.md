@@ -73,11 +73,11 @@ import parser.core._
 import parser.syntax._
 
 // Parse a simple number
-val number = digit.many1.map(_.mkString.toInt)
+val number = digit.manyNonEmpty.map(_.mkString.toInt)
 number.run("42")  // Success(42, 2)
 
 // Parse arithmetic expressions
-val expr = number.chainl1(char('+').as((a: Int, b: Int) => a + b))
+val expr = number.chainLeft1(char('+').as((a: Int, b: Int) => a + b))
 expr.run("1+2+3")  // Success(6, 5)
 
 // Combine parsers with operators
@@ -148,7 +148,7 @@ val aOrB = char('a') | char('b')  // Parser[Char]
 
 // Repetition
 val many = char('a').many   // Parser[List[Char]]
-val some = char('a').many1  // Parser[List[Char]] (at least one)
+val some = char('a').manyNonEmpty  // Parser[List[Char]] (at least one)
 
 // Transform results
 val upper = letter.map(_.toUpper)  // Parser[Char]
@@ -186,7 +186,7 @@ val jsonBool =
   string("true").as(JsonValue.Bool(true)) |
   string("false").as(JsonValue.Bool(false))
 
-val jsonNumber = digit.many1.map { chars =>
+val jsonNumber = digit.manyNonEmpty.map { chars =>
   JsonValue.Number(chars.mkString.toDouble)
 }
 
@@ -243,7 +243,7 @@ import parser.syntax._
 lazy val expr: Parser[ParseError, Int] = {
   Parser.Custom { state =>
     parser.runtime.interpret(
-      term.chainl1(
+      term.chainLeft1(
         char('+').as((a: Int, b: Int) => a + b) |
           char('-').as((a: Int, b: Int) => a - b)
       ),
@@ -255,7 +255,7 @@ lazy val expr: Parser[ParseError, Int] = {
 lazy val term: Parser[ParseError, Int] = {
   Parser.Custom { state =>
     parser.runtime.interpret(
-      factor.chainl1(
+      factor.chainLeft1(
         char('*').as((a: Int, b: Int) => a * b) |
           char('/').as((a: Int, b: Int) => a / b)
       ),
@@ -265,7 +265,7 @@ lazy val term: Parser[ParseError, Int] = {
 }
 
 lazy val factor: Parser[ParseError, Int] = {
-  val number = digit.many1.map(_.mkString.toInt)
+  val number = digit.manyNonEmpty.map(_.mkString.toInt)
   number | Parser.Custom { state =>
     parser.runtime.interpret(char('(') *> expr <* char(')'), state)
   }
@@ -301,8 +301,8 @@ import parser.core._
 import parser.syntax._
 
 val cell = satisfy(_ != ',', "cell char").many.map(_.mkString)
-val row = cell.sepBy(char(','))
-val csv = row.endBy(char('\n'))
+val row = cell.separatedBy(char(','))
+val csv = row.endedBy(char('\n'))
 
 val input = """name,age,city
 alice,30,nyc
@@ -336,8 +336,8 @@ case class Person(name: String, age: Int, city: String)
 
 // Parse using structural approach
 val cell = satisfy(_ != ',', "cell char").many.map(_.mkString)
-val row = cell.sepBy(char(','))
-val csv = row.endBy(char('\n'))
+val row = cell.separatedBy(char(','))
+val csv = row.endedBy(char('\n'))
 
 // Then map to case classes
 val result = csv.run(input).map { rows =>
@@ -390,14 +390,14 @@ val result = csv.run(input).map { rows =>
 | `p.map(f)`      | Transform parser result                 |
 | `p.flatMap(f)`  | Monadic sequencing                      |
 | `p.many`        | Zero or more repetitions                |
-| `p.many1`       | One or more repetitions                 |
+| `p.manyNonEmpty`       | One or more repetitions                 |
 | `p.optional`    | Zero or one occurrence                  |
-| `p.sepBy(sep)`  | Parse p separated by sep                |
-| `p.sepBy1(sep)` | Parse p separated by sep (at least one) |
-| `p.endBy(end)`  | Parse p terminated by end               |
+| `p.separatedBy(sep)`  | Parse p separated by sep                |
+| `p.separatedByNonEmpty(sep)` | Parse p separated by sep (at least one) |
+| `p.endedBy(end)`  | Parse p terminated by end               |
 | `p.count(n)`    | Exactly n repetitions                   |
-| `p.chainl1(op)` | Left-associative operator chain         |
-| `p.chainr1(op)` | Right-associative operator chain        |
+| `p.chainLeft1(op)` | Left-associative operator chain         |
+| `p.chainRight1(op)` | Right-associative operator chain        |
 
 ### Error Handling
 
@@ -424,7 +424,7 @@ import parser.core._
 import parser.syntax._
 
 // Trace shows parse attempts and consumption
-val number = digit.many1.trace("number").map(_.mkString.toInt)
+val number = digit.manyNonEmpty.trace("number").map(_.mkString.toInt)
 number.run("42")
 // [TRACE] number: trying at offset 0
 // [TRACE] number: success, consumed 2 chars

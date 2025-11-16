@@ -185,13 +185,13 @@ private def entityRef(config: XmlConfig): Parser[ParseError, String] =
 private def charRef: Parser[ParseError, String] = {
   val decimal = for {
     _      <- string("&#")
-    digits <- digit.many1
+    digits <- digit.manyNonEmpty
     _      <- char(';')
   } yield digits.mkString.toInt.toChar.toString
 
   val hex = for {
     _      <- string("&#x")
-    digits <- hexDigit.many1
+    digits <- hexDigit.manyNonEmpty
     _      <- char(';')
   } yield Integer.parseInt(digits.mkString, 16).toChar.toString
 
@@ -207,7 +207,7 @@ private def textContent(config: XmlConfig): Parser[ParseError, XmlNode] = {
   val charReference = charRef
 
   for {
-    parts <- (regularChar.map(_.toString) | entity | charReference).many1
+    parts <- (regularChar.map(_.toString) | entity | charReference).manyNonEmpty
     text   = parts.mkString
   } yield {
     val content = if (config.preserveWhitespace) text else text.trim

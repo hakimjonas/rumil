@@ -117,7 +117,7 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("trace with many1 combinator") {
-    val parser = digit.many1.trace("digits")
+    val parser = digit.manyNonEmpty.trace("digits")
     val result = parser.run("456")
     assertEquals(result.toOption, Some(List('4', '5', '6')))
   }
@@ -185,13 +185,13 @@ class DebugCombinatorTests extends FunSuite {
   // ============================================================================
 
   test("trace with sepBy combinator") {
-    val parser = digit.sepBy(char(',')).trace("csv-numbers")
+    val parser = digit.separatedBy(char(',')).trace("csv-numbers")
     val result = parser.run("1,2,3")
     assertEquals(result.toOption, Some(List('1', '2', '3')))
   }
 
   test("debug with sepBy combinator") {
-    val parser = digit.sepBy(char(',')).debug("csv-debug")
+    val parser = digit.separatedBy(char(',')).debug("csv-debug")
     val result = parser.run("4,5,6")
     assertEquals(result.toOption, Some(List('4', '5', '6')))
   }
@@ -205,13 +205,13 @@ class DebugCombinatorTests extends FunSuite {
 
   test("debug on nested parsers") {
     val inner  = char('x').debug("inner-x")
-    val outer  = inner.many1.debug("outer-many1")
+    val outer  = inner.manyNonEmpty.debug("outer-manyNonEmpty")
     val result = outer.run("xxx")
     assertEquals(result.toOption, Some(List('x', 'x', 'x')))
   }
 
   test("trace with sepBy1 combinator") {
-    val parser = digit.sepBy1(char(';')).trace("semicolon-sep")
+    val parser = digit.separatedByNonEmpty(char(';')).trace("semicolon-sep")
     val result = parser.run("7;8;9")
     assertEquals(result.toOption, Some(List('7', '8', '9')))
   }

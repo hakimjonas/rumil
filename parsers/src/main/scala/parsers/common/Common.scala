@@ -45,14 +45,14 @@ def sign: Parser[ParseError, Int] =
 def signedInt: Parser[ParseError, Int] =
   for {
     s      <- sign
-    digits <- digit.many1
+    digits <- digit.manyNonEmpty
   } yield s * digits.mkString.toInt
 
 /**
  * Parses an unsigned integer.
  */
 def unsignedInt: Parser[ParseError, Int] =
-  digit.many1.map(_.mkString.toInt)
+  digit.manyNonEmpty.map(_.mkString.toInt)
 
 /**
  * Parses a double/float with optional sign, decimal, and exponent.
@@ -60,8 +60,8 @@ def unsignedInt: Parser[ParseError, Int] =
 def floatingPoint: Parser[ParseError, Double] =
   for {
     s     <- sign
-    whole <- digit.many1
-    frac  <- (char('.') *> digit.many1).optional
+    whole <- digit.manyNonEmpty
+    frac  <- (char('.') *> digit.manyNonEmpty).optional
     exp   <- (oneOf("eE") *> signedInt).optional
   } yield {
     val base = frac match {
@@ -92,7 +92,7 @@ def hspaces: Parser[ParseError, List[Char]] =
  * Parses one or more horizontal whitespace characters.
  */
 def hspaces1: Parser[ParseError, List[Char]] =
-  hspace.many1
+  hspace.manyNonEmpty
 
 /**
  * Parses a newline (LF, CR, or CRLF).

@@ -57,7 +57,7 @@ class LeftRecursionTests extends FunSuite {
       case Mul(l: Expr, r: Expr)
     }
 
-    val num = digit.many1.map(ds => Expr.Num(ds.mkString.toInt))
+    val num = digit.manyNonEmpty.map(ds => Expr.Num(ds.mkString.toInt))
 
     lazy val expr: Parser[ParseError, Expr] = recursive {
       (expr ~ char('+') ~ term).map { case ((l, _), r) => Expr.Add(l, r) } |
@@ -118,7 +118,7 @@ class LeftRecursionTests extends FunSuite {
   test("existing chainl1 still works") {
     val num = digit.map(_.toString.toInt)
     val add = char('+').as((a: Int, b: Int) => a + b)
-    val p   = num.chainl1(add)
+    val p   = num.chainLeft1(add)
     assertEquals(p.run("1+2+3").toOption, Some(6))
   }
 
@@ -174,7 +174,7 @@ class LeftRecursionTests extends FunSuite {
       case Add(l: Expr, r: Expr)
     }
 
-    val num = digit.many1.map(ds => Expr.Num(ds.mkString.toInt))
+    val num = digit.manyNonEmpty.map(ds => Expr.Num(ds.mkString.toInt))
 
     lazy val expr: Parser[ParseError, Expr] = recursive {
       (expr ~ char('+') ~ factor).map { case ((l, _), r) => Expr.Add(l, r) } |

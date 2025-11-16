@@ -75,17 +75,17 @@ You don't need it for:
 Here's a complete expression parser with precedence:
 
 ```scala
-val number = digit.many1.map(ds => Expr.Num(ds.mkString.toInt))
+val number = digit.manyNonEmpty.map(ds => Expr.Num(ds.mkString.toInt))
 
 lazy val expr: Parser[ParseError, Expr] = recursive {
-  term.chainl1(
+  term.chainLeft1(
     (char('+').as((a: Expr, b: Expr) => Expr.Add(a, b))) |
     (char('-').as((a: Expr, b: Expr) => Expr.Sub(a, b)))
   )
 }
 
 lazy val term: Parser[ParseError, Expr] = recursive {
-  factor.chainl1(
+  factor.chainLeft1(
     (char('*').as((a: Expr, b: Expr) => Expr.Mul(a, b))) |
     (char('/').as((a: Expr, b: Expr) => Expr.Div(a, b)))
   )

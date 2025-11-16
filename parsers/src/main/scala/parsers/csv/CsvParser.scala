@@ -49,7 +49,7 @@ def parseTsv(input: String): Result[ParseError, CsvDocument] =
  */
 private def csvDocument(config: CsvConfig): Parser[ParseError, CsvDocument] =
   for {
-    records <- csvRecord(config).sepBy(newline)
+    records <- csvRecord(config).separatedBy(newline)
     _       <- eof
   } yield
     if (config.skipEmptyLines) {
@@ -62,7 +62,7 @@ private def csvDocument(config: CsvConfig): Parser[ParseError, CsvDocument] =
  * Parses a single CSV record (row).
  */
 private def csvRecord(config: CsvConfig): Parser[ParseError, List[String]] =
-  csvField(config).sepBy(char(config.delimiter))
+  csvField(config).separatedBy(char(config.delimiter))
 
 /**
  * Parses a single CSV field.

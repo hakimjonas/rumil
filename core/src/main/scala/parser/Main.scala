@@ -8,7 +8,7 @@ import parser.syntax._
 
   // Test 1: Simple number parser
   val number: Parser[ParseError, Int] =
-    digit.many1.map(_.mkString.toInt).named("number")
+    digit.manyNonEmpty.map(_.mkString.toInt).named("number")
 
   val result1 = number.run("42")
   println(s"Test 1 - Parse '42': $result1")

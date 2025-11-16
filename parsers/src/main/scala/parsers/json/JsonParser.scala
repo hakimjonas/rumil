@@ -79,11 +79,11 @@ private def jsonNumber: Parser[ParseError, JsonValue] =
         char('0').as("0") |
           (satisfy(c => c >= '1' && c <= '9', "1-9") ~ digit.many)
             .map { case (first, rest) => s"$first${rest.mkString}" }
-      fracPart <- (char('.') *> digit.many1).optional
+      fracPart <- (char('.') *> digit.manyNonEmpty).optional
       expPart <- (
                    oneOf("eE") *>
                      (char('+') | char('-')).optional ~
-                     digit.many1
+                     digit.manyNonEmpty
                  ).optional
     } yield {
       val sign = if (negative.isDefined) "-" else ""
@@ -179,7 +179,7 @@ private def rawString: Parser[ParseError, String] =
 private lazy val jsonArray: Parser[ParseError, JsonValue] =
   (for {
     _        <- lexeme(char('['))
-    elements <- jsonValue.sepBy(lexeme(char(',')))
+    elements <- jsonValue.separatedBy(lexeme(char(',')))
     _        <- lexeme(char(']'))
   } yield JsonValue.Array(elements)).named("array")
 
@@ -198,7 +198,7 @@ private lazy val jsonObject: Parser[ParseError, JsonValue] = {
 
   (for {
     _     <- lexeme(char('{'))
-    pairs <- member.sepBy(lexeme(char(',')))
+    pairs <- member.separatedBy(lexeme(char(',')))
     _     <- lexeme(char('}'))
   } yield JsonValue.Object(pairs.toMap)).named("object")
 }

@@ -191,11 +191,11 @@ inline def many[E, A](p: Parser[E, A]): Parser[E, List[A]] =
  *
  * Example:
  * {{{
- * many1(char('a')).run("aaab")  // Success(List('a', 'a', 'a'), 3)
- * many1(char('a')).run("b")     // Failure
+ * manyNonEmpty(char('a')).run("aaab")  // Success(List('a', 'a', 'a'), 3)
+ * manyNonEmpty(char('a')).run("b")     // Failure
  * }}}
  */
-inline def many1[E, A](p: Parser[E, A]): Parser[E, List[A]] =
+inline def manyNonEmpty[E, A](p: Parser[E, A]): Parser[E, List[A]] =
   Parser.Many1(p)
 
 /**
@@ -226,12 +226,12 @@ inline def optional[E, A](p: Parser[E, A]): Parser[E, Option[A]] =
  *
  * Example:
  * {{{
- * sepBy(digit, char(',')).run("1,2,3")  // Success(List('1','2','3'), 5)
- * sepBy(digit, char(',')).run("")       // Success(List(), 0)
+ * separatedBy(digit, char(',')).run("1,2,3")  // Success(List('1','2','3'), 5)
+ * separatedBy(digit, char(',')).run("")       // Success(List(), 0)
  * }}}
  */
-def sepBy[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] =
-  or(sepBy1(p, sep), succeed(List.empty))
+def separatedBy[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] =
+  or(separatedByNonEmpty(p, sep), succeed(List.empty))
 
 /**
  * Parses one or more occurrences of p separated by sep.
@@ -244,11 +244,11 @@ def sepBy[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] =
  *
  * Example:
  * {{{
- * sepBy1(digit, char(',')).run("1,2,3")  // Success(List('1','2','3'), 5)
- * sepBy1(digit, char(',')).run("")       // Failure
+ * separatedByNonEmpty(digit, char(',')).run("1,2,3")  // Success(List('1','2','3'), 5)
+ * separatedByNonEmpty(digit, char(',')).run("")       // Failure
  * }}}
  */
-def sepBy1[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] =
+def separatedByNonEmpty[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] =
   flatMap(p, (head: A) => map(many(zipRight(sep, p)), (tail: List[A]) => head :: tail))
 
 /**
@@ -262,10 +262,10 @@ def sepBy1[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] 
  *
  * Example:
  * {{{
- * endBy(digit, char(';')).run("1;2;3;")  // Success(List('1','2','3'), 6)
+ * endedBy(digit, char(';')).run("1;2;3;")  // Success(List('1','2','3'), 6)
  * }}}
  */
-def endBy[E, A, End](p: Parser[E, A], end: Parser[E, End]): Parser[E, List[A]] =
+def endedBy[E, A, End](p: Parser[E, A], end: Parser[E, End]): Parser[E, List[A]] =
   many(zipLeft(p, end))
 
 /**
@@ -479,10 +479,10 @@ inline def debug[E, A](p: Parser[E, A], label: String): Parser[E, A] =
  * {{{
  * val num = digit.map(_.toString.toInt)
  * val minus = char('-').as((a: Int, b: Int) => a - b)
- * chainl1(num, minus).run("5-3-1")  // Success(1, 5)  // (5-3)-1 = 1
+ * chainLeft1(num, minus).run("5-3-1")  // Success(1, 5)  // (5-3)-1 = 1
  * }}}
  */
-def chainl1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] = {
+def chainLeft1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] = {
   def rest(acc: A): Parser[E, A] =
     or(
       flatMap(op, (f: (A, A) => A) => flatMap(p, (right: A) => rest(f(acc, right)))),
@@ -506,18 +506,168 @@ def chainl1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] = {
  * {{{
  * val num = digit.map(_.toString.toInt)
  * val power = char('^').as((a: Int, b: Int) => Math.pow(a, b).toInt)
- * chainr1(num, power).run("2^3^2")  // Success(512, 5)  // 2^(3^2) = 512
+ * chainRight1(num, power).run("2^3^2")  // Success(512, 5)  // 2^(3^2) = 512
  * }}}
  */
-def chainr1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
+def chainRight1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
   flatMap(
     p,
     (left: A) =>
       or(
-        flatMap(op, (f: (A, A) => A) => map(chainr1(p, op), (right: A) => f(left, right))),
+        flatMap(op, (f: (A, A) => A) => map(chainRight1(p, op), (right: A) => f(left, right))),
         succeed(left)
       )
   )
+
+/**
+ * Parses zero or more occurrences of p separated by op, left-associative.
+ *
+ * This is the zero-or-more version of chainLeft1.
+ * Returns the default value if no occurrences are found.
+ *
+ * @param p The parser for operands
+ * @param op The parser for operators, returns a binary function
+ * @param default The value to return if no occurrences are found
+ * @return A parser that builds left-associative parse tree
+ *
+ * Example:
+ * {{{
+ * val num = digit.map(_.toString.toInt)
+ * val plus = char('+').as((a: Int, b: Int) => a + b)
+ * chainLeft(num, plus, 0).run("1+2+3")  // Success(6, 5)
+ * chainLeft(num, plus, 0).run("")       // Success(0, 0)
+ * }}}
+ */
+def chainLeft[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+  or(chainLeft1(p, op), succeed(default))
+
+/**
+ * Parses zero or more occurrences of p separated by op, right-associative.
+ *
+ * This is the zero-or-more version of chainRight1.
+ * Returns the default value if no occurrences are found.
+ *
+ * @param p The parser for operands
+ * @param op The parser for operators, returns a binary function
+ * @param default The value to return if no occurrences are found
+ * @return A parser that builds right-associative parse tree
+ *
+ * Example:
+ * {{{
+ * val num = digit.map(_.toString.toInt)
+ * val power = char('^').as((a: Int, b: Int) => Math.pow(a, b).toInt)
+ * chainRight(num, power, 1).run("2^3")  // Success(8, 3)
+ * chainRight(num, power, 1).run("")     // Success(1, 0)
+ * }}}
+ */
+def chainRight[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+  or(chainRight1(p, op), succeed(default))
+
+// Convenience Combinators
+
+/**
+ * Parse p surrounded by open and close.
+ *
+ * Equivalent to: open *> p <* close
+ *
+ * Common for parsing delimited expressions like:
+ * - Parenthesized expressions: between(char('('), char(')'))(expr)
+ * - Quoted strings: between(char('"'), char('"'))(stringContent)
+ * - Bracketed lists: between(char('['), char(']'))(items)
+ *
+ * @param open Parser for opening delimiter
+ * @param close Parser for closing delimiter
+ * @param p The parser to run between delimiters
+ * @return A parser that parses p between open and close
+ *
+ * Example:
+ * {{{
+ * val parens = between(char('('), char(')'))(digit.map(_.toString.toInt))
+ * parens.run("(5)")  // Success(5, 3)
+ * }}}
+ */
+def between[E, Open, Close, A](
+  open: Parser[E, Open],
+  close: Parser[E, Close]
+)(p: Parser[E, A]): Parser[E, A] =
+  zipRight(open, zipLeft(p, close))
+
+/**
+ * Parse p surrounded by the same delimiter on both sides.
+ *
+ * Equivalent to: between(delim, delim)(p)
+ *
+ * @param delim Parser for the delimiter (used for both sides)
+ * @param p The parser to run between delimiters
+ * @return A parser that parses p surrounded by delim
+ *
+ * Example:
+ * {{{
+ * val quoted = surroundedBy(char('"'))(takeWhile(_ != '"'))
+ * quoted.run("\"hello\"")  // Success("hello", 7)
+ * }}}
+ */
+def surroundedBy[E, Delim, A](
+  delim: Parser[E, Delim]
+)(p: Parser[E, A]): Parser[E, A] =
+  between(delim, delim)(p)
+
+/**
+ * Parse zero or more occurrences of p, discarding results.
+ *
+ * More efficient than many when you don't need the results,
+ * as it doesn't build a list.
+ *
+ * @param p The parser to repeat
+ * @return A parser that succeeds with Unit
+ *
+ * Example:
+ * {{{
+ * val skipSpaces = skipMany(char(' '))
+ * skipSpaces.run("   hello")  // Success((), 3)
+ * }}}
+ */
+def skipMany[E, A](p: Parser[E, A]): Parser[E, Unit] =
+  map(many(p), (_: List[A]) => ())
+
+/**
+ * Parse one or more occurrences of p, discarding results.
+ *
+ * More efficient than manyNonEmpty when you don't need the results.
+ *
+ * @param p The parser to repeat
+ * @return A parser that succeeds with Unit if at least one match
+ *
+ * Example:
+ * {{{
+ * val skipDigits = skipManyNonEmpty(digit)
+ * skipDigits.run("123abc")  // Success((), 3)
+ * skipDigits.run("abc")     // Failure
+ * }}}
+ */
+def skipManyNonEmpty[E, A](p: Parser[E, A]): Parser[E, Unit] =
+  map(manyNonEmpty(p), (_: List[A]) => ())
+
+/**
+ * Parse at least n occurrences of p.
+ *
+ * Fails if fewer than n matches are found.
+ *
+ * @param n Minimum number of occurrences (must be >= 0)
+ * @param p The parser to repeat
+ * @return A parser that returns a list of at least n elements
+ *
+ * Example:
+ * {{{
+ * val atLeast3Digits = manyAtLeast(3)(digit)
+ * atLeast3Digits.run("12")    // Failure
+ * atLeast3Digits.run("1234")  // Success(List('1','2','3','4'), 4)
+ * }}}
+ */
+def manyAtLeast[E, A](n: Int)(p: Parser[E, A]): Parser[E, List[A]] =
+  flatMap(
+    count(n, p),
+    (required: List[A]) => map(many(p), (optional: List[A]) => required ++ optional))
 
 // Left Recursion
 

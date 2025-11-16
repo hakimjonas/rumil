@@ -182,7 +182,7 @@ def spaces: Parser[ParseError, List[Char]] =
  * }}}
  */
 def spaces1: Parser[ParseError, List[Char]] =
-  many1(whitespace)
+  manyNonEmpty(whitespace)
 
 // Lexeme combinators
 

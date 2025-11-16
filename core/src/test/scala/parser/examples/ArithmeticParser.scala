@@ -7,14 +7,14 @@ import parser.syntax._
 class ArithmeticParserTests extends FunSuite {
 
   test("parse single number") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number = digit.manyNonEmpty.map(_.mkString.toInt)
     val result = number.run("42")
     assert(result.isSuccess)
     assertEquals(result.toOption, Some(42))
   }
 
   test("parse addition") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number = digit.manyNonEmpty.map(_.mkString.toInt)
     val result = {
       for {
         n1 <- number
@@ -26,7 +26,7 @@ class ArithmeticParserTests extends FunSuite {
   }
 
   test("parse multiplication") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number = digit.manyNonEmpty.map(_.mkString.toInt)
     val result = {
       for {
         n1 <- number
@@ -43,17 +43,17 @@ class ArithmeticParserTests extends FunSuite {
     //          factor = number | '(' expr ')'
 
     // Using left recursion support (much cleaner than before!)
-    val number = digit.many1.map(_.mkString.toInt)
+    val number = digit.manyNonEmpty.map(_.mkString.toInt)
 
     lazy val expr: Parser[ParseError, Int] = recursive {
-      term.chainl1(
+      term.chainLeft1(
         (char('+').as((a: Int, b: Int) => a + b)) |
           (char('-').as((a: Int, b: Int) => a - b))
       )
     }
 
     lazy val term: Parser[ParseError, Int] = recursive {
-      factor.chainl1(
+      factor.chainLeft1(
         (char('*').as((a: Int, b: Int) => a * b)) |
           (char('/').as((a: Int, b: Int) => a / b))
       )
@@ -67,17 +67,17 @@ class ArithmeticParserTests extends FunSuite {
   }
 
   test("parse parentheses") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number = digit.manyNonEmpty.map(_.mkString.toInt)
 
     lazy val expr: Parser[ParseError, Int] = recursive {
-      term.chainl1(
+      term.chainLeft1(
         (char('+').as((a: Int, b: Int) => a + b)) |
           (char('-').as((a: Int, b: Int) => a - b))
       )
     }
 
     lazy val term: Parser[ParseError, Int] = recursive {
-      factor.chainl1(
+      factor.chainLeft1(
         (char('*').as((a: Int, b: Int) => a * b)) |
           (char('/').as((a: Int, b: Int) => a / b))
       )
@@ -91,17 +91,17 @@ class ArithmeticParserTests extends FunSuite {
   }
 
   test("parse nested expression") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number = digit.manyNonEmpty.map(_.mkString.toInt)
 
     lazy val expr: Parser[ParseError, Int] = recursive {
-      term.chainl1(
+      term.chainLeft1(
         (char('+').as((a: Int, b: Int) => a + b)) |
           (char('-').as((a: Int, b: Int) => a - b))
       )
     }
 
     lazy val term: Parser[ParseError, Int] = recursive {
-      factor.chainl1(
+      factor.chainLeft1(
         (char('*').as((a: Int, b: Int) => a * b)) |
           (char('/').as((a: Int, b: Int) => a / b))
       )
@@ -115,7 +115,7 @@ class ArithmeticParserTests extends FunSuite {
   }
 
   test("error on invalid input") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number = digit.manyNonEmpty.map(_.mkString.toInt)
     val result = number.run("abc")
     assert(result.isFailure)
   }

@@ -46,30 +46,51 @@ extension [E, A](p: Parser[E, A]) {
   inline def many: Parser[E, List[A]] =
     parser.core.many(p)
 
-  inline def many1: Parser[E, List[A]] =
-    parser.core.many1(p)
+  inline def manyNonEmpty: Parser[E, List[A]] =
+    parser.core.manyNonEmpty(p)
 
   inline def optional: Parser[E, Option[A]] =
     parser.core.optional(p)
 
-  inline def sepBy[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
-    parser.core.sepBy(p, sep)
+  inline def separatedBy[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
+    parser.core.separatedBy(p, sep)
 
-  inline def sepBy1[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
-    parser.core.sepBy1(p, sep)
+  inline def separatedByNonEmpty[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
+    parser.core.separatedByNonEmpty(p, sep)
 
-  inline def endBy[End](end: Parser[E, End]): Parser[E, List[A]] =
-    parser.core.endBy(p, end)
+  inline def endedBy[End](end: Parser[E, End]): Parser[E, List[A]] =
+    parser.core.endedBy(p, end)
 
   inline def count(n: Int): Parser[E, List[A]] =
     parser.core.count(n, p)
 
-  // Operators
-  inline def chainl1(op: Parser[E, (A, A) => A]): Parser[E, A] =
-    parser.core.chainl1(p, op)
+  inline def skipMany: Parser[E, Unit] =
+    parser.core.skipMany(p)
 
-  inline def chainr1(op: Parser[E, (A, A) => A]): Parser[E, A] =
-    parser.core.chainr1(p, op)
+  inline def skipManyNonEmpty: Parser[E, Unit] =
+    parser.core.skipManyNonEmpty(p)
+
+  inline def manyAtLeast(n: Int): Parser[E, List[A]] =
+    parser.core.manyAtLeast(n)(p)
+
+  inline def between[Open, Close](open: Parser[E, Open], close: Parser[E, Close]): Parser[E, A] =
+    parser.core.between(open, close)(p)
+
+  inline def surroundedBy[Delim](delim: Parser[E, Delim]): Parser[E, A] =
+    parser.core.surroundedBy(delim)(p)
+
+  // Operators
+  inline def chainLeft1(op: Parser[E, (A, A) => A]): Parser[E, A] =
+    parser.core.chainLeft1(p, op)
+
+  inline def chainRight1(op: Parser[E, (A, A) => A]): Parser[E, A] =
+    parser.core.chainRight1(p, op)
+
+  inline def chainLeft(op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+    parser.core.chainLeft(p, op, default)
+
+  inline def chainRight(op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+    parser.core.chainRight(p, op, default)
 
   // Lookahead
   inline def lookAhead: Parser[E, A] =

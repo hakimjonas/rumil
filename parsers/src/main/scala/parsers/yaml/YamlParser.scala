@@ -77,7 +77,7 @@ private def yamlNumber: Parser[ParseError, YamlValue] = {
 private def plainString: Parser[ParseError, YamlValue] =
   satisfy(
     c => c != ':' && c != '#' && c != '\n' && c != '[' && c != ']' && c != '{' && c != '}',
-    "plain char").many1
+    "plain char").manyNonEmpty
     .map(chars => YamlValue.String(chars.mkString.trim))
 
 private def quotedString: Parser[ParseError, YamlValue] =
@@ -94,7 +94,7 @@ private def yamlScalar: Parser[ParseError, YamlValue] =
 private lazy val flowSequence: Parser[ParseError, YamlValue] =
   for {
     _        <- char('[') *> ws
-    elements <- yamlValue.sepBy(ws *> char(',') *> ws)
+    elements <- yamlValue.separatedBy(ws *> char(',') *> ws)
     _        <- ws *> char(']')
   } yield YamlValue.Sequence(elements)
 
@@ -113,7 +113,7 @@ private lazy val flowMapping: Parser[ParseError, YamlValue] = {
 
   for {
     _     <- char('{') *> ws
-    pairs <- pair.sepBy(ws *> char(',') *> ws)
+    pairs <- pair.separatedBy(ws *> char(',') *> ws)
     _     <- ws *> char('}')
   } yield YamlValue.Mapping(pairs.toMap)
 }
@@ -125,24 +125,25 @@ private lazy val flowMapping: Parser[ParseError, YamlValue] = {
 // These don't need Parser.Custom - they only reference yamlScalar (no recursion)
 private def blockSequence: Parser[ParseError, YamlValue] = {
   val item = for {
-    _     <- char('-') *> hspace.many1
+    _     <- char('-') *> hspace.manyNonEmpty
     value <- yamlScalar
     _     <- newline.optional
   } yield value
 
-  item.many1.map(YamlValue.Sequence.apply)
+  item.manyNonEmpty.map(YamlValue.Sequence.apply)
 }
 
 private def blockMapping: Parser[ParseError, YamlValue] = {
   val pair = for {
-    key   <- satisfy(c => c != ':' && c != '\n' && c != '#', "key char").many1.map(_.mkString.trim)
+    key <-
+      satisfy(c => c != ':' && c != '\n' && c != '#', "key char").manyNonEmpty.map(_.mkString.trim)
     _     <- char(':')
-    _     <- hspace.many1 | newline.map(_ => ' ')
+    _     <- hspace.manyNonEmpty | newline.map(_ => ' ')
     value <- yamlScalar
     _     <- newline.optional
   } yield (key, value)
 
-  pair.many1.map(pairs => YamlValue.Mapping(pairs.toMap))
+  pair.manyNonEmpty.map(pairs => YamlValue.Mapping(pairs.toMap))
 }
 
 // ============================================================================

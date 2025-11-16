@@ -36,14 +36,14 @@ class JsonParserTests extends FunSuite {
   }
 
   test("parse integer") {
-    val parser = digit.many1.map(chars => Number(chars.mkString.toDouble))
+    val parser = digit.manyNonEmpty.map(chars => Number(chars.mkString.toDouble))
     val result = parser.run("42")
     assertEquals(result.toOption, Some(Number(42.0)))
   }
 
   test("parse float") {
     val parser =
-      (digit.many1 ~ (char('.') *> digit.many1))
+      (digit.manyNonEmpty ~ (char('.') *> digit.manyNonEmpty))
         .map { case (whole, frac) =>
           Number(s"${whole.mkString}.${frac.mkString}".toDouble)
         }
@@ -67,9 +67,9 @@ class JsonParserTests extends FunSuite {
   }
 
   test("parse simple array") {
-    val number = digit.many1.map(chars => Number(chars.mkString.toDouble))
+    val number = digit.manyNonEmpty.map(chars => Number(chars.mkString.toDouble))
     val parser =
-      (char('[') *> number.sepBy(char(',')) <* char(']'))
+      (char('[') *> number.separatedBy(char(',')) <* char(']'))
         .map(Array.apply)
     val result = parser.run("[1,2,3]")
     assertEquals(

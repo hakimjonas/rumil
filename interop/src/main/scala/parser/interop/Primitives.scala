@@ -27,7 +27,7 @@ object Primitives {
    * quoted strings, escapes, etc.
    */
   given Parser[ParseError, String] =
-    letter.many1.map(_.mkString).named("String")
+    letter.manyNonEmpty.map(_.mkString).named("String")
 
   /**
    * Parser for Int values.
@@ -36,8 +36,8 @@ object Primitives {
    * Handles positive integers only for POC.
    */
   given Parser[ParseError, Int] = {
-    val positiveInt = digit.many1.map(_.mkString.toInt)
-    val negativeInt = char('-') *> digit.many1.map(chars => -chars.mkString.toInt)
+    val positiveInt = digit.manyNonEmpty.map(_.mkString.toInt)
+    val negativeInt = char('-') *> digit.manyNonEmpty.map(chars => -chars.mkString.toInt)
     (negativeInt | positiveInt).named("Int")
   }
 
@@ -56,8 +56,8 @@ object Primitives {
    * Handles positive and negative longs.
    */
   given Parser[ParseError, Long] = {
-    val positiveLong = digit.many1.map(_.mkString.toLong)
-    val negativeLong = char('-') *> digit.many1.map(chars => -chars.mkString.toLong)
+    val positiveLong = digit.manyNonEmpty.map(_.mkString.toLong)
+    val negativeLong = char('-') *> digit.manyNonEmpty.map(chars => -chars.mkString.toLong)
     (negativeLong | positiveLong).named("Long")
   }
 
@@ -68,8 +68,8 @@ object Primitives {
    * Simplified for POC - doesn't handle scientific notation, infinity, NaN, etc.
    */
   given Parser[ParseError, Double] = {
-    val wholePart      = digit.many1
-    val fractionalPart = char('.') *> digit.many1
+    val wholePart      = digit.manyNonEmpty
+    val fractionalPart = char('.') *> digit.manyNonEmpty
     val positiveDouble = (wholePart ~ fractionalPart).map { case (whole, frac) =>
       s"${whole.mkString}.${frac.mkString}".toDouble
     }
@@ -95,9 +95,9 @@ object Primitives {
    * Handles positive and negative bytes.
    */
   given Parser[ParseError, Byte] = {
-    val positiveByte: Parser[ParseError, Byte] = digit.many1.map(_.mkString.toByte)
+    val positiveByte: Parser[ParseError, Byte] = digit.manyNonEmpty.map(_.mkString.toByte)
     val negativeByte: Parser[ParseError, Byte] =
-      char('-') *> digit.many1.map(chars => ("-" + chars.mkString).toByte)
+      char('-') *> digit.manyNonEmpty.map(chars => ("-" + chars.mkString).toByte)
     (negativeByte | positiveByte).named("Byte")
   }
 
@@ -108,9 +108,9 @@ object Primitives {
    * Handles positive and negative shorts.
    */
   given Parser[ParseError, Short] = {
-    val positiveShort: Parser[ParseError, Short] = digit.many1.map(_.mkString.toShort)
+    val positiveShort: Parser[ParseError, Short] = digit.manyNonEmpty.map(_.mkString.toShort)
     val negativeShort: Parser[ParseError, Short] =
-      char('-') *> digit.many1.map(chars => ("-" + chars.mkString).toShort)
+      char('-') *> digit.manyNonEmpty.map(chars => ("-" + chars.mkString).toShort)
     (negativeShort | positiveShort).named("Short")
   }
 
@@ -121,8 +121,8 @@ object Primitives {
    * Handles positive and negative BigInts.
    */
   given Parser[ParseError, BigInt] = {
-    val positiveBigInt = digit.many1.map(chars => BigInt(chars.mkString))
-    val negativeBigInt = char('-') *> digit.many1.map(chars => BigInt("-" + chars.mkString))
+    val positiveBigInt = digit.manyNonEmpty.map(chars => BigInt(chars.mkString))
+    val negativeBigInt = char('-') *> digit.manyNonEmpty.map(chars => BigInt("-" + chars.mkString))
     (negativeBigInt | positiveBigInt).named("BigInt")
   }
 
@@ -133,8 +133,8 @@ object Primitives {
    * Converts to BigDecimal for arbitrary precision.
    */
   given Parser[ParseError, BigDecimal] = {
-    val wholePart      = digit.many1
-    val fractionalPart = char('.') *> digit.many1
+    val wholePart      = digit.manyNonEmpty
+    val fractionalPart = char('.') *> digit.manyNonEmpty
     val positiveBigDecimal = (wholePart ~ fractionalPart).map { case (whole, frac) =>
       BigDecimal(s"${whole.mkString}.${frac.mkString}")
     }
@@ -172,7 +172,7 @@ object Primitives {
    * Elements are parsed using the given parser for A.
    */
   given [A](using p: Parser[ParseError, A]): Parser[ParseError, List[A]] = {
-    val elementsParser = p.sepBy(char(','))
+    val elementsParser = p.separatedBy(char(','))
     (string("List(") *> elementsParser <* char(')')).named("List")
   }
 
@@ -187,7 +187,7 @@ object Primitives {
    * Elements are parsed using the given parser for A.
    */
   given [A](using p: Parser[ParseError, A]): Parser[ParseError, Seq[A]] = {
-    val elementsParser = p.sepBy(char(','))
+    val elementsParser = p.separatedBy(char(','))
     (string("Seq(") *> elementsParser <* char(')')).named("Seq")
   }
 
@@ -202,7 +202,7 @@ object Primitives {
    * Elements are parsed using the given parser for A.
    */
   given [A](using p: Parser[ParseError, A]): Parser[ParseError, Vector[A]] = {
-    val elementsParser = p.sepBy(char(','))
+    val elementsParser = p.separatedBy(char(','))
     (string("Vector(") *> elementsParser <* char(')'))
       .named("Vector")
       .map(_.toVector)
