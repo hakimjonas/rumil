@@ -143,4 +143,60 @@ extension [E, A](result: Result[E, A]) {
     case Result.Partial(_, errs, _) => errs
     case Result.Failure(errs, _)    => errs
   }
+
+  /**
+   * Maps the success value using the provided function.
+   *
+   * Enables functional transformations and for-comprehension support.
+   *
+   * @param f The transformation function
+   * @return A new Result with the transformed value
+   */
+  inline def map[B](f: A => B): Result[E, B] = result match {
+    case Result.Success(value, consumed) =>
+      Result.Success(f(value), consumed)
+    case Result.Partial(value, errors, consumed) =>
+      Result.Partial(f(value), errors, consumed)
+    case Result.Failure(errors, furthest) =>
+      Result.Failure(errors, furthest)
+  }
+
+  /**
+   * Chains this result with another result-producing computation.
+   *
+   * Enables monadic composition and for-comprehension support.
+   * Combines consumed counts and accumulates errors properly.
+   *
+   * @param f Function producing the next Result
+   * @return Combined result with accumulated consumption and errors
+   *
+   * Example:
+   * {{{
+   * val result1: Result[ParseError, Int] = Result.Success(42, 2)
+   * val result2 = result1.flatMap(n => Result.Success(n * 2, 3))
+   * // Result.Success(84, 5)
+   * }}}
+   */
+  inline def flatMap[B](f: A => Result[E, B]): Result[E, B] = result match {
+    case Result.Success(value, consumed1) =>
+      f(value) match {
+        case Result.Success(value2, consumed2) =>
+          Result.Success(value2, consumed1 + consumed2)
+        case Result.Partial(value2, errors2, consumed2) =>
+          Result.Partial(value2, errors2, consumed1 + consumed2)
+        case Result.Failure(errors, furthest) =>
+          Result.Failure(errors, furthest)
+      }
+    case Result.Partial(value, errors1, consumed1) =>
+      f(value) match {
+        case Result.Success(value2, consumed2) =>
+          Result.Partial(value2, errors1, consumed1 + consumed2)
+        case Result.Partial(value2, errors2, consumed2) =>
+          Result.Partial(value2, errors1 ++ errors2, consumed1 + consumed2)
+        case Result.Failure(errors2, furthest) =>
+          Result.Failure(errors1 ++ errors2, furthest)
+      }
+    case Result.Failure(errors, furthest) =>
+      Result.Failure(errors, furthest)
+  }
 }

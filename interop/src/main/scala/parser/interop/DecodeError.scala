@@ -3,6 +3,17 @@ package parser.interop
 import parser.core._
 
 /**
+ * Placeholder location for decode errors when actual source location is unavailable.
+ *
+ * Decode errors occur at the semantic level (after parsing), so they often don't
+ * have a corresponding source location. This constant is used instead of magic numbers.
+ *
+ * In the future, JsonValue could be enhanced to carry span information from parsing,
+ * which would enable precise error locations even at the decode stage.
+ */
+val UnknownLocation: Location = (line = 1, column = 1, offset = 0)
+
+/**
  * Error type for decoding failures.
  *
  * Represents errors that occur when converting parsed structured data

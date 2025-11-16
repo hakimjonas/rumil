@@ -231,28 +231,30 @@ object Decoder {
                         decodedFields += v
                         errors ++= errs
                       case Result.Failure(errs, _) =>
-                        // On failure, add a default value (null) to maintain tuple structure
-                        decodedFields += null
+                        // On failure, record errors but don't add to fields
+                        // We cannot safely reconstruct without all fields
                         errors ++= errs
                     }
                   case None =>
-                    // Missing field
-                    decodedFields += null
+                    // Missing field - record error
                     errors += DecodeError.MissingField(
                       fieldName,
-                      (line = 1, column = 1, offset = 0)
+                      UnknownLocation
                     )
                 }
 
-              // Reconstruct the case class
+              // Only reconstruct if we successfully decoded all fields
               if (errors.isEmpty) {
+                // All fields decoded successfully
                 val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
                 Result.Success(product, 0)
-              } else {
-                // If there are errors, we still try to reconstruct (with nulls)
-                // This is for partial parsing support
+              } else if (decodedFields.size == fieldLabels.size) {
+                // All fields decoded but with some partial errors
                 val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
                 Result.Partial(product, errors.toList, 0)
+              } else {
+                // Some fields failed completely - cannot reconstruct safely
+                Result.Failure(errors.toList, UnknownLocation)
               }
 
             case other =>
@@ -268,10 +270,10 @@ object Decoder {
                       case JsonValue.Array(_)  => "Array"
                       case _                   => "Unknown"
                     },
-                    (line = 1, column = 1, offset = 0)
+                    UnknownLocation
                   )
                 ),
-                (line = 1, column = 1, offset = 0)
+                UnknownLocation
               )
           }
         }

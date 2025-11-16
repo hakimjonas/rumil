@@ -34,30 +34,28 @@ object JsonDecoders {
       case JsonValue.Str(s) => Result.Success(s, 0)
       case JsonValue.Null =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("String", "Null", (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(DecodeError.TypeMismatch("String", "Null", UnknownLocation)),
+          UnknownLocation
         )
       case JsonValue.Bool(b) =>
         Result.Failure(
-          List(
-            DecodeError.TypeMismatch("String", s"Boolean($b)", (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(DecodeError.TypeMismatch("String", s"Boolean($b)", UnknownLocation)),
+          UnknownLocation
         )
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(
-            DecodeError.TypeMismatch("String", s"Number($n)", (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(DecodeError.TypeMismatch("String", s"Number($n)", UnknownLocation)),
+          UnknownLocation
         )
       case JsonValue.Array(_) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("String", "Array", (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(DecodeError.TypeMismatch("String", "Array", UnknownLocation)),
+          UnknownLocation
         )
       case JsonValue.Object(_) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("String", "Object", (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(DecodeError.TypeMismatch("String", "Object", UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -74,24 +72,22 @@ object JsonDecoders {
       case JsonValue.Number(n) if !n.isWhole =>
         Result.Failure(
           List(
-            DecodeError.TypeMismatch(
-              "Int",
-              s"Number($n) - not a whole number",
-              (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+            DecodeError.TypeMismatch("Int", s"Number($n) - not a whole number", UnknownLocation)),
+          UnknownLocation
         )
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(DecodeError
-            .TypeMismatch("Int", s"Number($n) - out of range", (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(
+            DecodeError
+              .TypeMismatch("Int", s"Number($n) - out of range", UnknownLocation)),
+          UnknownLocation
         )
       case other =>
         Result.Failure(
           List(
             DecodeError
-              .TypeMismatch("Int", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+              .TypeMismatch("Int", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -108,27 +104,20 @@ object JsonDecoders {
       case JsonValue.Number(n) if !n.isWhole =>
         Result.Failure(
           List(
-            DecodeError.TypeMismatch(
-              "Long",
-              s"Number($n) - not a whole number",
-              (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+            DecodeError.TypeMismatch("Long", s"Number($n) - not a whole number", UnknownLocation)),
+          UnknownLocation
         )
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(
-            DecodeError.TypeMismatch(
-              "Long",
-              s"Number($n) - out of range",
-              (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(DecodeError.TypeMismatch("Long", s"Number($n) - out of range", UnknownLocation)),
+          UnknownLocation
         )
       case other =>
         Result.Failure(
           List(
             DecodeError
-              .TypeMismatch("Long", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+              .TypeMismatch("Long", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -143,9 +132,10 @@ object JsonDecoders {
       case JsonValue.Number(n) => Result.Success(n, 0)
       case other =>
         Result.Failure(
-          List(DecodeError
-            .TypeMismatch("Double", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(
+            DecodeError
+              .TypeMismatch("Double", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -160,9 +150,10 @@ object JsonDecoders {
       case JsonValue.Bool(b) => Result.Success(b, 0)
       case other =>
         Result.Failure(
-          List(DecodeError
-            .TypeMismatch("Boolean", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(
+            DecodeError
+              .TypeMismatch("Boolean", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -179,18 +170,16 @@ object JsonDecoders {
       case JsonValue.Number(n) =>
         Result.Failure(
           List(
-            DecodeError.TypeMismatch(
-              "Byte",
-              s"Number($n) - out of range or not whole",
-              (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+            DecodeError
+              .TypeMismatch("Byte", s"Number($n) - out of range or not whole", UnknownLocation)),
+          UnknownLocation
         )
       case other =>
         Result.Failure(
           List(
             DecodeError
-              .TypeMismatch("Byte", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+              .TypeMismatch("Byte", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -207,18 +196,16 @@ object JsonDecoders {
       case JsonValue.Number(n) =>
         Result.Failure(
           List(
-            DecodeError.TypeMismatch(
-              "Short",
-              s"Number($n) - out of range or not whole",
-              (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+            DecodeError
+              .TypeMismatch("Short", s"Number($n) - out of range or not whole", UnknownLocation)),
+          UnknownLocation
         )
       case other =>
         Result.Failure(
           List(
             DecodeError
-              .TypeMismatch("Short", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+              .TypeMismatch("Short", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -235,8 +222,8 @@ object JsonDecoders {
         Result.Failure(
           List(
             DecodeError
-              .TypeMismatch("Float", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+              .TypeMismatch("Float", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -253,17 +240,16 @@ object JsonDecoders {
       case JsonValue.Number(n) =>
         Result.Failure(
           List(
-            DecodeError.TypeMismatch(
-              "BigInt",
-              s"Number($n) - not a whole number",
-              (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+            DecodeError
+              .TypeMismatch("BigInt", s"Number($n) - not a whole number", UnknownLocation)),
+          UnknownLocation
         )
       case other =>
         Result.Failure(
-          List(DecodeError
-            .TypeMismatch("BigInt", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(
+            DecodeError
+              .TypeMismatch("BigInt", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -278,12 +264,8 @@ object JsonDecoders {
       case JsonValue.Number(n) => Result.Success(BigDecimal(n), 0)
       case other =>
         Result.Failure(
-          List(
-            DecodeError.TypeMismatch(
-              "BigDecimal",
-              jsonValueTypeName(other),
-              (line = 1, column = 1, offset = 0))),
-          (line = 1, column = 1, offset = 0)
+          List(DecodeError.TypeMismatch("BigDecimal", jsonValueTypeName(other), UnknownLocation)),
+          UnknownLocation
         )
     }
   }
@@ -341,7 +323,7 @@ object JsonDecoders {
                         DecodeError.TypeMismatch(exp, act, loc)
                       case other => other
                     },
-                    (line = 1, column = 1, offset = 0)
+                    UnknownLocation
                   ))
             }
 
@@ -355,9 +337,10 @@ object JsonDecoders {
 
         case other =>
           Result.Failure(
-            List(DecodeError
-              .TypeMismatch("Array", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
-            (line = 1, column = 1, offset = 0)
+            List(
+              DecodeError
+                .TypeMismatch("Array", jsonValueTypeName(other), UnknownLocation)),
+            UnknownLocation
           )
       }
     }
@@ -420,7 +403,7 @@ object JsonDecoders {
                 decoded(key) = a
                 errors ++= errs
               case Result.Failure(errs, _) =>
-                failed = Some(Result.Failure(errs, (line = 1, column = 1, offset = 0)))
+                failed = Some(Result.Failure(errs, UnknownLocation))
             }
 
           failed.getOrElse {
@@ -433,12 +416,8 @@ object JsonDecoders {
 
         case other =>
           Result.Failure(
-            List(
-              DecodeError.TypeMismatch(
-                "Object",
-                jsonValueTypeName(other),
-                (line = 1, column = 1, offset = 0))),
-            (line = 1, column = 1, offset = 0)
+            List(DecodeError.TypeMismatch("Object", jsonValueTypeName(other), UnknownLocation)),
+            UnknownLocation
           )
       }
     }
