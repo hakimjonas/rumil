@@ -30,6 +30,34 @@ type Location = (line: Int, column: Int, offset: Int)
  */
 type Span = (start: Location, end: Location)
 
+/**
+ * Key for memoization table.
+ *
+ * Identifies a parser at a specific input position.
+ * Uses unique parser ID for identity.
+ *
+ * Fields:
+ * - parserId: Unique ID for each parser instance
+ * - position: Input offset (0-indexed)
+ */
+type MemoKey = (parserId: Int, position: Int)
+
+/**
+ * Entry in the memoization table.
+ *
+ * Tracks parse results and left-recursion detection state.
+ *
+ * Cases:
+ * - InProgress: Parse is currently in progress (for cycle detection)
+ * - Completed: Parse completed with this result
+ * - Growing: Left-recursive parse being grown from seed
+ */
+enum MemoEntry[+E, +A] {
+  case InProgress
+  case Completed[E, A](result: Result[E, A], consumed: Int)
+  case Growing[E, A](seed: Result[E, A], consumed: Int)
+}
+
 // ============================================================================
 // ENUMS - Sum Types
 // ============================================================================
@@ -71,6 +99,17 @@ enum Parser[+E, +A] {
   case Trace[E, A](parser: Parser[E, A], label: String)              extends Parser[E, A]
   case Debug[E, A](parser: Parser[E, A], label: String)              extends Parser[E, A]
   case Custom[E, A](run: parser.runtime.ParserState => Result[E, A]) extends Parser[E, A]
+
+  /**
+   * A parser that may be left-recursive.
+   *
+   * Wraps a parser to enable memoization and left-recursion handling
+   * using the Warth et al. seed-growth algorithm.
+   *
+   * @param id Unique identifier for this parser instance
+   * @param parser The underlying parser (lazy to allow recursion)
+   */
+  case Recursive[E, A](id: Int, parser: () => Parser[E, A]) extends Parser[E, A]
 }
 
 /**

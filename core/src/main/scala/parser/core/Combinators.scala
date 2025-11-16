@@ -518,3 +518,41 @@ def chainr1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
         succeed(left)
       )
   )
+
+// Left Recursion
+
+/**
+ * Marks a parser as potentially left-recursive.
+ *
+ * Enables memoization and the Warth et al. seed-growth algorithm to handle
+ * left-recursive grammars. Use this for any parser that directly or indirectly
+ * references itself.
+ *
+ * The parser parameter is by-name (lazy) to allow recursive definitions.
+ *
+ * @param parser A lazy parser (use `=> Parser` for recursive definitions)
+ * @return A parser with left-recursion support
+ *
+ * Example - Direct left recursion:
+ * {{{
+ * lazy val expr: Parser[ParseError, Expr] = recursive {
+ *   (expr ~ char('+') ~ term).map { case ((l, _), r) => Add(l, r) } |
+ *   (expr ~ char('-') ~ term).map { case ((l, _), r) => Sub(l, r) } |
+ *   term
+ * }
+ * }}}
+ *
+ * Example - Indirect left recursion:
+ * {{{
+ * lazy val a: Parser[ParseError, String] = recursive {
+ *   (b ~ char('x')).map { case (s, c) => s + c } | char('y').map(_.toString)
+ * }
+ * lazy val b: Parser[ParseError, String] = recursive {
+ *   (a ~ char('z')).map { case (s, c) => s + c } | char('w').map(_.toString)
+ * }
+ * }}}
+ */
+def recursive[E, A](parser: => Parser[E, A]): Parser[E, A] = {
+  val id = parser.runtime.nextParserId.getAndIncrement()
+  Parser.Recursive(id, () => parser)
+}

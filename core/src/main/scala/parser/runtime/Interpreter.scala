@@ -7,6 +7,13 @@ import parser.core._
 // ============================================================================
 
 /**
+ * Generates unique parser IDs for left recursion support.
+ *
+ * Thread-safe counter for assigning unique IDs to recursive parsers.
+ */
+private val nextParserId = new java.util.concurrent.atomic.AtomicInteger(0)
+
+/**
  * Runs a parser on input, producing a result.
  *
  * This is the main entry point for executing parsers.
@@ -41,6 +48,136 @@ private def formatError(error: Any): String = error match {
     s"$msg at $loc"
   case other =>
     other.toString
+}
+
+/**
+ * Attempts to parse with memoization and left-recursion support.
+ *
+ * Implements the Warth et al. seed-growth algorithm for left recursion.
+ *
+ * Algorithm:
+ * 1. Check memo table for cached result
+ * 2. Detect left recursion (parser calling itself at same position)
+ * 3. Start with failure seed for left-recursive parsers
+ * 4. Grow the seed by repeatedly re-parsing until no more progress
+ *
+ * @param parserId Unique ID for this parser instance
+ * @param parser The parser to execute (lazy)
+ * @param state Mutable parse state
+ * @return Parse result
+ */
+private def parseWithMemo[E, A](
+  parserId: Int,
+  parser: () => Parser[E, A],
+  state: ParserState
+): Result[E, A] = {
+  val key: MemoKey = (parserId = parserId, position = state.offset)
+
+  // Check memo table for cached result
+  state.getMemo(key) match {
+    case Some(MemoEntry.Completed(result, consumed)) =>
+      // Cache hit: restore position and return cached result
+      state.advanceN(consumed)
+      return result.asInstanceOf[Result[E, A]]
+
+    case Some(MemoEntry.InProgress) =>
+      // Left recursion detected! Return failure as initial seed
+      return Result.Failure(List(), state.location)
+
+    case Some(MemoEntry.Growing(seed, consumed)) =>
+      // Currently growing, return current seed
+      state.advanceN(consumed)
+      return seed.asInstanceOf[Result[E, A]]
+
+    case None =>
+      // Not memoized, continue with parsing
+  }
+
+  // Mark as in progress for cycle detection
+  state.setMemo(key, MemoEntry.InProgress)
+  state.enterRecursion(key)
+
+  val startPos = state.offset
+  val startSnapshot = state.save
+  val result = interpret(parser(), state)
+  val consumed = state.offset - startPos
+
+  state.exitRecursion(key)
+
+  // Check if left recursion was actually detected
+  state.getMemo(key) match {
+    case Some(MemoEntry.InProgress) =>
+      // Not left-recursive, just memoize the result
+      state.setMemo(key, MemoEntry.Completed(result, consumed))
+      result
+
+    case _ =>
+      // Was left-recursive (seed was used), grow it
+      growSeed(parserId, parser, state, key, startSnapshot, result, consumed)
+  }
+}
+
+/**
+ * Grows a left-recursive parse using the seed-growth algorithm.
+ *
+ * Repeatedly re-parses while we make progress (consume more input).
+ * Stops when no more progress is made and returns the largest parse.
+ *
+ * @param parserId Unique parser ID
+ * @param parser The parser to grow
+ * @param state Mutable parse state
+ * @param key Memoization key
+ * @param startSnapshot State snapshot at start position
+ * @param initialResult Initial seed result
+ * @param initialConsumed Initial characters consumed
+ * @return The grown result
+ */
+private def growSeed[E, A](
+  parserId: Int,
+  parser: () => Parser[E, A],
+  state: ParserState,
+  key: MemoKey,
+  startSnapshot: StateSnapshot,
+  initialResult: Result[E, A],
+  initialConsumed: Int
+): Result[E, A] = {
+  var seed = initialResult
+  var seedConsumed = initialConsumed
+
+  // Keep growing while we make progress
+  while (true) {
+    // Reset to start position for re-parse
+    state.restore(startSnapshot)
+
+    // Mark current seed in memo table
+    state.setMemo(key, MemoEntry.Growing(seed, seedConsumed))
+
+    // Re-parse
+    val result = interpret(parser(), state)
+    val consumed = state.offset - startSnapshot.offset
+
+    // Check if we made progress
+    val madeProgress = result match {
+      case Result.Success(_, _) if consumed > seedConsumed    => true
+      case Result.Partial(_, _, _) if consumed > seedConsumed => true
+      case _                                                  => false
+    }
+
+    if (madeProgress) {
+      // Made progress, update seed and continue
+      seed = result
+      seedConsumed = consumed
+    } else {
+      // No more progress, we're done
+      state.setMemo(key, MemoEntry.Completed(seed, seedConsumed))
+      state.restore(startSnapshot)
+      state.advanceN(seedConsumed)
+      return seed
+    }
+  }
+
+  // Unreachable, but needed for type checker
+  seed
 }
 
 /**
@@ -245,6 +382,9 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
 
     case Parser.Custom(runFn) =>
       runFn(state)
+
+    case Parser.Recursive(id, p) =>
+      parseWithMemo(id, p, state)
   }
 }
 

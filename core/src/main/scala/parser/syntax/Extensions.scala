@@ -97,6 +97,26 @@ extension [E, A](p: Parser[E, A]) {
     parser.runtime.run(p, input)
 }
 
+// Extension for by-name parsers (for left recursion support)
+extension [E, A](p: => Parser[E, A]) {
+  /**
+   * Marks this parser as potentially left-recursive.
+   *
+   * Enables memoization and handles left recursion automatically using
+   * the Warth et al. seed-growth algorithm.
+   *
+   * Example:
+   * {{{
+   * lazy val expr: Parser[ParseError, Expr] = {
+   *   (expr ~ char('+') ~ term).map { case ((l, _), r) => Add(l, r) } |
+   *   term
+   * }.recursive
+   * }}}
+   */
+  inline def recursive: Parser[E, A] =
+    parser.core.recursive(p)
+}
+
 // ParseError-specific extensions
 extension [A](p: Parser[ParseError, A]) {
   inline def notFollowedBy: Parser[ParseError, Unit] =

@@ -42,103 +42,73 @@ class ArithmeticParserTests extends FunSuite {
     //          term = factor (('*' | '/') factor)*
     //          factor = number | '(' expr ')'
 
-    // Using Parser.Custom to break recursion cycles
-    lazy val expr: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          term.chainl1(
-            (char('+').as((a: Int, b: Int) => a + b)) |
-              (char('-').as((a: Int, b: Int) => a - b))
-          ),
-          state
-        )
-      }
+    // Using left recursion support (much cleaner than before!)
+    val number = digit.many1.map(_.mkString.toInt)
 
-    lazy val term: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          factor.chainl1(
-            (char('*').as((a: Int, b: Int) => a * b)) |
-              (char('/').as((a: Int, b: Int) => a / b))
-          ),
-          state
-        )
-      }
-
-    lazy val factor: Parser[ParseError, Int] = {
-      val number = digit.many1.map(_.mkString.toInt)
-      number | Parser.Custom { state =>
-        parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-      }
+    lazy val expr: Parser[ParseError, Int] = recursive {
+      term.chainl1(
+        (char('+').as((a: Int, b: Int) => a + b)) |
+          (char('-').as((a: Int, b: Int) => a - b))
+      )
     }
+
+    lazy val term: Parser[ParseError, Int] = recursive {
+      factor.chainl1(
+        (char('*').as((a: Int, b: Int) => a * b)) |
+          (char('/').as((a: Int, b: Int) => a / b))
+      )
+    }
+
+    lazy val factor: Parser[ParseError, Int] =
+      number | (char('(') *> expr <* char(')'))
 
     val result = expr.run("2+3*4")
     assertEquals(result.toOption, Some(14)) // 2 + (3*4) = 2 + 12 = 14
   }
 
   test("parse parentheses") {
-    lazy val expr: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          term.chainl1(
-            (char('+').as((a: Int, b: Int) => a + b)) |
-              (char('-').as((a: Int, b: Int) => a - b))
-          ),
-          state
-        )
-      }
+    val number = digit.many1.map(_.mkString.toInt)
 
-    lazy val term: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          factor.chainl1(
-            (char('*').as((a: Int, b: Int) => a * b)) |
-              (char('/').as((a: Int, b: Int) => a / b))
-          ),
-          state
-        )
-      }
-
-    lazy val factor: Parser[ParseError, Int] = {
-      val number = digit.many1.map(_.mkString.toInt)
-      number | Parser.Custom { state =>
-        parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-      }
+    lazy val expr: Parser[ParseError, Int] = recursive {
+      term.chainl1(
+        (char('+').as((a: Int, b: Int) => a + b)) |
+          (char('-').as((a: Int, b: Int) => a - b))
+      )
     }
+
+    lazy val term: Parser[ParseError, Int] = recursive {
+      factor.chainl1(
+        (char('*').as((a: Int, b: Int) => a * b)) |
+          (char('/').as((a: Int, b: Int) => a / b))
+      )
+    }
+
+    lazy val factor: Parser[ParseError, Int] =
+      number | (char('(') *> expr <* char(')'))
 
     val result = expr.run("(2+3)*4")
     assertEquals(result.toOption, Some(20)) // (2+3)*4 = 5*4 = 20
   }
 
   test("parse nested expression") {
-    lazy val expr: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          term.chainl1(
-            (char('+').as((a: Int, b: Int) => a + b)) |
-              (char('-').as((a: Int, b: Int) => a - b))
-          ),
-          state
-        )
-      }
+    val number = digit.many1.map(_.mkString.toInt)
 
-    lazy val term: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          factor.chainl1(
-            (char('*').as((a: Int, b: Int) => a * b)) |
-              (char('/').as((a: Int, b: Int) => a / b))
-          ),
-          state
-        )
-      }
-
-    lazy val factor: Parser[ParseError, Int] = {
-      val number = digit.many1.map(_.mkString.toInt)
-      number | Parser.Custom { state =>
-        parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-      }
+    lazy val expr: Parser[ParseError, Int] = recursive {
+      term.chainl1(
+        (char('+').as((a: Int, b: Int) => a + b)) |
+          (char('-').as((a: Int, b: Int) => a - b))
+      )
     }
+
+    lazy val term: Parser[ParseError, Int] = recursive {
+      factor.chainl1(
+        (char('*').as((a: Int, b: Int) => a * b)) |
+          (char('/').as((a: Int, b: Int) => a / b))
+      )
+    }
+
+    lazy val factor: Parser[ParseError, Int] =
+      number | (char('(') *> expr <* char(')'))
 
     val result = expr.run("((2+3)*4)+5")
     assertEquals(result.toOption, Some(25)) // ((2+3)*4)+5 = (5*4)+5 = 20+5 = 25

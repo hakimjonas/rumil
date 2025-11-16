@@ -34,6 +34,8 @@ final private class Ref[A](private var value: A) {
  * - offset: Character position (0-indexed)
  * - line: Line number (1-indexed)
  * - column: Column number (1-indexed)
+ * - memo: Memoization table for left recursion support
+ * - recursionStack: Stack tracking in-progress parsers for cycle detection
  *
  * Use the `parserState(input)` function to create instances.
  *
@@ -45,6 +47,14 @@ final class ParserState private[runtime] (
   private val lineRef: Ref[Int],
   private val columnRef: Ref[Int]
 ) {
+
+  // Memoization table for left recursion support
+  private val memo: scala.collection.mutable.Map[MemoKey, MemoEntry[?, ?]] =
+    scala.collection.mutable.Map.empty
+
+  // Stack for detecting left recursion cycles
+  private val recursionStack: scala.collection.mutable.Set[MemoKey] =
+    scala.collection.mutable.Set.empty
 
   def offset: Int = offsetRef.get
   def line: Int   = lineRef.get
@@ -93,6 +103,53 @@ final class ParserState private[runtime] (
     lineRef.set(snapshot.line)
     columnRef.set(snapshot.column)
   }
+
+  // Memoization methods for left recursion support
+
+  /**
+   * Gets the memoized entry for a parser at a position.
+   *
+   * @param key The memoization key
+   * @return The memoized entry if present
+   */
+  def getMemo(key: MemoKey): Option[MemoEntry[?, ?]] =
+    memo.get(key)
+
+  /**
+   * Sets the memoized entry for a parser at a position.
+   *
+   * @param key The memoization key
+   * @param entry The entry to memoize
+   */
+  def setMemo(key: MemoKey, entry: MemoEntry[?, ?]): Unit =
+    memo(key) = entry
+
+  /**
+   * Checks if a parser is currently in progress at a position.
+   *
+   * Used for detecting left recursion cycles.
+   *
+   * @param key The memoization key
+   * @return true if the parser is in progress
+   */
+  def isInProgress(key: MemoKey): Boolean =
+    recursionStack.contains(key)
+
+  /**
+   * Marks a parser as in progress at a position.
+   *
+   * @param key The memoization key
+   */
+  def enterRecursion(key: MemoKey): Unit =
+    recursionStack.add(key)
+
+  /**
+   * Marks a parser as no longer in progress at a position.
+   *
+   * @param key The memoization key
+   */
+  def exitRecursion(key: MemoKey): Unit =
+    recursionStack.remove(key)
 
   def remaining: String = input.substring(offsetRef.get)
 

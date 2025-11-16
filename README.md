@@ -15,6 +15,7 @@ Rumil is a parser combinator library for Scala 3, designed for correctness, effi
 
 - Parsers are immutable, composable values
 - 40+ combinators for building complex parsers
+- **Left Recursion Support** - Write natural grammars without awkward workarounds
 - Error tracking with line, column, and offset information
 - Tail-recursive interpreter
 - Monadic interface with for-comprehension support
@@ -82,6 +83,12 @@ expr.run("1+2+3")  // Success(6, 5)
 // Combine parsers with operators
 val pair = char('(') *> number ~ (char(',') *> number) <* char(')')
 pair.run("(1,2)")  // Success((1, 2), 7)
+
+// Left-recursive grammars (new!)
+lazy val expr: Parser[ParseError, Expr] = recursive {
+  (expr ~ char('+') ~ term).map { case ((l, _), r) => Add(l, r) } |
+  term
+}
 ```
 
 ### The Idiomatic Way
