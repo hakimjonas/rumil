@@ -148,6 +148,7 @@ enum GreenNode {
 }
 
 object GreenNode {
+
   /**
    * Creates a token node.
    *
@@ -183,11 +184,10 @@ object GreenNode {
     case Token(_, _, span) => span
     case Tree(_, children) =>
       if (children.isEmpty) {
-        (start = (line = 1, column = 1, offset = 0),
-         end = (line = 1, column = 1, offset = 0))
+        (start = (line = 1, column = 1, offset = 0), end = (line = 1, column = 1, offset = 0))
       } else {
         val first = span(children.head)
-        val last = span(children.last)
+        val last  = span(children.last)
         (start = first.start, end = last.end)
       }
   }
@@ -217,7 +217,7 @@ object GreenNode {
   def traverse(node: GreenNode)(f: GreenNode => Unit): Unit = {
     f(node)
     node match {
-      case Token(_, _, _) => ()
+      case Token(_, _, _)    => ()
       case Tree(_, children) => children.foreach(traverse(_)(f))
     }
   }
