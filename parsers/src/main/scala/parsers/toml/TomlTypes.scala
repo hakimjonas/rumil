@@ -30,7 +30,7 @@ given CanEqual[TomlValue, TomlValue] = CanEqual.derived
 /**
  * TOML table - collection of key-value pairs.
  *
- * @param isArrayTable Whether this is an array table ([[name]])
+ * @param isArrayTable Whether this is an array table (e.g., `[[name]]`)
  * @param pairs Key-value pairs in this table
  * @param subtables Nested tables
  */
