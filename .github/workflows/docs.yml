@@ -8,6 +8,8 @@ jobs:
   deploy:
     name: Deploy Documentation
     runs-on: ubuntu-latest
+    # Temporarily disabled - will enable when ready to go public
+    if: false
 
     steps:
       - name: Checkout
