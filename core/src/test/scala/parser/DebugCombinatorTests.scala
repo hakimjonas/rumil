@@ -2,7 +2,8 @@ package parser
 
 import munit.FunSuite
 import parser.core._
-import parser.syntax._
+import parser.syntax.ErrorRecovery._
+import parser.syntax.{recoverWith => _, _}
 
 class DebugCombinatorTests extends FunSuite {
 
@@ -134,7 +135,6 @@ class DebugCombinatorTests extends FunSuite {
   // ============================================================================
 
   test("trace returns identical result on partial success") {
-    import parser.syntax.ErrorRecovery.*
     val parser = char('a').recoverWith(char('x')).trace("partial-test")
     val result = parser.run("x")
     assert(result.isPartial)
@@ -148,7 +148,6 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("debug returns identical result on partial success") {
-    import parser.syntax.ErrorRecovery.*
     val parser = char('a').recoverWith(char('b')).debug("partial-debug")
     val result = parser.run("b")
     assert(result.isPartial)
@@ -162,7 +161,6 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("trace preserves errors in partial results") {
-    import parser.syntax.ErrorRecovery.*
     val parser = digit.recoverWith(char('?')).trace("error-trace")
     val result = parser.run("?")
     result match {
@@ -173,7 +171,6 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("debug preserves errors in partial results") {
-    import parser.syntax.ErrorRecovery.*
     val parser = digit.recoverWith(char('!')).debug("error-debug")
     val result = parser.run("!")
     result match {
@@ -200,15 +197,15 @@ class DebugCombinatorTests extends FunSuite {
   }
 
   test("trace on nested parsers") {
-    val inner = digit.trace("inner-digit")
-    val outer = inner.many.trace("outer-many")
+    val inner  = digit.trace("inner-digit")
+    val outer  = inner.many.trace("outer-many")
     val result = outer.run("123")
     assertEquals(result.toOption, Some(List('1', '2', '3')))
   }
 
   test("debug on nested parsers") {
-    val inner = char('x').debug("inner-x")
-    val outer = inner.many1.debug("outer-many1")
+    val inner  = char('x').debug("inner-x")
+    val outer  = inner.many1.debug("outer-many1")
     val result = outer.run("xxx")
     assertEquals(result.toOption, Some(List('x', 'x', 'x')))
   }
