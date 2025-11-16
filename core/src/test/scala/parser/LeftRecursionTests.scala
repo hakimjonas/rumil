@@ -254,8 +254,15 @@ class LeftRecursionTests extends FunSuite {
         digit.map(_.toString.toInt)
     }
 
+    // Incomplete input "1+" parses the "1" successfully but doesn't consume all input
     val result = expr.run("1+")
-    assert(result.isFailure)
+    result match {
+      case Result.Success(value, consumed) =>
+        assertEquals(value, 1)
+        assertEquals(consumed, 1) // Only consumed the digit, not the "+"
+      case other =>
+        fail(s"Expected Success(1, 1), got $other")
+    }
   }
 
   test("simple left recursion") {
