@@ -90,87 +90,73 @@ private def yamlScalar: Parser[ParseError, YamlValue] =
 // Flow Style (JSON-like)
 // ============================================================================
 
-private def flowSequence: Parser[ParseError, YamlValue] =
-  Parser.Custom { state =>
-    val seqParser = for {
-      _        <- char('[') *> ws
-      elements <- yamlValue.sepBy(ws *> char(',') *> ws)
-      _        <- ws *> char(']')
-    } yield YamlValue.Sequence(elements)
+// These need to be lazy vals because they reference yamlValue (indirect recursion)
+private lazy val flowSequence: Parser[ParseError, YamlValue] =
+  for {
+    _        <- char('[') *> ws
+    elements <- yamlValue.sepBy(ws *> char(',') *> ws)
+    _        <- ws *> char(']')
+  } yield YamlValue.Sequence(elements)
 
-    parser.runtime.interpret(seqParser, state)
-  }
-
-private def flowMapping: Parser[ParseError, YamlValue] =
-  Parser.Custom { state =>
-    val pair = for {
-      key   <- plainString | quotedString
-      _     <- ws *> char(':') *> ws
-      value <- yamlValue
-    } yield {
-      val keyStr = key match {
-        case YamlValue.String(s) => s
-        case _                   => ""
-      }
-      (keyStr, value)
+private lazy val flowMapping: Parser[ParseError, YamlValue] = {
+  val pair = for {
+    key   <- plainString | quotedString
+    _     <- ws *> char(':') *> ws
+    value <- yamlValue
+  } yield {
+    val keyStr = key match {
+      case YamlValue.String(s) => s
+      case _                   => ""
     }
-
-    val mapParser = for {
-      _     <- char('{') *> ws
-      pairs <- pair.sepBy(ws *> char(',') *> ws)
-      _     <- ws *> char('}')
-    } yield YamlValue.Mapping(pairs.toMap)
-
-    parser.runtime.interpret(mapParser, state)
+    (keyStr, value)
   }
+
+  for {
+    _     <- char('{') *> ws
+    pairs <- pair.sepBy(ws *> char(',') *> ws)
+    _     <- ws *> char('}')
+  } yield YamlValue.Mapping(pairs.toMap)
+}
 
 // ============================================================================
 // Block Style (Indentation-based)
 // ============================================================================
 
-private def blockSequence: Parser[ParseError, YamlValue] =
-  Parser.Custom { state =>
-    val item = for {
-      _     <- char('-') *> hspace.many1
-      value <- yamlScalar
-      _     <- newline.optional
-    } yield value
+// These don't need Parser.Custom - they only reference yamlScalar (no recursion)
+private def blockSequence: Parser[ParseError, YamlValue] = {
+  val item = for {
+    _     <- char('-') *> hspace.many1
+    value <- yamlScalar
+    _     <- newline.optional
+  } yield value
 
-    val seqParser = item.many1.map(YamlValue.Sequence.apply)
+  item.many1.map(YamlValue.Sequence.apply)
+}
 
-    parser.runtime.interpret(seqParser, state)
-  }
+private def blockMapping: Parser[ParseError, YamlValue] = {
+  val pair = for {
+    key   <- satisfy(c => c != ':' && c != '\n' && c != '#', "key char").many1.map(_.mkString.trim)
+    _     <- char(':')
+    _     <- hspace.many1 | newline.map(_ => ' ')
+    value <- yamlScalar
+    _     <- newline.optional
+  } yield (key, value)
 
-private def blockMapping: Parser[ParseError, YamlValue] =
-  Parser.Custom { state =>
-    val pair = for {
-      key   <- satisfy(c => c != ':' && c != '\n' && c != '#', "key char").many1.map(_.mkString.trim)
-      _     <- char(':')
-      _     <- hspace.many1 | newline.map(_ => ' ')
-      value <- yamlScalar
-      _     <- newline.optional
-    } yield (key, value)
-
-    val mapParser = pair.many1.map(pairs => YamlValue.Mapping(pairs.toMap))
-
-    parser.runtime.interpret(mapParser, state)
-  }
+  pair.many1.map(pairs => YamlValue.Mapping(pairs.toMap))
+}
 
 // ============================================================================
 // Main Value Parser
 // ============================================================================
 
-private def yamlValue: Parser[ParseError, YamlValue] =
-  Parser.Custom { state =>
-    val valueParser =
-      flowSequence |
-        flowMapping |
-        blockSequence |
-        blockMapping |
-        yamlScalar
-
-    parser.runtime.interpret(valueParser, state)
-  }
+// Use recursive because flowSequence and flowMapping reference yamlValue (indirect recursion)
+private lazy val yamlValue: Parser[ParseError, YamlValue] = recursive {
+  flowSequence |
+    flowMapping |
+    blockSequence |
+    blockMapping |
+    yamlScalar
+}
 
 // ============================================================================
 // Document
