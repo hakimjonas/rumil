@@ -6,4 +6,3 @@
 -XX:ReservedCodeCacheSize=512m
 -XX:MaxMetaspaceSize=1G
 -Dfile.encoding=UTF-8
---sun-misc-unsafe-memory-access=allow
