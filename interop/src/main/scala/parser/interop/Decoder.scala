@@ -4,7 +4,7 @@ import scala.deriving.Mirror
 import scala.quoted.{Expr, Quotes, Type}
 
 import parser.core._
-import parsers.json.JsonValue
+import parsers.json.{JsonValue, given_CanEqual_JsonValue_JsonValue}
 
 /**
  * Typeclass for decoding structured data into Scala types.
@@ -33,7 +33,7 @@ import parsers.json.JsonValue
  * // Success(Person("Alice", 30), 0)
  * }}}
  */
-trait Decoder[From, To] {
+trait Decoder[From, +To] {
 
   /**
    * Decode a value from structured data.
@@ -52,9 +52,9 @@ trait Decoder[From, To] {
   def map[B](f: To => B): Decoder[From, B] = new Decoder[From, B] {
     def decode(value: From): Result[DecodeError, B] =
       Decoder.this.decode(value) match {
-        case Result.Success(a, consumed) => Result.Success(f(a), consumed)
+        case Result.Success(a, consumed)         => Result.Success(f(a), consumed)
         case Result.Partial(a, errors, consumed) => Result.Partial(f(a), errors, consumed)
-        case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
+        case Result.Failure(errors, furthest)    => Result.Failure(errors, furthest)
       }
   }
 
@@ -71,8 +71,10 @@ trait Decoder[From, To] {
         case Result.Partial(a, errors, _) =>
           f(a).decode(value) match {
             case Result.Success(b, consumed) => Result.Partial(b, errors, consumed)
-            case Result.Partial(b, moreErrors, consumed) => Result.Partial(b, errors ++ moreErrors, consumed)
-            case Result.Failure(moreErrors, furthest) => Result.Failure(errors ++ moreErrors, furthest)
+            case Result.Partial(b, moreErrors, consumed) =>
+              Result.Partial(b, errors ++ moreErrors, consumed)
+            case Result.Failure(moreErrors, furthest) =>
+              Result.Failure(errors ++ moreErrors, furthest)
           }
         case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
       }
@@ -147,7 +149,8 @@ object Decoder {
     // (can extend to XmlNode, TomlValue later)
     TypeRepr.of[From].typeSymbol.fullName match {
       case "parsers.json.JsonValue" =>
-        generateJsonDecoder[To](className, fieldLabels, fieldSymbols, m)
+        generateJsonDecoder[To](using q)(className, fieldLabels, fieldSymbols, m)
+          .asExprOf[Decoder[From, To]]
       case other =>
         report.errorAndAbort(
           s"Decoder derivation currently only supports JsonValue as source type, got $other"
@@ -170,51 +173,45 @@ object Decoder {
    * @param mirror The Mirror instance for reconstruction
    * @return Expression representing the generated decoder
    */
-  private def generateJsonDecoder[To: Type](
-    className: String,
+  private def generateJsonDecoder[To: Type](using q: Quotes)(
+    @annotation.unused className: String,
     fieldLabels: List[String],
     fieldSymbols: List[q.reflect.Symbol],
     mirror: Expr[Mirror.ProductOf[To]]
-  )(using q: Quotes): Expr[Decoder[JsonValue, To]] = {
+  ): Expr[Decoder[JsonValue, To]] = {
     import q.reflect.*
 
-    // Summon decoders for each field type
-    case class FieldInfo(label: String, decoder: Expr[Decoder[JsonValue, Any]])
+    // Summon decoders for each field type - same pattern as Parser.derived
+    val fieldDecoders: List[Expr[Decoder[JsonValue, Any]]] =
+      fieldSymbols.map { field =>
+        val fieldType = field.tree match {
+          case v: ValDef => v.tpt.tpe
+          case _         => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
+        }
 
-    val fieldInfos: List[FieldInfo] = fieldSymbols.zip(fieldLabels).map { case (field, label) =>
-      val fieldType = field.tree match {
-        case v: ValDef => v.tpt.tpe
-        case _         => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
-      }
+        fieldType.asType match {
+          case '[ft] =>
+            Expr.summon[Decoder[JsonValue, ft]] match {
+              case Some(decoderExpr) =>
+                decoderExpr.asExprOf[Decoder[JsonValue, Any]]
+              case None =>
+                report.errorAndAbort(
+                  s"Cannot derive Decoder for ${TypeRepr.of[To].show}: " +
+                    s"missing Decoder[JsonValue, ${fieldType.show}]. " +
+                    s"Please provide a given instance."
+                )
+            }
+        }
+      }.toList
 
-      fieldType.asType match {
-        case '[ft] =>
-          Expr.summon[Decoder[JsonValue, ft]] match {
-            case Some(decoderExpr) =>
-              FieldInfo(label, decoderExpr.asExprOf[Decoder[JsonValue, Any]])
-            case None =>
-              report.errorAndAbort(
-                s"Cannot derive Decoder for ${TypeRepr.of[To].show}: " +
-                  s"missing Decoder[JsonValue, ${fieldType.show}]. " +
-                  s"Please provide a given instance."
-              )
-          }
-      }
-    }
-
-    // Generate the decoder code
-    val fieldLabelsExpr = Expr(fieldLabels)
-    val fieldInfosExprs = fieldInfos.map { case FieldInfo(label, decoder) =>
-      '{ (${ Expr(label) }, ${ decoder }) }
-    }
-    val fieldDecodersExpr: Expr[List[(String, Decoder[JsonValue, Any])]] =
-      Expr.ofList(fieldInfosExprs)
+    val fieldLabelsExpr                                   = Expr(fieldLabels)
+    val decodersExpr: Expr[List[Decoder[JsonValue, Any]]] = Expr.ofList(fieldDecoders)
 
     '{
       new Decoder[JsonValue, To] {
         def decode(value: JsonValue): Result[DecodeError, To] = {
           val fieldLabels   = ${ fieldLabelsExpr }
-          val fieldDecoders = ${ fieldDecodersExpr }
+          val fieldDecoders = ${ decodersExpr }
 
           // Expect a JsonObject
           value match {
@@ -223,7 +220,7 @@ object Decoder {
               val decodedFields = scala.collection.mutable.ListBuffer[Any]()
               val errors        = scala.collection.mutable.ListBuffer[DecodeError]()
 
-              for ((fieldName, decoder) <- fieldDecoders) {
+              for ((fieldName, decoder) <- fieldLabels.zip(fieldDecoders))
                 fields.get(fieldName) match {
                   case Some(fieldValue) =>
                     // Decode the field
@@ -246,7 +243,6 @@ object Decoder {
                       (line = 1, column = 1, offset = 0)
                     )
                 }
-              }
 
               // Reconstruct the case class
               if (errors.isEmpty) {

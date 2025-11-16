@@ -1,7 +1,7 @@
 package parser.interop
 
-import parsers.json.JsonValue
 import parser.core._
+import parsers.json.{JsonValue, given_CanEqual_JsonValue_JsonValue}
 
 /**
  * Primitive decoder instances for JSON values.
@@ -39,12 +39,14 @@ object JsonDecoders {
         )
       case JsonValue.Bool(b) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("String", s"Boolean($b)", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch("String", s"Boolean($b)", (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("String", s"Number($n)", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch("String", s"Number($n)", (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case JsonValue.Array(_) =>
@@ -71,17 +73,24 @@ object JsonDecoders {
         Result.Success(n.toInt, 0)
       case JsonValue.Number(n) if !n.isWhole =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Int", s"Number($n) - not a whole number", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "Int",
+              s"Number($n) - not a whole number",
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Int", s"Number($n) - out of range", (line = 1, column = 1, offset = 0))),
+          List(DecodeError
+            .TypeMismatch("Int", s"Number($n) - out of range", (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Int", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError
+              .TypeMismatch("Int", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -98,17 +107,27 @@ object JsonDecoders {
         Result.Success(n.toLong, 0)
       case JsonValue.Number(n) if !n.isWhole =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Long", s"Number($n) - not a whole number", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "Long",
+              s"Number($n) - not a whole number",
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Long", s"Number($n) - out of range", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "Long",
+              s"Number($n) - out of range",
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Long", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError
+              .TypeMismatch("Long", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -124,7 +143,8 @@ object JsonDecoders {
       case JsonValue.Number(n) => Result.Success(n, 0)
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Double", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(DecodeError
+            .TypeMismatch("Double", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -140,7 +160,8 @@ object JsonDecoders {
       case JsonValue.Bool(b) => Result.Success(b, 0)
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Boolean", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(DecodeError
+            .TypeMismatch("Boolean", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -157,12 +178,18 @@ object JsonDecoders {
         Result.Success(n.toByte, 0)
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Byte", s"Number($n) - out of range or not whole", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "Byte",
+              s"Number($n) - out of range or not whole",
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Byte", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError
+              .TypeMismatch("Byte", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -179,12 +206,18 @@ object JsonDecoders {
         Result.Success(n.toShort, 0)
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Short", s"Number($n) - out of range or not whole", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "Short",
+              s"Number($n) - out of range or not whole",
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Short", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError
+              .TypeMismatch("Short", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -200,7 +233,9 @@ object JsonDecoders {
       case JsonValue.Number(n) => Result.Success(n.toFloat, 0)
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("Float", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError
+              .TypeMismatch("Float", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -217,12 +252,17 @@ object JsonDecoders {
         Result.Success(BigInt(n.toLong), 0)
       case JsonValue.Number(n) =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("BigInt", s"Number($n) - not a whole number", (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "BigInt",
+              s"Number($n) - not a whole number",
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("BigInt", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(DecodeError
+            .TypeMismatch("BigInt", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -238,7 +278,11 @@ object JsonDecoders {
       case JsonValue.Number(n) => Result.Success(BigDecimal(n), 0)
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch("BigDecimal", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "BigDecimal",
+              jsonValueTypeName(other),
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -260,9 +304,9 @@ object JsonDecoders {
         case JsonValue.Null => Result.Success(None, 0)
         case other =>
           decoder.decode(other) match {
-            case Result.Success(a, consumed)        => Result.Success(Some(a), consumed)
+            case Result.Success(a, consumed)         => Result.Success(Some(a), consumed)
             case Result.Partial(a, errors, consumed) => Result.Partial(Some(a), errors, consumed)
-            case Result.Failure(errors, furthest)   => Result.Failure(errors, furthest)
+            case Result.Failure(errors, furthest)    => Result.Failure(errors, furthest)
           }
       }
     }
@@ -277,10 +321,11 @@ object JsonDecoders {
       def decode(value: JsonValue): Result[DecodeError, List[A]] = value match {
         case JsonValue.Array(elements) =>
           // Decode each element
-          val decoded = scala.collection.mutable.ListBuffer[A]()
-          val errors  = scala.collection.mutable.ListBuffer[DecodeError]()
+          val decoded                                      = scala.collection.mutable.ListBuffer[A]()
+          val errors                                       = scala.collection.mutable.ListBuffer[DecodeError]()
+          var failed: Option[Result[DecodeError, List[A]]] = None
 
-          for ((elem, idx) <- elements.zipWithIndex) {
+          for (elem <- elements if failed.isEmpty)
             decoder.decode(elem) match {
               case Result.Success(a, _) =>
                 decoded += a
@@ -289,26 +334,29 @@ object JsonDecoders {
                 errors ++= errs
               case Result.Failure(errs, _) =>
                 // On failure, we can't continue decoding
-                return Result.Failure(
-                  errs.map {
-                    case DecodeError.TypeMismatch(exp, act, loc) =>
-                      DecodeError.TypeMismatch(exp, act, loc)
-                    case other => other
-                  },
-                  (line = 1, column = 1, offset = 0)
-                )
+                failed = Some(
+                  Result.Failure(
+                    errs.map {
+                      case DecodeError.TypeMismatch(exp, act, loc) =>
+                        DecodeError.TypeMismatch(exp, act, loc)
+                      case other => other
+                    },
+                    (line = 1, column = 1, offset = 0)
+                  ))
             }
-          }
 
-          if (errors.isEmpty) {
-            Result.Success(decoded.toList, 0)
-          } else {
-            Result.Partial(decoded.toList, errors.toList, 0)
+          failed.getOrElse {
+            if (errors.isEmpty) {
+              Result.Success(decoded.toList, 0)
+            } else {
+              Result.Partial(decoded.toList, errors.toList, 0)
+            }
           }
 
         case other =>
           Result.Failure(
-            List(DecodeError.TypeMismatch("Array", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+            List(DecodeError
+              .TypeMismatch("Array", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
             (line = 1, column = 1, offset = 0)
           )
       }
@@ -322,8 +370,13 @@ object JsonDecoders {
   given [A](using decoder: Decoder[JsonValue, A]): Decoder[JsonValue, Seq[A]] =
     new Decoder[JsonValue, Seq[A]] {
       def decode(value: JsonValue): Result[DecodeError, Seq[A]] = {
-        given listDecoder: Decoder[JsonValue, List[A]] = JsonDecoders.given_Decoder_List[A]
-        listDecoder.decode(value).map(_.toSeq)
+        val listDecoder = summon[Decoder[JsonValue, List[A]]]
+        listDecoder.decode(value) match {
+          case Result.Success(list, consumed) => Result.Success(list.toSeq, consumed)
+          case Result.Partial(list, errors, consumed) =>
+            Result.Partial(list.toSeq, errors, consumed)
+          case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
+        }
       }
     }
 
@@ -335,8 +388,13 @@ object JsonDecoders {
   given [A](using decoder: Decoder[JsonValue, A]): Decoder[JsonValue, Vector[A]] =
     new Decoder[JsonValue, Vector[A]] {
       def decode(value: JsonValue): Result[DecodeError, Vector[A]] = {
-        given listDecoder: Decoder[JsonValue, List[A]] = JsonDecoders.given_Decoder_List[A]
-        listDecoder.decode(value).map(_.toVector)
+        val listDecoder = summon[Decoder[JsonValue, List[A]]]
+        listDecoder.decode(value) match {
+          case Result.Success(list, consumed) => Result.Success(list.toVector, consumed)
+          case Result.Partial(list, errors, consumed) =>
+            Result.Partial(list.toVector, errors, consumed)
+          case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
+        }
       }
     }
 
@@ -350,10 +408,11 @@ object JsonDecoders {
       def decode(value: JsonValue): Result[DecodeError, Map[String, A]] = value match {
         case JsonValue.Object(fields) =>
           // Decode each field value
-          val decoded = scala.collection.mutable.Map[String, A]()
-          val errors  = scala.collection.mutable.ListBuffer[DecodeError]()
+          val decoded                                             = scala.collection.mutable.Map[String, A]()
+          val errors                                              = scala.collection.mutable.ListBuffer[DecodeError]()
+          var failed: Option[Result[DecodeError, Map[String, A]]] = None
 
-          for ((key, fieldValue) <- fields) {
+          for ((key, fieldValue) <- fields if failed.isEmpty)
             decoder.decode(fieldValue) match {
               case Result.Success(a, _) =>
                 decoded(key) = a
@@ -361,19 +420,24 @@ object JsonDecoders {
                 decoded(key) = a
                 errors ++= errs
               case Result.Failure(errs, _) =>
-                return Result.Failure(errs, (line = 1, column = 1, offset = 0))
+                failed = Some(Result.Failure(errs, (line = 1, column = 1, offset = 0)))
             }
-          }
 
-          if (errors.isEmpty) {
-            Result.Success(decoded.toMap, 0)
-          } else {
-            Result.Partial(decoded.toMap, errors.toList, 0)
+          failed.getOrElse {
+            if (errors.isEmpty) {
+              Result.Success(decoded.toMap, 0)
+            } else {
+              Result.Partial(decoded.toMap, errors.toList, 0)
+            }
           }
 
         case other =>
           Result.Failure(
-            List(DecodeError.TypeMismatch("Object", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
+            List(
+              DecodeError.TypeMismatch(
+                "Object",
+                jsonValueTypeName(other),
+                (line = 1, column = 1, offset = 0))),
             (line = 1, column = 1, offset = 0)
           )
       }
