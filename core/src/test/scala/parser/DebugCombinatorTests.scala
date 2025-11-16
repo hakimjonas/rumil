@@ -128,4 +128,119 @@ class DebugCombinatorTests extends FunSuite {
     assertEquals(result1.toOption, Some(Some('5')))
     assertEquals(result2.toOption, Some(None))
   }
+
+  // ============================================================================
+  // Partial Result Tests
+  // ============================================================================
+
+  test("trace returns identical result on partial success") {
+    import parser.syntax.ErrorRecovery.*
+    val parser = char('a').recoverWith(char('x')).trace("partial-test")
+    val result = parser.run("x")
+    assert(result.isPartial)
+    result match {
+      case Result.Partial(value, errors, consumed) =>
+        assertEquals(value, 'x')
+        assertEquals(consumed, 1)
+        assert(errors.nonEmpty)
+      case _ => fail("Expected partial result")
+    }
+  }
+
+  test("debug returns identical result on partial success") {
+    import parser.syntax.ErrorRecovery.*
+    val parser = char('a').recoverWith(char('b')).debug("partial-debug")
+    val result = parser.run("b")
+    assert(result.isPartial)
+    result match {
+      case Result.Partial(value, errors, consumed) =>
+        assertEquals(value, 'b')
+        assertEquals(consumed, 1)
+        assert(errors.nonEmpty)
+      case _ => fail("Expected partial result")
+    }
+  }
+
+  test("trace preserves errors in partial results") {
+    import parser.syntax.ErrorRecovery.*
+    val parser = digit.recoverWith(char('?')).trace("error-trace")
+    val result = parser.run("?")
+    result match {
+      case Result.Partial(_, errors, _) =>
+        assert(errors.nonEmpty)
+      case _ => fail("Expected partial result with errors")
+    }
+  }
+
+  test("debug preserves errors in partial results") {
+    import parser.syntax.ErrorRecovery.*
+    val parser = digit.recoverWith(char('!')).debug("error-debug")
+    val result = parser.run("!")
+    result match {
+      case Result.Partial(_, errors, _) =>
+        assert(errors.nonEmpty)
+      case _ => fail("Expected partial result with errors")
+    }
+  }
+
+  // ============================================================================
+  // Complex Parser Tests
+  // ============================================================================
+
+  test("trace with sepBy combinator") {
+    val parser = digit.sepBy(char(',')).trace("csv-numbers")
+    val result = parser.run("1,2,3")
+    assertEquals(result.toOption, Some(List('1', '2', '3')))
+  }
+
+  test("debug with sepBy combinator") {
+    val parser = digit.sepBy(char(',')).debug("csv-debug")
+    val result = parser.run("4,5,6")
+    assertEquals(result.toOption, Some(List('4', '5', '6')))
+  }
+
+  test("trace on nested parsers") {
+    val inner = digit.trace("inner-digit")
+    val outer = inner.many.trace("outer-many")
+    val result = outer.run("123")
+    assertEquals(result.toOption, Some(List('1', '2', '3')))
+  }
+
+  test("debug on nested parsers") {
+    val inner = char('x').debug("inner-x")
+    val outer = inner.many1.debug("outer-many1")
+    val result = outer.run("xxx")
+    assertEquals(result.toOption, Some(List('x', 'x', 'x')))
+  }
+
+  test("trace with sepBy1 combinator") {
+    val parser = digit.sepBy1(char(';')).trace("semicolon-sep")
+    val result = parser.run("7;8;9")
+    assertEquals(result.toOption, Some(List('7', '8', '9')))
+  }
+
+  test("debug with error details on failure") {
+    val parser = char('a').debug("expect-a")
+    val result = parser.run("b")
+    result match {
+      case Result.Failure(errors, _) =>
+        assert(errors.nonEmpty)
+      case _ => fail("Expected failure")
+    }
+  }
+
+  test("trace with multiple parsers in sequence") {
+    val parser =
+      char('a').trace("first") ~
+        char('b').trace("second") ~
+        char('c').trace("third")
+    val result = parser.run("abc")
+    assertEquals(result.toOption, Some((('a', 'b'), 'c')))
+  }
+
+  test("debug with tuple results") {
+    val parser = (digit ~ char(',') ~ digit).debug("tuple-parse")
+    val result = parser.run("1,2")
+    assertEquals(result.toOption, Some((('1', ','), '2')))
+  }
 }
