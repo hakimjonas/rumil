@@ -22,7 +22,7 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 // Command aliases for convenience
 addCommandAlias("testAll", ";core/test;parsers/test")
-addCommandAlias("prepare", ";scalafmtAll;scalafixAll")
+addCommandAlias("prepare", ";scalafmtAll;scalafmtSbt;scalafixAll")
 
 javacOptions ++= Seq(
   "--release",
