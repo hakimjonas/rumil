@@ -1,7 +1,7 @@
 package parser.interop
 
-import parser.core.*
-import parser.syntax.*
+import parser.core._
+import parser.syntax._
 
 /**
  * Primitive parsers for basic Scala types.
@@ -68,13 +68,13 @@ object Primitives {
    * Simplified for POC - doesn't handle scientific notation, infinity, NaN, etc.
    */
   given Parser[ParseError, Double] = {
-    val wholePart = digit.many1
+    val wholePart      = digit.many1
     val fractionalPart = char('.') *> digit.many1
-    val positiveDouble = (wholePart ~ fractionalPart).map {
-      case (whole, frac) => s"${whole.mkString}.${frac.mkString}".toDouble
+    val positiveDouble = (wholePart ~ fractionalPart).map { case (whole, frac) =>
+      s"${whole.mkString}.${frac.mkString}".toDouble
     }
-    val negativeDouble = char('-') *> (wholePart ~ fractionalPart).map {
-      case (whole, frac) => s"-${whole.mkString}.${frac.mkString}".toDouble
+    val negativeDouble = char('-') *> (wholePart ~ fractionalPart).map { case (whole, frac) =>
+      s"-${whole.mkString}.${frac.mkString}".toDouble
     }
     (negativeDouble | positiveDouble).named("Double")
   }

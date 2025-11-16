@@ -1,10 +1,10 @@
 package parser.interop
 
 import munit.FunSuite
-import parser.core.*
-import parser.syntax.*
-import parser.interop.Primitives.given
+import parser.core._
 import parser.interop.Parser.derived
+import parser.interop.Primitives.given
+import parser.syntax._
 
 /**
  * Test suite for automatic parser derivation.

@@ -2,7 +2,8 @@ package parser.interop
 
 import scala.deriving.Mirror
 import scala.quoted.{Expr, Quotes, Type}
-import parser.core.*
+
+import parser.core._
 
 /**
  * Automatic parser derivation for case classes using Scala 3 macros.
@@ -64,7 +65,7 @@ object Parser {
     val className: String = TypeRepr.of[A].typeSymbol.name
 
     // Get labels and element types by inspecting case class directly
-    val aSymbol = TypeRepr.of[A].typeSymbol
+    val aSymbol      = TypeRepr.of[A].typeSymbol
     val fieldSymbols = aSymbol.caseFields
 
     // Extract field labels
@@ -75,7 +76,7 @@ object Parser {
       fieldSymbols.map { field =>
         val fieldType = field.tree match {
           case v: ValDef => v.tpt.tpe
-          case _ => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
+          case _         => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
         }
 
         fieldType.asType match {
@@ -86,8 +87,8 @@ object Parser {
               case None =>
                 report.errorAndAbort(
                   s"Cannot derive Parser for ${TypeRepr.of[A].show}: " +
-                  s"missing Parser[ParseError, ${fieldType.show}]. " +
-                  s"Please provide a given instance."
+                    s"missing Parser[ParseError, ${fieldType.show}]. " +
+                    s"Please provide a given instance."
                 )
             }
         }
@@ -134,15 +135,16 @@ object Parser {
 
         // Build the parser: ClassName(field1,field2,field3)
         val classNameParser = string(${ Expr(className) })
-        val openParen = char('(')
-        val closeParen = char(')')
-        val comma = char(',')
+        val openParen       = char('(')
+        val closeParen      = char(')')
+        val comma           = char(',')
 
         // Parse the class name and opening paren
         val prefixParser = classNameParser ~ openParen
 
         // Parse fields separated by commas
-        def parseFields(remaining: List[parser.core.Parser[ParseError, Any]]): parser.core.Parser[ParseError, List[Any]] = {
+        def parseFields(remaining: List[parser.core.Parser[ParseError, Any]])
+          : parser.core.Parser[ParseError, List[Any]] =
           remaining match {
             case Nil => parser.core.Parser.Succeed(Nil)
             case head :: Nil =>
@@ -152,7 +154,6 @@ object Parser {
                 parseFields(tail).map(restValues => firstValue :: restValues)
               }
           }
-        }
 
         val fieldsParser = parseFields(parsers)
 
