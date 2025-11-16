@@ -27,6 +27,23 @@ def run[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
 }
 
 /**
+ * Formats a ParseError for debug output.
+ *
+ * @param error The error to format
+ * @return A human-readable string representation
+ */
+private def formatError(error: Any): String = error match {
+  case ParseError.Unexpected(found, expected, loc) =>
+    s"Unexpected('$found', expected: ${expected.mkString(", ")}, at $loc)"
+  case ParseError.EndOfInput(expected, loc) =>
+    s"EndOfInput(expected: $expected, at $loc)"
+  case ParseError.Custom(msg, loc) =>
+    s"$msg at $loc"
+  case other =>
+    other.toString
+}
+
+/**
  * Interprets a parser against mutable state.
  *
  * This function is public to enable advanced use cases like recursive
@@ -202,7 +219,7 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           success
         case partial @ Result.Partial(_, errors, consumed) =>
           System.err.println(
-            s"[TRACE] $label: partial success, consumed $consumed chars, ${errors.length} errors")
+            s"[TRACE] $label: partial success, consumed $consumed chars with ${errors.length} errors")
           partial
         case failure @ Result.Failure(_, _) =>
           System.err.println(s"[TRACE] $label: failed")
@@ -216,12 +233,13 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           System.err.println(s"[DEBUG] $label: success, parsed $value")
           success
         case partial @ Result.Partial(value, errors, _) =>
+          val errorList = errors.map(formatError).mkString(", ")
           System.err.println(
-            s"[DEBUG] $label: partial success, parsed $value with ${errors.length} errors")
+            s"[DEBUG] $label: partial success, parsed $value with errors: $errorList")
           partial
         case failure @ Result.Failure(errors, _) =>
-          System.err.println(
-            s"[DEBUG] $label: failed with ${errors.headOption.getOrElse("unknown error")}")
+          val error = errors.headOption.map(formatError).getOrElse("unknown error")
+          System.err.println(s"[DEBUG] $label: failed with $error")
           failure
       }
 
