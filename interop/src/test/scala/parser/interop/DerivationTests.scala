@@ -50,6 +50,8 @@ class DerivationTests extends FunSuite {
         assertEquals(person.name, "Alice")
         assertEquals(person.age, 30)
         assertEquals(consumed, 16)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -62,6 +64,8 @@ class DerivationTests extends FunSuite {
         assertEquals(point.x, 10)
         assertEquals(point.y, 20)
         assertEquals(consumed, 12)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -74,6 +78,8 @@ class DerivationTests extends FunSuite {
         assertEquals(config.host, "localhost")
         assertEquals(config.port, 8080)
         assertEquals(config.enabled, true)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -85,6 +91,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(measurement, consumed) =>
         assertEquals(measurement.name, "temperature")
         assertEquals(measurement.value, 98.6)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -95,6 +103,8 @@ class DerivationTests extends FunSuite {
     parser.run("Counter(1234567890)") match {
       case Result.Success(counter, consumed) =>
         assertEquals(counter.count, 1234567890L)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -105,6 +115,8 @@ class DerivationTests extends FunSuite {
     parser.run("SingleField(42)") match {
       case Result.Success(sf, consumed) =>
         assertEquals(sf.value, 42)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -119,6 +131,8 @@ class DerivationTests extends FunSuite {
         assertEquals(mf.c, false)
         assertEquals(mf.d, 999L)
         assertEquals(mf.e, 3.14)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -130,6 +144,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(point, consumed) =>
         assertEquals(point.x, -5)
         assertEquals(point.y, -10)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -141,6 +157,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(measurement, consumed) =>
         assertEquals(measurement.name, "temp")
         assertEquals(measurement.value, -98.6)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -153,6 +171,8 @@ class DerivationTests extends FunSuite {
         assertEquals(config.host, "host")
         assertEquals(config.port, 80)
         assertEquals(config.enabled, false)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -167,6 +187,8 @@ class DerivationTests extends FunSuite {
     parser.run("NotPerson(Alice,30)") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -177,6 +199,8 @@ class DerivationTests extends FunSuite {
     parser.run("PersonAlice,30)") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -187,6 +211,8 @@ class DerivationTests extends FunSuite {
     parser.run("Person(Alice,30") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -197,6 +223,8 @@ class DerivationTests extends FunSuite {
     parser.run("Person(Alice30)") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -207,6 +235,8 @@ class DerivationTests extends FunSuite {
     parser.run("Person(Alice,NotANumber)") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -217,6 +247,8 @@ class DerivationTests extends FunSuite {
     parser.run("") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -227,6 +259,8 @@ class DerivationTests extends FunSuite {
     parser.run("Person(Alice)") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -237,6 +271,8 @@ class DerivationTests extends FunSuite {
     parser.run("Config(host,80,yes)") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -258,6 +294,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(person, _) =>
         assertEquals(person.name, "Alice")
         assertEquals(person.age, Some(30))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -269,6 +307,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(person, _) =>
         assertEquals(person.name, "Bob")
         assertEquals(person.age, None)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -280,6 +320,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(fields, _) =>
         assertEquals(fields.x, Some(42))
         assertEquals(fields.y, Some("test"))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -291,6 +333,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(fields, _) =>
         assertEquals(fields.x, Some(42))
         assertEquals(fields.y, None)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -301,6 +345,8 @@ class DerivationTests extends FunSuite {
     parser.run("PersonWithAge(Alice,Just(30))") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -324,6 +370,8 @@ class DerivationTests extends FunSuite {
     parser.run("Tags(List(scala,fp,parsing))") match {
       case Result.Success(tags, _) =>
         assertEquals(tags.items, List("scala", "fp", "parsing"))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -334,6 +382,8 @@ class DerivationTests extends FunSuite {
     parser.run("Tags(List())") match {
       case Result.Success(tags, _) =>
         assertEquals(tags.items, List.empty[String])
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -344,6 +394,8 @@ class DerivationTests extends FunSuite {
     parser.run("Numbers(Seq(1,2,3,4,5))") match {
       case Result.Success(numbers, _) =>
         assertEquals(numbers.values, Seq(1, 2, 3, 4, 5))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -354,6 +406,8 @@ class DerivationTests extends FunSuite {
     parser.run("Coordinates(Vector(10,20,30))") match {
       case Result.Success(coords, _) =>
         assertEquals(coords.points, Vector(10, 20, 30))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -364,6 +418,8 @@ class DerivationTests extends FunSuite {
     parser.run("Tags(List(a,b,c)") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -374,6 +430,8 @@ class DerivationTests extends FunSuite {
     parser.run("Numbers(Seq(-5,0,10,-20))") match {
       case Result.Success(numbers, _) =>
         assertEquals(numbers.values, Seq(-5, 0, 10, -20))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -405,6 +463,8 @@ class DerivationTests extends FunSuite {
         assertEquals(person.name, "Alice")
         assertEquals(person.address.street, "MainSt")
         assertEquals(person.address.city, "NYC")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -418,6 +478,8 @@ class DerivationTests extends FunSuite {
         assertEquals(dept.company.name, "Acme")
         assertEquals(dept.company.address.street, "MainSt")
         assertEquals(dept.company.address.city, "NYC")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -430,6 +492,8 @@ class DerivationTests extends FunSuite {
         assertEquals(emp.name, "Bob")
         assertEquals(emp.address.map(_.street), Some("OakAve"))
         assertEquals(emp.address.map(_.city), Some("SF"))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -441,6 +505,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(emp, _) =>
         assertEquals(emp.name, "Charlie")
         assertEquals(emp.address, None)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -451,6 +517,8 @@ class DerivationTests extends FunSuite {
     parser.run("PersonWithAddress(Alice,Point(1,2))") match {
       case Result.Success(_, _) =>
         fail("Expected failure, got success")
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         assert(errors.nonEmpty)
     }
@@ -477,6 +545,8 @@ class DerivationTests extends FunSuite {
     parser.run("CharValue('a')") match {
       case Result.Success(cv, _) =>
         assertEquals(cv.c, 'a')
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -488,6 +558,8 @@ class DerivationTests extends FunSuite {
       case Result.Success(bs, _) =>
         assertEquals(bs.b, 127.toByte)
         assertEquals(bs.s, 32000.toShort)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -498,6 +570,8 @@ class DerivationTests extends FunSuite {
     parser.run("BigIntValue(123456789012345678901234567890)") match {
       case Result.Success(bi, _) =>
         assertEquals(bi.value, BigInt("123456789012345678901234567890"))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -508,6 +582,8 @@ class DerivationTests extends FunSuite {
     parser.run("BigDecimalValue(123.456)") match {
       case Result.Success(bd, _) =>
         assertEquals(bd.value, BigDecimal("123.456"))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -550,6 +626,8 @@ class DerivationTests extends FunSuite {
         assertEquals(user.emails, List("a", "b"))
         assertEquals(user.address.map(_.street), Some("Main"))
         assertEquals(user.address.map(_.city), Some("NYC"))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -563,6 +641,8 @@ class DerivationTests extends FunSuite {
         assertEquals(user.age, None)
         assertEquals(user.emails, List.empty[String])
         assertEquals(user.address, None)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -578,6 +658,8 @@ class DerivationTests extends FunSuite {
         assertEquals(cn.metadata.get.host, "localhost")
         assertEquals(cn.metadata.get.port, 8080)
         assertEquals(cn.metadata.get.enabled, true)
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -592,6 +674,8 @@ class DerivationTests extends FunSuite {
         assertEquals(mt.precision, BigDecimal("123.456"))
         assertEquals(mt.flag, Some(true))
         assertEquals(mt.items, List(1, 2, 3))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }
@@ -606,6 +690,8 @@ class DerivationTests extends FunSuite {
         assertEquals(mt.precision, BigDecimal("-99.99"))
         assertEquals(mt.flag, None)
         assertEquals(mt.items, List(-1, -2))
+      case Result.Partial(_, errors, _) =>
+        fail(s"Expected success, got partial with errors: $errors")
       case Result.Failure(errors, _) =>
         fail(s"Expected success, got errors: $errors")
     }

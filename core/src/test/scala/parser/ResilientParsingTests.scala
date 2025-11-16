@@ -2,20 +2,24 @@ package parser
 
 import munit.FunSuite
 import parser.core.{_, given}
+import parser.runtime.{parserState, run}
 import parser.syntax.ErrorRecovery._
-import parser.syntax.Extensions._
-import parser.runtime._
+import parser.syntax.{many => _, recoverWith => _, run => _, _}
 
 class ResilientParsingTests extends FunSuite {
 
   // Helper to create spans
-  def mkSpan(startLine: Int, startCol: Int, startOff: Int,
-             endLine: Int, endCol: Int, endOff: Int): Span = {
+  def mkSpan(
+    startLine: Int,
+    startCol: Int,
+    startOff: Int,
+    endLine: Int,
+    endCol: Int,
+    endOff: Int): Span =
     (
       start = (line = startLine, column = startCol, offset = startOff),
       end = (line = endLine, column = endCol, offset = endOff)
     )
-  }
 
   // ============================================================================
   // Error Recovery Tests (10+ tests)
@@ -111,7 +115,7 @@ class ResilientParsingTests extends FunSuite {
   }
 
   test("errorToken creates error marker") {
-    val state = parserState("test")
+    val state   = parserState("test")
     val errNode = errorToken("test error", state)
 
     errNode match {
@@ -136,7 +140,7 @@ class ResilientParsingTests extends FunSuite {
       case Result.Failure(errors, _) =>
         assert(errors.exists {
           case ParseError.Custom(msg, _) => msg.contains("expected 'a'")
-          case _ => false
+          case _                         => false
         })
       case _ => fail("Expected Failure")
     }
@@ -157,7 +161,7 @@ class ResilientParsingTests extends FunSuite {
   // ============================================================================
 
   test("parser collects multiple errors from sequence") {
-    val parser = (char('a') ~ char('b') ~ char('c'))
+    val parser = char('a') ~ char('b') ~ char('c')
 
     run(parser, "abc") match {
       case Result.Success(_, _) =>
@@ -197,7 +201,7 @@ class ResilientParsingTests extends FunSuite {
 
     val child1 = GreenNode.token(TokenKind.Identifier, "foo", span1)
     val child2 = GreenNode.token(TokenKind.Error, "err", span2)
-    val tree = GreenNode.tree(SyntaxKind.Expression, child1, child2)
+    val tree   = GreenNode.tree(SyntaxKind.Expression, child1, child2)
 
     val reconstructed = GreenNode.toSource(tree)
     assertEquals(reconstructed, "fooerr")
@@ -209,16 +213,16 @@ class ResilientParsingTests extends FunSuite {
 
     val child1 = GreenNode.token(TokenKind.Error, "e", span1)
     val child2 = GreenNode.token(TokenKind.Identifier, "x", span2)
-    val tree = GreenNode.tree(SyntaxKind.Expression, child1, child2)
-    val red = RedTree(tree)
+    val tree   = GreenNode.tree(SyntaxKind.Expression, child1, child2)
+    val red    = RedTree(tree)
 
     val errors = red.validate
     assertEquals(errors.length, 1)
   }
 
   test("multiple partial results accumulate errors") {
-    val parser1 = char('a').recoverWith(char('b'))
-    val parser2 = char('c').recoverWith(char('d'))
+    val parser1  = char('a').recoverWith(char('b'))
+    val parser2  = char('c').recoverWith(char('d'))
     val combined = parser1 ~ parser2
 
     run(combined, "bd") match {
@@ -236,7 +240,7 @@ class ResilientParsingTests extends FunSuite {
   // ============================================================================
 
   test("resilient parser handles simple malformed input") {
-    val parser = char('(') ~ char('a') ~ char(')')
+    val parser          = char('(') ~ char('a') ~ char(')')
     val resilientParser = parser.resilient
 
     run(resilientParser, "(a)") match {
@@ -262,10 +266,10 @@ class ResilientParsingTests extends FunSuite {
     val span3 = mkSpan(1, 5, 4, 1, 8, 7)
 
     val input = "foo bar"
-    val tok1 = GreenNode.token(TokenKind.Identifier, "foo", span1)
-    val tok2 = GreenNode.token(TokenKind.Whitespace, " ", span2)
-    val tok3 = GreenNode.token(TokenKind.Identifier, "bar", span3)
-    val tree = GreenNode.tree(SyntaxKind.Expression, tok1, tok2, tok3)
+    val tok1  = GreenNode.token(TokenKind.Identifier, "foo", span1)
+    val tok2  = GreenNode.token(TokenKind.Whitespace, " ", span2)
+    val tok3  = GreenNode.token(TokenKind.Identifier, "bar", span3)
+    val tree  = GreenNode.tree(SyntaxKind.Expression, tok1, tok2, tok3)
 
     val reconstructed = GreenNode.toSource(tree)
     assertEquals(reconstructed, input)
@@ -279,15 +283,15 @@ class ResilientParsingTests extends FunSuite {
     val child1 = GreenNode.token(TokenKind.Identifier, "foo", span1)
     val child2 = GreenNode.token(TokenKind.Error, "err", span2)
     val child3 = GreenNode.token(TokenKind.Identifier, "bar", span3)
-    val tree = GreenNode.tree(SyntaxKind.Expression, child1, child2, child3)
-    val red = RedTree(tree)
+    val tree   = GreenNode.tree(SyntaxKind.Expression, child1, child2, child3)
+    val red    = RedTree(tree)
 
     val nodeAt4 = red.nodeAt(4)
     assert(nodeAt4.isDefined)
     // Should find the error token
     nodeAt4.get.kind match {
       case Left(TokenKind.Error) => assert(true)
-      case _ => assert(true) // May find parent tree
+      case _                     => assert(true) // May find parent tree
     }
   }
 
@@ -302,7 +306,7 @@ class ResilientParsingTests extends FunSuite {
 
     val innerTree = GreenNode.tree(SyntaxKind.Expression, child1, child2)
     val outerTree = GreenNode.tree(SyntaxKind.Statement, innerTree, child3)
-    val red = RedTree(outerTree)
+    val red       = RedTree(outerTree)
 
     val errors = red.validate
     assertEquals(errors.length, 1)
@@ -336,7 +340,7 @@ class ResilientParsingTests extends FunSuite {
 
   test("RedTree with empty tree") {
     val tree = GreenNode.tree(SyntaxKind.Block)
-    val red = RedTree(tree)
+    val red  = RedTree(tree)
 
     assertEquals(red.children.length, 0)
     assertEquals(red.length, 0)
@@ -348,7 +352,7 @@ class ResilientParsingTests extends FunSuite {
 
     val child1 = GreenNode.token(TokenKind.Keyword, "let", span1)
     val child2 = GreenNode.token(TokenKind.Error, "err", span2)
-    val tree = GreenNode.tree(SyntaxKind.Statement, child1, child2)
+    val tree   = GreenNode.tree(SyntaxKind.Statement, child1, child2)
 
     tree match {
       case GreenNode.Tree(kind, children) =>
@@ -385,8 +389,8 @@ class ResilientParsingTests extends FunSuite {
   }
 
   test("Or combinator prefers success over partial") {
-    val parser1 = char('a').recoverWith(char('b'))
-    val parser2 = char('c')
+    val parser1  = char('a').recoverWith(char('b'))
+    val parser2  = char('c')
     val combined = parser1 | parser2
 
     run(combined, "c") match {

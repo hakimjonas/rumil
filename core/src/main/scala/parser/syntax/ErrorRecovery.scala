@@ -1,7 +1,7 @@
 package parser.syntax
 
-import parser.core.*
-import parser.runtime.*
+import parser.core._
+import parser.runtime._
 
 /**
  * Error recovery combinators for resilient parsing.
@@ -46,36 +46,28 @@ object ErrorRecovery {
      */
     def skipUntil(pred: Parser[E, Any]): Parser[E, A] =
       Parser.Custom { state =>
-        val startLoc = state.location
-
         interpret(p, state) match {
-          case success @ Result.Success(_, _) => success
+          case success @ Result.Success(_, _)    => success
+          case partial @ Result.Partial(_, _, _) => partial
 
           case Result.Failure(errors, furthest) =>
             // Try to find recovery point
-            var skipped = 0
             var found = false
 
             while (!state.atEnd && !found) {
               val snapshot = state.save
               interpret(pred, state) match {
-                case Result.Success(_, _) =>
+                case Result.Success(_, _) | Result.Partial(_, _, _) =>
                   state.restore(snapshot)
                   found = true
                 case Result.Failure(_, _) =>
                   state.restore(snapshot)
                   state.advance()
-                  skipped += 1
               }
             }
 
-            if (found || state.atEnd) {
-              // We found a recovery point or reached end
-              // Return failure with the original errors
-              Result.Failure(errors, furthest)
-            } else {
-              Result.Failure(errors, furthest)
-            }
+            // Return failure with the original errors
+            Result.Failure(errors, furthest)
         }
       }
 
@@ -100,7 +92,8 @@ object ErrorRecovery {
         val snapshot = state.save
 
         interpret(p, state) match {
-          case success @ Result.Success(_, _) => success
+          case success @ Result.Success(_, _)    => success
+          case partial @ Result.Partial(_, _, _) => partial
 
           case Result.Failure(errors, furthest) =>
             state.restore(snapshot)
@@ -109,11 +102,17 @@ object ErrorRecovery {
                 // Recovered successfully, but note the errors
                 Result.Partial(value, errors, consumed)
 
+              case Result.Partial(value, recoveryErrors, consumed) =>
+                // Recovery was partial, combine all errors
+                Result.Partial(value, errors ++ recoveryErrors, consumed)
+
               case Result.Failure(recoveryErrors, recoveryFurthest) =>
                 // Both failed, combine errors
                 val combinedErrors = errors ++ recoveryErrors
-                val finalFurthest = if (furthest.offset > recoveryFurthest.offset)
-                  furthest else recoveryFurthest
+                val finalFurthest =
+                  if (furthest.offset > recoveryFurthest.offset)
+                    furthest
+                  else recoveryFurthest
                 Result.Failure(combinedErrors, finalFurthest)
             }
         }
@@ -137,9 +136,9 @@ object ErrorRecovery {
     def resilient: Parser[E, A] =
       Parser.Custom { state =>
         interpret(p, state) match {
-          case success @ Result.Success(_, _) => success
+          case success @ Result.Success(_, _)    => success
           case partial @ Result.Partial(_, _, _) => partial
-          case Result.Failure(errors, _) =>
+          case Result.Failure(errors, _)         =>
             // Try to recover by consuming one character as error token
             if (!state.atEnd) {
               val errorStart = state.location
@@ -250,10 +249,12 @@ object ErrorRecovery {
     def expect(errorMsg: String): Parser[E, A] =
       Parser.Custom { state =>
         interpret(p, state) match {
-          case success @ Result.Success(_, _) => success
-          case Result.Failure(errors, furthest) =>
+          case success @ Result.Success(_, _)    => success
+          case partial @ Result.Partial(_, _, _) => partial
+          case Result.Failure(errors, furthest)  =>
             // Parser failed - this is now an error we need to report
-            val enhancedErrors = ParseError.Custom(errorMsg, state.location) :: errors.asInstanceOf[List[ParseError]]
+            val enhancedErrors =
+              ParseError.Custom(errorMsg, state.location) :: errors.asInstanceOf[List[ParseError]]
             Result.Failure(enhancedErrors.asInstanceOf[List[E]], furthest)
         }
       }
@@ -274,7 +275,7 @@ object ErrorRecovery {
    * @return A GreenNode token marked as an error
    */
   def errorToken(message: String, state: ParserState): GreenNode = {
-    val loc = state.location
+    val loc        = state.location
     val span: Span = (start = loc, end = loc)
     GreenNode.Token(TokenKind.Error, message, span)
   }
@@ -288,12 +289,12 @@ object ErrorRecovery {
    */
   def skipTrivia: Parser[ParseError, Unit] =
     Parser.Custom { state =>
-      while (!state.atEnd) {
+      var continue = true
+      while (!state.atEnd && continue)
         state.current match {
           case Some(c) if c.isWhitespace => state.advance()
-          case _ => return Result.Success((), 0)
+          case _                         => continue = false
         }
-      }
       Result.Success((), 0)
     }
 }

@@ -8,22 +8,26 @@ import parser.core.{_, given}
 class RedTreeTests extends FunSuite {
 
   // Helper to create spans
-  def mkSpan(startLine: Int, startCol: Int, startOff: Int,
-             endLine: Int, endCol: Int, endOff: Int): Span = {
+  def mkSpan(
+    startLine: Int,
+    startCol: Int,
+    startOff: Int,
+    endLine: Int,
+    endCol: Int,
+    endOff: Int): Span =
     (
       start = (line = startLine, column = startCol, offset = startOff),
       end = (line = endLine, column = endCol, offset = endOff)
     )
-  }
 
   // ============================================================================
   // RedTree Basic Construction Tests
   // ============================================================================
 
   test("RedTree wraps GreenNode at offset 0") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assertEquals(red.offset, 0)
     assertEquals(red.green, green)
@@ -31,9 +35,9 @@ class RedTreeTests extends FunSuite {
   }
 
   test("RedTree computes correct span for token") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assertEquals(red.span.start.offset, 0)
     assertEquals(red.span.end.offset, 3)
@@ -41,9 +45,9 @@ class RedTreeTests extends FunSuite {
 
   test("RedTree computes correct span for tree with single child") {
     val childSpan = mkSpan(1, 1, 0, 1, 3, 2)
-    val child = number("42", childSpan)
-    val green = expression(child)
-    val red = RedTree(green)
+    val child     = number("42", childSpan)
+    val green     = expression(child)
+    val red       = RedTree(green)
 
     assertEquals(red.span.start.offset, 0)
     assertEquals(red.span.end.offset, 2)
@@ -57,25 +61,25 @@ class RedTreeTests extends FunSuite {
     val child1 = identifier("foo", span1)
     val child2 = token(TokenKind.Whitespace, " ", span2)
     val child3 = number("42", span3)
-    val green = expression(child1, child2, child3)
-    val red = RedTree(green)
+    val green  = expression(child1, child2, child3)
+    val red    = RedTree(green)
 
     assertEquals(red.span.start.offset, 0)
     assertEquals(red.span.end.offset, 6)
   }
 
   test("RedTree returns correct text") {
-    val span = mkSpan(1, 1, 0, 1, 6, 5)
+    val span  = mkSpan(1, 1, 0, 1, 6, 5)
     val green = identifier("hello", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assertEquals(red.text, "hello")
   }
 
   test("RedTree computes correct length") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assertEquals(red.length, 3)
   }
@@ -85,9 +89,9 @@ class RedTreeTests extends FunSuite {
   // ============================================================================
 
   test("RedTree token has no children") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assertEquals(red.children.length, 0)
   }
@@ -98,8 +102,8 @@ class RedTreeTests extends FunSuite {
 
     val child1 = identifier("a", span1)
     val child2 = number("1", span2)
-    val green = expression(child1, child2)
-    val red = RedTree(green)
+    val green  = expression(child1, child2)
+    val red    = RedTree(green)
 
     assertEquals(red.children.length, 2)
   }
@@ -112,8 +116,8 @@ class RedTreeTests extends FunSuite {
     val child1 = identifier("foo", span1)
     val child2 = token(TokenKind.Whitespace, " ", span2)
     val child3 = number("42", span3)
-    val green = expression(child1, child2, child3)
-    val red = RedTree(green)
+    val green  = expression(child1, child2, child3)
+    val red    = RedTree(green)
 
     val children = red.children
     assertEquals(children(0).offset, 0)
@@ -127,8 +131,8 @@ class RedTreeTests extends FunSuite {
 
     val child1 = identifier("a", span1)
     val child2 = number("1", span2)
-    val green = expression(child1, child2)
-    val red = RedTree(green)
+    val green  = expression(child1, child2)
+    val red    = RedTree(green)
 
     red.children.foreach { child =>
       assert(child.parent.isDefined)
@@ -144,16 +148,16 @@ class RedTreeTests extends FunSuite {
     val span1 = mkSpan(1, 1, 0, 1, 2, 1)
     val child = identifier("x", span1)
     val green = expression(child)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     val childRed = red.children(0)
     assertEquals(childRed.parentNode, Some(red))
   }
 
   test("RedTree root has no parent") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assertEquals(red.parentNode, None)
   }
@@ -166,8 +170,8 @@ class RedTreeTests extends FunSuite {
     val child1 = identifier("a", span1)
     val child2 = identifier("b", span2)
     val child3 = identifier("c", span3)
-    val green = expression(child1, child2, child3)
-    val red = RedTree(green)
+    val green  = expression(child1, child2, child3)
+    val red    = RedTree(green)
 
     val children = red.children
     assertEquals(children(0).nextSibling, Some(children(1)))
@@ -180,8 +184,8 @@ class RedTreeTests extends FunSuite {
 
     val child1 = identifier("a", span1)
     val child2 = identifier("b", span2)
-    val green = expression(child1, child2)
-    val red = RedTree(green)
+    val green  = expression(child1, child2)
+    val red    = RedTree(green)
 
     val lastChild = red.children.last
     assertEquals(lastChild.nextSibling, None)
@@ -195,8 +199,8 @@ class RedTreeTests extends FunSuite {
     val child1 = identifier("a", span1)
     val child2 = identifier("b", span2)
     val child3 = identifier("c", span3)
-    val green = expression(child1, child2, child3)
-    val red = RedTree(green)
+    val green  = expression(child1, child2, child3)
+    val red    = RedTree(green)
 
     val children = red.children
     assertEquals(children(1).prevSibling, Some(children(0)))
@@ -209,8 +213,8 @@ class RedTreeTests extends FunSuite {
 
     val child1 = identifier("a", span1)
     val child2 = identifier("b", span2)
-    val green = expression(child1, child2)
-    val red = RedTree(green)
+    val green  = expression(child1, child2)
+    val red    = RedTree(green)
 
     val firstChild = red.children.head
     assertEquals(firstChild.prevSibling, None)
@@ -226,9 +230,9 @@ class RedTreeTests extends FunSuite {
 
     val innerChild1 = identifier("a", span1)
     val innerChild2 = number("1", span2)
-    val innerTree = expression(innerChild1, innerChild2)
-    val outerTree = statement(innerTree)
-    val red = RedTree(outerTree)
+    val innerTree   = expression(innerChild1, innerChild2)
+    val outerTree   = statement(innerTree)
+    val red         = RedTree(outerTree)
 
     val descendants = red.descendants
     // Should include: innerTree, innerChild1, innerChild2
@@ -241,9 +245,9 @@ class RedTreeTests extends FunSuite {
 
     val innerChild1 = identifier("a", span1)
     val innerChild2 = number("1", span2)
-    val innerTree = expression(innerChild1, innerChild2)
-    val outerTree = statement(innerTree)
-    val red = RedTree(outerTree)
+    val innerTree   = expression(innerChild1, innerChild2)
+    val outerTree   = statement(innerTree)
+    val red         = RedTree(outerTree)
 
     val descendants = red.descendants
     // First should be the inner tree, then its children
@@ -253,9 +257,9 @@ class RedTreeTests extends FunSuite {
   }
 
   test("RedTree token has no descendants") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assertEquals(red.descendants.length, 0)
   }
@@ -272,8 +276,8 @@ class RedTreeTests extends FunSuite {
     val child1 = identifier("foo", span1)
     val child2 = token(TokenKind.Whitespace, " ", span2)
     val child3 = number("42", span3)
-    val green = expression(child1, child2, child3)
-    val red = RedTree(green)
+    val green  = expression(child1, child2, child3)
+    val red    = RedTree(green)
 
     val nodeAt0 = red.nodeAt(0)
     assert(nodeAt0.isDefined)
@@ -285,9 +289,9 @@ class RedTreeTests extends FunSuite {
   }
 
   test("RedTree nodeAt returns None for out-of-bounds offset") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     val nodeAtNegative = red.nodeAt(-1)
     assertEquals(nodeAtNegative, None)
@@ -302,9 +306,9 @@ class RedTreeTests extends FunSuite {
 
     val innerChild1 = identifier("a", span1)
     val innerChild2 = number("1", span2)
-    val innerTree = expression(innerChild1, innerChild2)
-    val outerTree = statement(innerTree)
-    val red = RedTree(outerTree)
+    val innerTree   = expression(innerChild1, innerChild2)
+    val outerTree   = statement(innerTree)
+    val red         = RedTree(outerTree)
 
     val nodeAt0 = red.nodeAt(0)
     assert(nodeAt0.isDefined)
@@ -322,8 +326,8 @@ class RedTreeTests extends FunSuite {
 
     val child1 = identifier("foo", span1)
     val child2 = token(TokenKind.Error, "err", span2)
-    val green = expression(child1, child2)
-    val red = RedTree(green)
+    val green  = expression(child1, child2)
+    val red    = RedTree(green)
 
     val errors = red.validate
     assertEquals(errors.length, 1)
@@ -335,8 +339,8 @@ class RedTreeTests extends FunSuite {
 
     val child1 = identifier("foo", span1)
     val child2 = number("42", span2)
-    val green = expression(child1, child2)
-    val red = RedTree(green)
+    val green  = expression(child1, child2)
+    val red    = RedTree(green)
 
     val errors = red.validate
     assertEquals(errors.length, 0)
@@ -350,8 +354,8 @@ class RedTreeTests extends FunSuite {
     val child1 = token(TokenKind.Error, "e1", span1)
     val child2 = identifier("x", span2)
     val child3 = token(TokenKind.Error, "e2", span3)
-    val green = expression(child1, child2, child3)
-    val red = RedTree(green)
+    val green  = expression(child1, child2, child3)
+    val red    = RedTree(green)
 
     val errors = red.validate
     assertEquals(errors.length, 2)
@@ -362,42 +366,42 @@ class RedTreeTests extends FunSuite {
   // ============================================================================
 
   test("RedTree kind returns Left for token") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     red.kind match {
       case Left(TokenKind.Identifier) => // OK
-      case _ => fail("Expected Left(TokenKind.Identifier)")
+      case _                          => fail("Expected Left(TokenKind.Identifier)")
     }
   }
 
   test("RedTree kind returns Right for tree") {
-    val span = mkSpan(1, 1, 0, 1, 2, 1)
+    val span  = mkSpan(1, 1, 0, 1, 2, 1)
     val child = identifier("x", span)
     val green = expression(child)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     red.kind match {
       case Right(SyntaxKind.Expression) => // OK
-      case _ => fail("Expected Right(SyntaxKind.Expression)")
+      case _                            => fail("Expected Right(SyntaxKind.Expression)")
     }
   }
 
   test("RedTree isToken correctly identifies token") {
-    val span = mkSpan(1, 1, 0, 1, 4, 3)
+    val span  = mkSpan(1, 1, 0, 1, 4, 3)
     val green = identifier("foo", span)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assert(red.isToken)
     assert(!red.isTree)
   }
 
   test("RedTree isTree correctly identifies tree") {
-    val span = mkSpan(1, 1, 0, 1, 2, 1)
+    val span  = mkSpan(1, 1, 0, 1, 2, 1)
     val child = identifier("x", span)
     val green = expression(child)
-    val red = RedTree(green)
+    val red   = RedTree(green)
 
     assert(red.isTree)
     assert(!red.isToken)

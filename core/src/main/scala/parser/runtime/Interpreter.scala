@@ -99,12 +99,12 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
     case Parser.Or(left, right) =>
       val snapshot = state.save
       interpret(left, state) match {
-        case success @ Result.Success(_, _) => success
+        case success @ Result.Success(_, _)    => success
         case partial @ Result.Partial(_, _, _) => partial
         case Result.Failure(leftErrors, leftFurthest) =>
           state.restore(snapshot)
           interpret(right, state) match {
-            case success @ Result.Success(_, _) => success
+            case success @ Result.Success(_, _)    => success
             case partial @ Result.Partial(_, _, _) => partial
             case Result.Failure(rightErrors, rightFurthest) =>
               if (leftFurthest.offset > rightFurthest.offset) {
@@ -183,7 +183,7 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
 
     case Parser.Named(p, name) =>
       interpret(p, state) match {
-        case success @ Result.Success(_, _) => success
+        case success @ Result.Success(_, _)    => success
         case partial @ Result.Partial(_, _, _) => partial
         case Result.Failure(errors, furthest) =>
           val enhanced = errors.map {
@@ -201,7 +201,8 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           System.err.println(s"[TRACE] $label: success, consumed $consumed chars")
           success
         case partial @ Result.Partial(_, errors, consumed) =>
-          System.err.println(s"[TRACE] $label: partial success, consumed $consumed chars, ${errors.length} errors")
+          System.err.println(
+            s"[TRACE] $label: partial success, consumed $consumed chars, ${errors.length} errors")
           partial
         case failure @ Result.Failure(_, _) =>
           System.err.println(s"[TRACE] $label: failed")

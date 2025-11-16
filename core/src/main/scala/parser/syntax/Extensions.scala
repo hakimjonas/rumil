@@ -111,36 +111,36 @@ extension [A](p: Parser[ParseError, A]) {
 
 extension [E, A](result: Result[E, A]) {
   inline def isSuccess: Boolean = result match {
-    case Result.Success(_, _) => true
+    case Result.Success(_, _)    => true
     case Result.Partial(_, _, _) => false
-    case Result.Failure(_, _) => false
+    case Result.Failure(_, _)    => false
   }
 
   inline def isPartial: Boolean = result match {
     case Result.Partial(_, _, _) => true
-    case _ => false
+    case _                       => false
   }
 
   inline def isFailure: Boolean = result match {
     case Result.Failure(_, _) => true
-    case _ => false
+    case _                    => false
   }
 
   inline def toEither: Either[List[E], A] = result match {
-    case Result.Success(value, _)  => Right(value)
+    case Result.Success(value, _)    => Right(value)
     case Result.Partial(value, _, _) => Right(value)
-    case Result.Failure(errors, _) => Left(errors)
+    case Result.Failure(errors, _)   => Left(errors)
   }
 
   inline def toOption: Option[A] = result match {
-    case Result.Success(value, _) => Some(value)
+    case Result.Success(value, _)    => Some(value)
     case Result.Partial(value, _, _) => Some(value)
-    case Result.Failure(_, _)     => None
+    case Result.Failure(_, _)        => None
   }
 
   inline def errors: List[E] = result match {
-    case Result.Success(_, _) => List.empty
+    case Result.Success(_, _)       => List.empty
     case Result.Partial(_, errs, _) => errs
-    case Result.Failure(errs, _) => errs
+    case Result.Failure(errs, _)    => errs
   }
 }

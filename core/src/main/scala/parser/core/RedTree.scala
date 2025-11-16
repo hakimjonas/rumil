@@ -56,7 +56,7 @@ final class RedTree private (
         (start = loc, end = loc)
       } else {
         // First child starts at our offset
-        var childOffset = offset
+        var childOffset    = offset
         val firstChildSpan = GreenNode.span(children.head)
         val start = (
           line = firstChildSpan.start.line,
@@ -71,7 +71,7 @@ final class RedTree private (
         }
 
         val lastChildSpan = GreenNode.span(children.last)
-        val lastLength = lastChildSpan.end.offset - lastChildSpan.start.offset
+        val lastLength    = lastChildSpan.end.offset - lastChildSpan.start.offset
         val end = (
           line = lastChildSpan.end.line,
           column = lastChildSpan.end.column,
@@ -112,7 +112,7 @@ final class RedTree private (
     case GreenNode.Tree(_, kids) =>
       var childOffset = offset
       kids.map { kid =>
-        val red = new RedTree(kid, childOffset, Some(this))
+        val red     = new RedTree(kid, childOffset, Some(this))
         val kidSpan = GreenNode.span(kid)
         childOffset += (kidSpan.end.offset - kidSpan.start.offset)
         red
@@ -133,7 +133,7 @@ final class RedTree private (
    */
   def nextSibling: Option[RedTree] = parent.flatMap { p =>
     val siblings = p.children
-    val index = siblings.indexWhere(_.offset == this.offset)
+    val index    = siblings.indexWhere(_.offset == this.offset)
     if (index >= 0 && index < siblings.length - 1) {
       Some(siblings(index + 1))
     } else {
@@ -148,7 +148,7 @@ final class RedTree private (
    */
   def prevSibling: Option[RedTree] = parent.flatMap { p =>
     val siblings = p.children
-    val index = siblings.indexWhere(_.offset == this.offset)
+    val index    = siblings.indexWhere(_.offset == this.offset)
     if (index > 0) {
       Some(siblings(index - 1))
     } else {
@@ -162,9 +162,8 @@ final class RedTree private (
    * Returns a list of all descendant red trees, visiting parents before children.
    */
   def descendants: Vector[RedTree] = {
-    def loop(node: RedTree): Vector[RedTree] = {
+    def loop(node: RedTree): Vector[RedTree] =
       node +: node.children.flatMap(loop)
-    }
     loop(this).tail // Exclude self
   }
 
@@ -174,17 +173,18 @@ final class RedTree private (
    * Returns the deepest (most specific) node that contains the given offset.
    * Returns None if the offset is outside this tree's span.
    */
-  def nodeAt(targetOffset: Int): Option[RedTree] = {
+  def nodeAt(targetOffset: Int): Option[RedTree] =
     if (targetOffset < span.start.offset || targetOffset >= span.end.offset) {
       None
     } else {
       // Search children for a more specific match
-      children.find { child =>
-        targetOffset >= child.span.start.offset && targetOffset < child.span.end.offset
-      }.flatMap(_.nodeAt(targetOffset))
+      children
+        .find { child =>
+          targetOffset >= child.span.start.offset && targetOffset < child.span.end.offset
+        }
+        .flatMap(_.nodeAt(targetOffset))
         .orElse(Some(this))
     }
-  }
 
   /**
    * Validate structure and collect errors.

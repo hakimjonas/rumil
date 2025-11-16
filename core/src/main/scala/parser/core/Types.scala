@@ -122,7 +122,7 @@ enum TokenKind {
   case LeftParen, RightParen, LeftBrace, RightBrace
   case Comma, Semicolon, Colon, Arrow
   case Whitespace, Comment, EOF
-  case Error  // Marks error regions during resilient parsing
+  case Error // Marks error regions during resilient parsing
 }
 
 given CanEqual[TokenKind, TokenKind] = CanEqual.derived

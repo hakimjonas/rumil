@@ -238,6 +238,15 @@ def parseJsonAs[A](input: String)(f: JsonValue => Option[A]): Result[ParseError,
             (line = 1, column = 1, offset = 0)
           )
       }
+    case Result.Partial(value, errors, consumed) =>
+      f(value) match {
+        case Some(a) => Result.Partial(a, errors, consumed)
+        case None =>
+          Result.Failure(
+            errors ++ List(ParseError.Custom("Type mismatch", (line = 1, column = 1, offset = 0))),
+            (line = 1, column = 1, offset = 0)
+          )
+      }
     case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
   }
 
