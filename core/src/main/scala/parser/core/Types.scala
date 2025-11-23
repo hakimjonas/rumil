@@ -62,6 +62,7 @@ enum Parser[+E, +A] {
   case Map[E, A, B](source: Parser[E, A], f: A => B)                extends Parser[E, B]
   case FlatMap[E, A, B](source: Parser[E, A], f: A => Parser[E, B]) extends Parser[E, B]
   case Or[E, A](left: Parser[E, A], right: Parser[E, A])            extends Parser[E, A]
+  case Choice[E, A](alternatives: List[Parser[E, A]])               extends Parser[E, A]
   case Many[E, A](parser: Parser[E, A])                             extends Parser[E, List[A]]
   case Many1[E, A](parser: Parser[E, A])                            extends Parser[E, List[A]]
   case Optional[E, A](parser: Parser[E, A])                         extends Parser[E, Option[A]]

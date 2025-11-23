@@ -206,12 +206,12 @@ final class ParserState private[runtime] (
   val input: String,
   private val offsetRef: Ref[Int],
   private val lineRef: Ref[Int],
-  private val columnRef: Ref[Int],
-  // Left recursion support
-  private[runtime] val memo: MemoTable = MemoTable(),
-  private[runtime] val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty,
-  private[runtime] val heads: mutable.Map[Int, LRHead] = mutable.Map.empty
+  private val columnRef: Ref[Int]
 ) {
+  // Left recursion support - lazily initialized (saves ~320 bytes for non-LR parsers)
+  private[runtime] lazy val memo: MemoTable = MemoTable()
+  private[runtime] lazy val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty
+  private[runtime] lazy val heads: mutable.Map[Int, LRHead] = mutable.Map.empty
 
   def offset: Int = offsetRef.get
   def line: Int   = lineRef.get
@@ -260,6 +260,25 @@ final class ParserState private[runtime] (
     while (i < n) {
       advance()
       i += 1
+    }
+  }
+
+  /**
+   * Advances position by a known string in O(1) for newline-free strings.
+   *
+   * Optimized for string matching where we know the exact content being consumed.
+   * Avoids per-character iteration when there are no newlines.
+   *
+   * @param s The string being consumed (must match input at current position)
+   */
+  def advanceByString(s: String): Unit = {
+    val newlines = s.count(_ == '\n')
+    offsetRef.update(_ + s.length)
+    if (newlines == 0) {
+      columnRef.update(_ + s.length)
+    } else {
+      lineRef.update(_ + newlines)
+      columnRef.set(s.length - s.lastIndexOf('\n'))
     }
   }
 

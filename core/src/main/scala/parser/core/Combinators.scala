@@ -185,7 +185,12 @@ inline def or[E, A](left: Parser[E, A], right: Parser[E, A]): Parser[E, A] =
  * }}}
  */
 def choice[E, A](parsers: List[Parser[E, A]]): Parser[E, A] =
-  parsers.reduceLeft(or)
+  parsers match {
+    case Nil        => throw new IllegalArgumentException("choice requires at least one parser")
+    case p :: Nil   => p
+    case _ :: _ :: Nil => or(parsers.head, parsers(1))
+    case _          => Parser.Choice(parsers)
+  }
 
 // Repetition
 

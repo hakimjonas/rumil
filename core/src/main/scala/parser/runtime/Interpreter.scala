@@ -164,6 +164,9 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           }
       }
 
+    case Parser.Choice(alternatives) =>
+      interpretChoice(alternatives, state, state.save, Nil, state.location)
+
     case Parser.Many(p) =>
       interpretMany(p, state)
 
@@ -719,3 +722,40 @@ private def interpretMany1[E, A](p: Parser[E, A], state: ParserState): Result[E,
     case Result.Failure(errors, furthest) =>
       Result.Failure(errors, furthest)
   }
+
+/**
+ * Interprets the Choice combinator - try alternatives in sequence.
+ *
+ * Tail-recursive implementation that tries each alternative until one succeeds.
+ * Tracks the furthest error location for good error messages.
+ *
+ * @param remaining Alternatives left to try
+ * @param state Mutable parse state
+ * @param snapshot Saved state for backtracking
+ * @param accErrors Accumulated errors from failed alternatives
+ * @param furthest Furthest location reached by any alternative
+ * @return First successful result, or failure with best error info
+ */
+@scala.annotation.tailrec
+private def interpretChoice[E, A](
+  remaining: List[Parser[E, A]],
+  state: ParserState,
+  snapshot: StateSnapshot,
+  accErrors: List[E],
+  furthest: Location
+): Result[E, A] = remaining match {
+  case Nil =>
+    Result.Failure(accErrors, furthest)
+  case head :: tail =>
+    interpret(head, state) match {
+      case success @ Result.Success(_, _)    => success
+      case partial @ Result.Partial(_, _, _) => partial
+      case Result.Failure(errs, loc) =>
+        state.restore(snapshot)
+        val (newErrors, newFurthest) =
+          if (loc.offset > furthest.offset) (errs, loc)
+          else if (loc.offset == furthest.offset) (accErrors ++ errs, furthest)
+          else (accErrors, furthest)
+        interpretChoice(tail, state, snapshot, newErrors, newFurthest)
+    }
+}
