@@ -15,7 +15,7 @@ Rumil is a parser combinator library for Scala 3, designed for correctness, effi
 
 - Parsers are immutable, composable values
 - 40+ combinators for building complex parsers
-- **Left recursion support** via `rule` combinator (seed-growth algorithm)
+- **Left Recursion Support** - Write natural grammars via `rule` combinator (seed-growth algorithm)
 - Error tracking with line, column, and offset information
 - Tail-recursive interpreter with memoization
 - Monadic interface with for-comprehension support
@@ -73,16 +73,22 @@ import parser.core._
 import parser.syntax._
 
 // Parse a simple number
-val number = digit.many1.map(_.mkString.toInt)
+val number = digit.manyNonEmpty.map(_.mkString.toInt)
 number.run("42")  // Success(42, 2)
 
 // Parse arithmetic expressions
-val expr = number.chainl1(char('+').as((a: Int, b: Int) => a + b))
+val expr = number.chainLeft1(char('+').as((a: Int, b: Int) => a + b))
 expr.run("1+2+3")  // Success(6, 5)
 
 // Combine parsers with operators
 val pair = char('(') *> number ~ (char(',') *> number) <* char(')')
 pair.run("(1,2)")  // Success((1, 2), 7)
+
+// Left-recursive grammars
+lazy val expr: Parser[ParseError, Expr] = rule {
+  (expr ~ char('+') ~ term).map { case ((l, _), r) => Add(l, r) } |
+  term
+}
 ```
 
 ### The Idiomatic Way
@@ -125,6 +131,7 @@ Running a parser produces a `Result[E, A]`:
 ```scala
 enum Result[+E, +A] {
   case Success(value: A, consumed: Int)
+  case Partial(value: A, errors: List[E], consumed: Int)  // For resilient parsing
   case Failure(errors: List[E], furthest: Location)
 }
 ```
@@ -141,8 +148,8 @@ val ab = char('a') ~ char('b')  // Parser[(Char, Char)]
 val aOrB = char('a') | char('b')  // Parser[Char]
 
 // Repetition
-val many = char('a').many   // Parser[List[Char]]
-val some = char('a').many1  // Parser[List[Char]] (at least one)
+val many = char('a').many           // Parser[List[Char]]
+val some = char('a').manyNonEmpty   // Parser[List[Char]] (at least one)
 
 // Transform results
 val upper = letter.map(_.toUpper)  // Parser[Char]
@@ -180,7 +187,7 @@ val jsonBool =
   string("true").as(JsonValue.Bool(true)) |
   string("false").as(JsonValue.Bool(false))
 
-val jsonNumber = digit.many1.map { chars =>
+val jsonNumber = digit.manyNonEmpty.map { chars =>
   JsonValue.Number(chars.mkString.toDouble)
 }
 
@@ -234,7 +241,7 @@ val userResult = nestedJsonResult.flatMap(json =>
 import parser.core._
 import parser.syntax._
 
-// Direct left recursion - now "just works" with rule combinator!
+// Direct left recursion - "just works" with rule combinator!
 lazy val expr: Parser[ParseError, Int] = rule {
   val addSub = for {
     left  <- expr
@@ -256,7 +263,7 @@ lazy val term: Parser[ParseError, Int] = rule {
 }
 
 lazy val factor: Parser[ParseError, Int] = {
-  val number = digit.many1.map(_.mkString.toInt)
+  val number = digit.manyNonEmpty.map(_.mkString.toInt)
   val parens = char('(') *> defer(expr) <* char(')')
   number | parens
 }
@@ -292,8 +299,8 @@ import parser.core._
 import parser.syntax._
 
 val cell = satisfy(_ != ',', "cell char").many.map(_.mkString)
-val row = cell.sepBy(char(','))
-val csv = row.endBy(char('\n'))
+val row = cell.separatedBy(char(','))
+val csv = row.endedBy(char('\n'))
 
 val input = """name,age,city
 alice,30,nyc
@@ -327,8 +334,8 @@ case class Person(name: String, age: Int, city: String)
 
 // Parse using structural approach
 val cell = satisfy(_ != ',', "cell char").many.map(_.mkString)
-val row = cell.sepBy(char(','))
-val csv = row.endBy(char('\n'))
+val row = cell.separatedBy(char(','))
+val csv = row.endedBy(char('\n'))
 
 // Then map to case classes
 val result = csv.run(input).map { rows =>
@@ -381,14 +388,14 @@ val result = csv.run(input).map { rows =>
 | `p.map(f)`      | Transform parser result                 |
 | `p.flatMap(f)`  | Monadic sequencing                      |
 | `p.many`        | Zero or more repetitions                |
-| `p.many1`       | One or more repetitions                 |
+| `p.manyNonEmpty`       | One or more repetitions                 |
 | `p.optional`    | Zero or one occurrence                  |
-| `p.sepBy(sep)`  | Parse p separated by sep                |
-| `p.sepBy1(sep)` | Parse p separated by sep (at least one) |
-| `p.endBy(end)`  | Parse p terminated by end               |
+| `p.separatedBy(sep)`  | Parse p separated by sep                |
+| `p.separatedByNonEmpty(sep)` | Parse p separated by sep (at least one) |
+| `p.endedBy(end)`  | Parse p terminated by end               |
 | `p.count(n)`    | Exactly n repetitions                   |
-| `p.chainl1(op)` | Left-associative operator chain         |
-| `p.chainr1(op)` | Right-associative operator chain        |
+| `p.chainLeft1(op)` | Left-associative operator chain         |
+| `p.chainRight1(op)` | Right-associative operator chain        |
 | `rule { p }`    | Memoized parser with left recursion support |
 | `defer(p)`      | Lazy evaluation for recursive parsers   |
 
@@ -399,6 +406,8 @@ val result = csv.run(input).map { rows =>
 | `p.attempt`        | Capture result as value (never fails)  |
 | `p.recover(f)`     | Provide fallback value on failure      |
 | `p.recoverWith(f)` | Provide fallback parser on failure     |
+| `p.orElse(fallback)` | Try fallback on failure (preserves errors) |
+| `p.expect(msg)`    | Replace errors with custom message     |
 | `p.named(name)`    | Label parser for better error messages |
 | `lookAhead(p)`     | Parse without consuming input          |
 | `notFollowedBy(p)` | Succeed only if p fails                |
@@ -417,7 +426,7 @@ import parser.core._
 import parser.syntax._
 
 // Trace shows parse attempts and consumption
-val number = digit.many1.trace("number").map(_.mkString.toInt)
+val number = digit.manyNonEmpty.trace("number").map(_.mkString.toInt)
 number.run("42")
 // [TRACE] number: trying at offset 0
 // [TRACE] number: success, consumed 2 chars
@@ -483,7 +492,7 @@ sbt test
 
 ## License
 
-[Your License Here]
+MIT License
 
 ## Contributing
 
