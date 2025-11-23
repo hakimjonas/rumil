@@ -49,10 +49,10 @@ All critical features for v0.2.0 public launch are implemented:
 - Error recovery with multi-error accumulation
 - Complete API documentation in code
 
-### ⏳ Priority 2: IN PROGRESS (0/3 items)
-- [ ] 2.1 Left Recursion Support - `chainl1`/`chainr1` workarounds exist
+### ⏳ Priority 2: IN PROGRESS (1/3 items)
+- [x] 2.1 Left Recursion Support - ✅ Direct left recursion via `rule` combinator
 - [ ] 2.2 Comprehensive Benchmarks - Basic benchmarks exist, needs expansion
-- [ ] 2.3 Memoization/Packrat - Not started
+- [ ] 2.3 Memoization/Packrat - Integrated with left recursion support
 
 ### 🔮 Priority 3: NOT STARTED (3/3 items)
 - [ ] 3.1 Streaming/Incremental Parsing
@@ -275,27 +275,36 @@ This was mentioned in ROADMAP 1.2 but is a separate feature from Decoder.derived
 **Goal:** Make Rumil robust for complex, real-world grammars and production workloads.
 
 ### 2.1 Left Recursion Support
-**Status:** Not Started
+**Status:** ✅ COMPLETE (Direct left recursion)
 **Impact:** High
 
 **Keep from original 2.3**
 
-Common grammars (arithmetic, function calls) are naturally left-recursive. Current workarounds (`chainl1`) are awkward.
+Common grammars (arithmetic, function calls) are naturally left-recursive. The `rule` combinator now handles direct left recursion automatically.
 
 **Features:**
-- Automatic left-recursion detection
-- Seed-growth algorithm (Warth et al.)
-- Clear error messages for unhandled cases
+- ✅ Automatic left-recursion detection via seed-growth algorithm (Warth et al.)
+- ✅ Memoization table with cycle detection
+- ✅ `rule { }` combinator for declaring left-recursive parsers
+- ⚠️ Indirect left recursion (mutually recursive rules) not yet supported
 
 **Example:**
 ```scala
-// Currently requires chainl1 workaround
-val expr = chainl1(term, addOp)
+// Direct left recursion now works with rule:
+lazy val expr: Parser[ParseError, Int] = rule {
+  (expr ~ char('+') ~ digit).map { case ((a, _), b) => a + (b - '0') } |
+  digit.map(_ - '0')
+}
+expr.run("1+2+3") // Success(6, 5) - left associative!
 
-// With left-recursion support:
-lazy val expr: Parser[Expr] =
-  expr ~ addOp ~ term | term  // Just works!
+// chainl1/chainr1 still available for complex grammars:
+val expr = digitP.chainl1(addOp)  // Also works
 ```
+
+**Implementation Notes:**
+- `Parser.Memo` case wraps parser with unique identity
+- `LR`/`LRHead` track recursive cycles during parsing
+- Seed-growth loop re-parses until no more progress
 
 ---
 

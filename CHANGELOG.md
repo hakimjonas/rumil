@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Nothing yet
+- Left recursion support via `rule` combinator using seed-growth algorithm (Warth et al.)
+- `Parser.Memo` case for memoized parsing with cycle detection
+- Memoization infrastructure in `ParserState` (`memo`, `lrStack`, `heads` tables)
+- `LR` and `LRHead` data structures for tracking left-recursive cycles
+- Direct left-recursive grammars now "just work" with natural syntax
 
 [0.2.0]: https://github.com/hakimjonas/rumil/releases/tag/v0.2.0

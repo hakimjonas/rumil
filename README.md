@@ -15,8 +15,9 @@ Rumil is a parser combinator library for Scala 3, designed for correctness, effi
 
 - Parsers are immutable, composable values
 - 40+ combinators for building complex parsers
+- **Left recursion support** via `rule` combinator (seed-growth algorithm)
 - Error tracking with line, column, and offset information
-- Tail-recursive interpreter
+- Tail-recursive interpreter with memoization
 - Monadic interface with for-comprehension support
 - Type-safe parsing with compile-time guarantees
 
@@ -233,40 +234,37 @@ val userResult = nestedJsonResult.flatMap(json =>
 import parser.core._
 import parser.syntax._
 
-lazy val expr: Parser[ParseError, Int] = {
-  Parser.Custom { state =>
-    parser.runtime.interpret(
-      term.chainl1(
-        char('+').as((a: Int, b: Int) => a + b) |
-          char('-').as((a: Int, b: Int) => a - b)
-      ),
-      state
-    )
-  }
+// Direct left recursion - now "just works" with rule combinator!
+lazy val expr: Parser[ParseError, Int] = rule {
+  val addSub = for {
+    left  <- expr
+    op    <- char('+') | char('-')
+    right <- term
+  } yield if (op == '+') left + right else left - right
+
+  addSub | term
 }
 
-lazy val term: Parser[ParseError, Int] = {
-  Parser.Custom { state =>
-    parser.runtime.interpret(
-      factor.chainl1(
-        char('*').as((a: Int, b: Int) => a * b) |
-          char('/').as((a: Int, b: Int) => a / b)
-      ),
-      state
-    )
-  }
+lazy val term: Parser[ParseError, Int] = rule {
+  val mulDiv = for {
+    left  <- term
+    op    <- char('*') | char('/')
+    right <- factor
+  } yield if (op == '*') left * right else left / right
+
+  mulDiv | factor
 }
 
 lazy val factor: Parser[ParseError, Int] = {
   val number = digit.many1.map(_.mkString.toInt)
-  number | Parser.Custom { state =>
-    parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-  }
+  val parens = char('(') *> defer(expr) <* char(')')
+  number | parens
 }
 
-// Correctly handles precedence
-expr.run("2+3*4") // Success(14, 5)   // 2 + (3*4)
+// Correctly handles precedence and left-associativity
+expr.run("2+3*4")   // Success(14, 5)   // 2 + (3*4)
 expr.run("(2+3)*4") // Success(20, 7)   // (2+3) * 4
+expr.run("5-3-1")   // Success(1, 5)    // (5-3) - 1, not 5 - (3-1)
 ```
 
 **When to use:** Building language parsers, need custom AST representation
@@ -391,6 +389,8 @@ val result = csv.run(input).map { rows =>
 | `p.count(n)`    | Exactly n repetitions                   |
 | `p.chainl1(op)` | Left-associative operator chain         |
 | `p.chainr1(op)` | Right-associative operator chain        |
+| `rule { p }`    | Memoized parser with left recursion support |
+| `defer(p)`      | Lazy evaluation for recursive parsers   |
 
 ### Error Handling
 
@@ -454,6 +454,7 @@ Note: Debug output goes to stderr, keeping it separate from normal program outpu
 Implementation characteristics:
 
 - Tail-recursive to prevent stack overflow
+- Memoization for left-recursive grammars (via `rule` combinator)
 - State snapshots for backtracking
 - String slicing for substring operations
 
