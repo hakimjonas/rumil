@@ -1,6 +1,7 @@
 package parser.runtime
 
 import parser.core._
+import scala.collection.mutable
 
 // ============================================================================
 // Ref - Controlled Mutation (Eru Pattern)
@@ -21,6 +22,48 @@ final private class Ref[A](private var value: A) {
 }
 
 // ============================================================================
+// Left Recursion Support - Seed-Growth Algorithm (Warth et al.)
+// ============================================================================
+
+/**
+ * Entry in the memoization table for left recursion handling.
+ *
+ * @param result The cached parse result (None if currently being evaluated)
+ * @param pos The position after parsing (for detecting progress)
+ */
+private[runtime] final case class MemoEntry(
+  result: Option[Result[Any, Any]],
+  pos: Int
+)
+
+/**
+ * Tracks the "head" of a left-recursive rule.
+ * Used to detect when we're in a left-recursive cycle.
+ *
+ * @param rule The parser identity that started the left recursion
+ * @param involvedSet Parsers involved in this left-recursive cycle
+ * @param evalSet Parsers that need re-evaluation during seed growth
+ */
+private[runtime] final class LRHead(
+  val rule: AnyRef,
+  val involvedSet: mutable.Set[AnyRef],
+  var evalSet: mutable.Set[AnyRef]
+)
+
+/**
+ * Left recursion marker used during seed detection.
+ *
+ * @param seed The current seed result
+ * @param rule The parser identity
+ * @param head The head of the left-recursive cycle (if known)
+ */
+private[runtime] final case class LR(
+  var seed: Result[Any, Any],
+  rule: AnyRef,
+  var head: Option[LRHead]
+)
+
+// ============================================================================
 // ParserState - Controlled Mutation via Refs
 // ============================================================================
 
@@ -35,6 +78,11 @@ final private class Ref[A](private var value: A) {
  * - line: Line number (1-indexed)
  * - column: Column number (1-indexed)
  *
+ * Left recursion support:
+ * - memo: Memoization table keyed by (parser-identity, position)
+ * - lrStack: Stack tracking left-recursive rule invocations
+ * - heads: Map from position to the head of left-recursive cycles
+ *
  * Use the `parserState(input)` function to create instances.
  *
  * @param input The input string being parsed
@@ -43,7 +91,11 @@ final class ParserState private[runtime] (
   val input: String,
   private val offsetRef: Ref[Int],
   private val lineRef: Ref[Int],
-  private val columnRef: Ref[Int]
+  private val columnRef: Ref[Int],
+  // Left recursion support
+  private[runtime] val memo: mutable.Map[(AnyRef, Int), Either[LR, MemoEntry]] = mutable.Map.empty,
+  private[runtime] val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty,
+  private[runtime] val heads: mutable.Map[Int, LRHead] = mutable.Map.empty
 ) {
 
   def offset: Int = offsetRef.get

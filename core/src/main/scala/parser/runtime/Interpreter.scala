@@ -291,7 +291,158 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
             furthest
           )
       }
+
+    case Parser.Memo(inner, id) =>
+      interpretMemo(inner, id, state)
   }
+}
+
+/**
+ * Interprets a memoized parser with left recursion support.
+ *
+ * Implements the seed-growth algorithm from Warth et al.:
+ * 1. Check memo table for cached result
+ * 2. If not cached, mark as "in progress" with LR marker
+ * 3. If LR detected, return seed and setup head
+ * 4. Otherwise, parse and cache result
+ * 5. If this is the head of a left-recursive cycle, grow the seed
+ *
+ * @param inner The inner parser to interpret
+ * @param id Unique identity for this parser rule
+ * @param state Mutable parse state with memo tables
+ * @return Parse result
+ */
+private def interpretMemo[E, A](inner: Parser[E, A], id: AnyRef, state: ParserState): Result[E, A] = {
+  val pos = state.offset
+  val key = (id, pos)
+
+  state.memo.get(key) match {
+    case Some(Left(lr)) =>
+      // Left recursion detected - mark this LR as having a head (we're in a cycle)
+      setupLR(id, lr, state)
+      lr.seed.asInstanceOf[Result[E, A]]
+
+    case Some(Right(entry)) =>
+      // Cached result - restore position and return
+      state.restore((offset = entry.pos, line = state.line, column = state.column))
+      entry.result.get.asInstanceOf[Result[E, A]]
+
+    case None =>
+      // First time seeing this parser at this position
+      val lr = LR(
+        seed = Result.Failure(List.empty, state.location),
+        rule = id,
+        head = None
+      )
+      state.lrStack.append(lr)
+      state.memo.put(key, Left(lr))
+
+      // Parse the inner parser
+      val result = interpret(inner, state)
+      val endPos = state.offset
+
+      state.lrStack.remove(state.lrStack.length - 1)
+
+      // Check if left recursion was detected during parsing
+      lr.head match {
+        case None =>
+          // No left recursion - just cache and return
+          state.memo.put(key, Right(MemoEntry(Some(result.asInstanceOf[Result[Any, Any]]), endPos)))
+          result
+
+        case Some(head) if !(head.rule eq id) =>
+          // Left recursion detected, but we're not the head - just return result
+          state.memo.put(key, Right(MemoEntry(Some(result.asInstanceOf[Result[Any, Any]]), endPos)))
+          result
+
+        case Some(_) =>
+          // We are the head of the left-recursive cycle - grow the seed
+          result match {
+            case _: Result.Failure[?, ?] =>
+              // Base case failed, cache and return
+              state.memo.put(key, Right(MemoEntry(Some(result.asInstanceOf[Result[Any, Any]]), endPos)))
+              result
+            case _ =>
+              // Base case succeeded - now grow it
+              lr.seed = result.asInstanceOf[Result[Any, Any]]
+              growLR(inner, id, pos, lr, endPos, state).asInstanceOf[Result[E, A]]
+          }
+      }
+  }
+}
+
+/**
+ * Sets up the left recursion head when a cycle is detected.
+ */
+private def setupLR(id: AnyRef, lr: LR, state: ParserState): Unit = {
+  if (lr.head.isEmpty) {
+    lr.head = Some(new LRHead(id, scala.collection.mutable.Set.empty, scala.collection.mutable.Set.empty))
+  }
+  // Mark all LRs on the stack as involved in this cycle
+  val head = lr.head.get
+  for (stackLr <- state.lrStack.reverseIterator if !(stackLr.rule eq id)) {
+    stackLr.head = Some(head)
+    head.involvedSet.add(stackLr.rule)
+  }
+}
+
+/**
+ * Grows the seed for a left-recursive rule until no more progress is made.
+ *
+ * This is the core of the seed-growth algorithm. We repeatedly:
+ * 1. Reset position to start
+ * 2. Update memo with current seed
+ * 3. Re-parse the rule
+ * 4. If we made progress (consumed more input), update seed and continue
+ * 5. Stop when no more progress is made
+ */
+private def growLR[E, A](
+  inner: Parser[E, A],
+  id: AnyRef,
+  pos: Int,
+  lr: LR,
+  seedEndPos: Int,
+  state: ParserState
+): Result[Any, Any] = {
+  val key = (id, pos)
+  state.heads.put(pos, lr.head.get)
+
+  var lastResult = lr.seed
+  var lastPos    = seedEndPos
+
+  // Keep growing while we make progress
+  var continue = true
+  while (continue) {
+    // Reset position to start of this rule
+    state.restore((offset = pos, line = 1, column = 1)) // Simplified line/column
+
+    // Update memo with current seed so recursive calls see it
+    state.memo.put(key, Right(MemoEntry(Some(lastResult), lastPos)))
+
+    lr.head.get.evalSet = lr.head.get.involvedSet.clone()
+
+    val result    = interpret(inner, state)
+    val resultPos = state.offset
+
+    result match {
+      case _: Result.Failure[?, ?] =>
+        // Failed - stop growing
+        continue = false
+      case _ if resultPos <= lastPos =>
+        // No progress - stop growing
+        continue = false
+      case _ =>
+        // Made progress - update seed and continue
+        lastResult = result.asInstanceOf[Result[Any, Any]]
+        lastPos = resultPos
+        lr.seed = lastResult
+    }
+  }
+
+  state.heads.remove(pos)
+  state.restore((offset = lastPos, line = 1, column = 1))
+  state.memo.put(key, Right(MemoEntry(Some(lastResult), lastPos)))
+  lastResult
 }
 
 /**

@@ -251,3 +251,32 @@ def eof: Parser[ParseError, Unit] =
  */
 def defer[E, A](p: => Parser[E, A]): Parser[E, A] =
   Parser.Defer(() => p)
+
+/**
+ * Creates a memoized parser rule that supports left recursion.
+ *
+ * Unlike `defer`, which only provides lazy evaluation, `rule` enables:
+ * - Memoization of parse results at each position
+ * - Automatic left recursion handling via seed-growth algorithm
+ * - Direct left-recursive grammars that "just work"
+ *
+ * Use `rule` for any recursive parser that might be left-recursive.
+ * The algorithm detects left recursion cycles and uses seed-growth
+ * to find the longest match.
+ *
+ * Example:
+ * {{{{
+ * // Direct left recursion - now works!
+ * lazy val expr: Parser[ParseError, Int] = rule {
+ *   (expr ~ char('+') ~ term).map { case ((a, _), b) => a + b } | term
+ * }
+ * }}}}
+ *
+ * @param p The parser to memoize (by-name parameter)
+ * @return A memoized parser with left recursion support
+ */
+def rule[E, A](p: => Parser[E, A]): Parser[E, A] = {
+  // Each call to rule creates a unique identity object
+  val id = new Object()
+  Parser.Memo(Parser.Defer(() => p), id)
+}
