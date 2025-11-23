@@ -164,10 +164,35 @@ lazy val interop = (project in file("interop"))
     parsers % "compile->compile;test->test"
   )
 
+// JMH Benchmarks
+lazy val benchmarks = (project in file("benchmarks"))
+  .enablePlugins(JmhPlugin)
+  .settings(
+    name           := "rumil-benchmarks",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-parse" % "1.1.0" // For comparative benchmarks
+    ),
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Yexplicit-nulls",
+      "-language:strictEquality",
+      "-Wunused:all",
+      "-no-indent",
+      "-old-syntax"
+    ),
+    // JMH settings
+    Jmh / sourceDirectory := (Compile / sourceDirectory).value,
+    Jmh / classDirectory  := (Compile / classDirectory).value
+  )
+  .dependsOn(core, parsers, interop)
+
 // Root aggregator project
 lazy val root = (project in file("."))
   .settings(
     name           := "rumil",
     publish / skip := true
   )
-  .aggregate(core, parsers, interop)
+  .aggregate(core, parsers, interop, benchmarks)

@@ -14,10 +14,10 @@
 - **Error Recovery** - Result.Partial with multi-error accumulation
 - **GreenNode** - Lossless syntax trees preserving all source information
 - **6 Format Parsers** - JSON, XML, TOML, CSV, YAML, Protobuf
-- **JSON Decoder** - Automatic case class derivation
+- **Decoders** - JSON, XML, TOML, YAML with automatic case class derivation
 - **Type Safety** - No naked type casts in production code
 - **Property Tests** - 23 functor/monad laws verified
-- **459+ Tests** - Comprehensive test coverage
+- **550+ Tests** - Comprehensive test coverage
 
 ---
 
@@ -28,9 +28,9 @@
 
 | Feature | Status | Priority |
 |---------|--------|----------|
-| XML Decoder (XmlNode → case class) | Pending | HIGH |
-| TOML Decoder (TomlValue → case class) | Pending | HIGH |
-| YAML Decoder (YamlValue → case class) | Pending | HIGH |
+| XML Decoder (XmlNode → case class) | Complete | HIGH |
+| TOML Decoder (TomlValue → case class) | Complete | HIGH |
+| YAML Decoder (YamlValue → case class) | Complete | HIGH |
 | Field Annotations (@JsonKey, @JsonIgnore) | Pending | MEDIUM |
 | Streaming Parsing (large files) | Pending | MEDIUM |
 | Memoization Combinator (.memoize) | Pending | LOW |
@@ -65,19 +65,17 @@
 | Platform | Status | Priority |
 |----------|--------|----------|
 | JVM | Complete | - |
-| Scala.js (browser/Node) | Pending | MEDIUM |
-| Scala Native | Pending | LOW |
+| Scala.js (browser/Node) | Future/Community | LOW |
+| Scala Native | Future/Community | LOW |
 
 ---
 
 ## Recommended Work Order
 
-1. **Decoders** - Complete XML/TOML/YAML decoder story
-2. **Benchmarks** - Prove performance with JMH
-3. **Documentation** - Getting Started + Cookbook
-4. **Scala.js** - Cross-platform support
-5. **Field Annotations** - Polish decoder API
-6. **Streaming** - Large file handling
+1. **Benchmarks** - Prove performance with JMH
+2. **Documentation** - Getting Started + Cookbook
+3. **Field Annotations** - Polish decoder API
+4. **Streaming** - Large file handling
 
 ---
 

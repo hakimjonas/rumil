@@ -5,6 +5,9 @@ import scala.quoted.{Expr, Quotes, Type}
 
 import parser.core._
 import parsers.json.{JsonValue, given_CanEqual_JsonValue_JsonValue}
+import parsers.toml.{TomlValue, given_CanEqual_TomlValue_TomlValue}
+import parsers.xml.{XmlNode, given_CanEqual_XmlNode_XmlNode}
+import parsers.yaml.{YamlValue, given_CanEqual_YamlValue_YamlValue}
 
 /**
  * Typeclass for decoding structured data into Scala types.
@@ -145,15 +148,23 @@ object Decoder {
     // Extract field labels
     val fieldLabels: List[String] = fieldSymbols.map(_.name)
 
-    // For now, only support JsonValue as From type
-    // (can extend to XmlNode, TomlValue later)
+    // Support multiple source types
     TypeRepr.of[From].typeSymbol.fullName match {
       case "parsers.json.JsonValue" =>
         generateJsonDecoder[To](using q)(className, fieldLabels, fieldSymbols, m)
           .asExprOf[Decoder[From, To]]
+      case "parsers.toml.TomlValue" =>
+        generateTomlDecoder[To](using q)(className, fieldLabels, fieldSymbols, m)
+          .asExprOf[Decoder[From, To]]
+      case "parsers.yaml.YamlValue" =>
+        generateYamlDecoder[To](using q)(className, fieldLabels, fieldSymbols, m)
+          .asExprOf[Decoder[From, To]]
+      case "parsers.xml.XmlNode" =>
+        generateXmlDecoder[To](using q)(className, fieldLabels, fieldSymbols, m)
+          .asExprOf[Decoder[From, To]]
       case other =>
         report.errorAndAbort(
-          s"Decoder derivation currently only supports JsonValue as source type, got $other"
+          s"Decoder derivation supports JsonValue, TomlValue, YamlValue, and XmlNode. Got $other"
         )
     }
   }
@@ -267,6 +278,335 @@ object Decoder {
                       case JsonValue.Str(_)    => "String"
                       case JsonValue.Array(_)  => "Array"
                       case _                   => "Unknown"
+                    },
+                    (line = 1, column = 1, offset = 0)
+                  )
+                ),
+                (line = 1, column = 1, offset = 0)
+              )
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate a decoder for TomlValue -> case class.
+   *
+   * Generates code that:
+   * 1. Expects a TomlValue.InlineTable
+   * 2. Looks up each field by name
+   * 3. Decodes each field using its Decoder instance
+   * 4. Reconstructs the case class
+   */
+  private def generateTomlDecoder[To: Type](using q: Quotes)(
+    @annotation.unused className: String,
+    fieldLabels: List[String],
+    fieldSymbols: List[q.reflect.Symbol],
+    mirror: Expr[Mirror.ProductOf[To]]
+  ): Expr[Decoder[TomlValue, To]] = {
+    import q.reflect.*
+
+    val fieldDecoders: List[Expr[Decoder[TomlValue, Any]]] =
+      fieldSymbols.map { field =>
+        val fieldType = field.tree match {
+          case v: ValDef => v.tpt.tpe
+          case _         => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
+        }
+
+        fieldType.asType match {
+          case '[ft] =>
+            Expr.summon[Decoder[TomlValue, ft]] match {
+              case Some(decoderExpr) =>
+                decoderExpr.asExprOf[Decoder[TomlValue, Any]]
+              case None =>
+                report.errorAndAbort(
+                  s"Cannot derive Decoder for ${TypeRepr.of[To].show}: " +
+                    s"missing Decoder[TomlValue, ${fieldType.show}]. " +
+                    s"Please provide a given instance."
+                )
+            }
+        }
+      }.toList
+
+    val fieldLabelsExpr                                   = Expr(fieldLabels)
+    val decodersExpr: Expr[List[Decoder[TomlValue, Any]]] = Expr.ofList(fieldDecoders)
+
+    '{
+      new Decoder[TomlValue, To] {
+        def decode(value: TomlValue): Result[DecodeError, To] = {
+          val fieldLabels   = ${ fieldLabelsExpr }
+          val fieldDecoders = ${ decodersExpr }
+
+          value match {
+            case TomlValue.InlineTable(fields) =>
+              val decodedFields = scala.collection.mutable.ListBuffer[Any]()
+              val errors        = scala.collection.mutable.ListBuffer[DecodeError]()
+
+              for ((fieldName, decoder) <- fieldLabels.zip(fieldDecoders))
+                fields.get(fieldName) match {
+                  case Some(fieldValue) =>
+                    decoder.decode(fieldValue) match {
+                      case Result.Success(v, _) =>
+                        decodedFields += v
+                      case Result.Partial(v, errs, _) =>
+                        decodedFields += v
+                        errors ++= errs
+                      case Result.Failure(errs, _) =>
+                        decodedFields += null
+                        errors ++= errs
+                    }
+                  case None =>
+                    decodedFields += null
+                    errors += DecodeError.MissingField(
+                      fieldName,
+                      (line = 1, column = 1, offset = 0)
+                    )
+                }
+
+              if (errors.isEmpty) {
+                val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
+                Result.Success(product, 0)
+              } else {
+                val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
+                Result.Partial(product, errors.toList, 0)
+              }
+
+            case other =>
+              Result.Failure(
+                List(
+                  DecodeError.TypeMismatch(
+                    "InlineTable",
+                    other match {
+                      case TomlValue.String(_)        => "String"
+                      case TomlValue.Integer(_)       => "Integer"
+                      case TomlValue.Float(_)         => "Float"
+                      case TomlValue.Boolean(_)       => "Boolean"
+                      case TomlValue.DateTime(_)      => "DateTime"
+                      case TomlValue.LocalDateTime(_) => "LocalDateTime"
+                      case TomlValue.LocalDate(_)     => "LocalDate"
+                      case TomlValue.LocalTime(_)     => "LocalTime"
+                      case TomlValue.Array(_)         => "Array"
+                      case _                          => "Unknown"
+                    },
+                    (line = 1, column = 1, offset = 0)
+                  )
+                ),
+                (line = 1, column = 1, offset = 0)
+              )
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate a decoder for YamlValue -> case class.
+   *
+   * Generates code that:
+   * 1. Expects a YamlValue.Mapping
+   * 2. Looks up each field by name
+   * 3. Decodes each field using its Decoder instance
+   * 4. Reconstructs the case class
+   */
+  private def generateYamlDecoder[To: Type](using q: Quotes)(
+    @annotation.unused className: String,
+    fieldLabels: List[String],
+    fieldSymbols: List[q.reflect.Symbol],
+    mirror: Expr[Mirror.ProductOf[To]]
+  ): Expr[Decoder[YamlValue, To]] = {
+    import q.reflect.*
+
+    val fieldDecoders: List[Expr[Decoder[YamlValue, Any]]] =
+      fieldSymbols.map { field =>
+        val fieldType = field.tree match {
+          case v: ValDef => v.tpt.tpe
+          case _         => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
+        }
+
+        fieldType.asType match {
+          case '[ft] =>
+            Expr.summon[Decoder[YamlValue, ft]] match {
+              case Some(decoderExpr) =>
+                decoderExpr.asExprOf[Decoder[YamlValue, Any]]
+              case None =>
+                report.errorAndAbort(
+                  s"Cannot derive Decoder for ${TypeRepr.of[To].show}: " +
+                    s"missing Decoder[YamlValue, ${fieldType.show}]. " +
+                    s"Please provide a given instance."
+                )
+            }
+        }
+      }.toList
+
+    val fieldLabelsExpr                                   = Expr(fieldLabels)
+    val decodersExpr: Expr[List[Decoder[YamlValue, Any]]] = Expr.ofList(fieldDecoders)
+
+    '{
+      new Decoder[YamlValue, To] {
+        def decode(value: YamlValue): Result[DecodeError, To] = {
+          val fieldLabels   = ${ fieldLabelsExpr }
+          val fieldDecoders = ${ decodersExpr }
+
+          value match {
+            case YamlValue.Mapping(fields) =>
+              val decodedFields = scala.collection.mutable.ListBuffer[Any]()
+              val errors        = scala.collection.mutable.ListBuffer[DecodeError]()
+
+              for ((fieldName, decoder) <- fieldLabels.zip(fieldDecoders))
+                fields.get(fieldName) match {
+                  case Some(fieldValue) =>
+                    decoder.decode(fieldValue) match {
+                      case Result.Success(v, _) =>
+                        decodedFields += v
+                      case Result.Partial(v, errs, _) =>
+                        decodedFields += v
+                        errors ++= errs
+                      case Result.Failure(errs, _) =>
+                        decodedFields += null
+                        errors ++= errs
+                    }
+                  case None =>
+                    decodedFields += null
+                    errors += DecodeError.MissingField(
+                      fieldName,
+                      (line = 1, column = 1, offset = 0)
+                    )
+                }
+
+              if (errors.isEmpty) {
+                val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
+                Result.Success(product, 0)
+              } else {
+                val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
+                Result.Partial(product, errors.toList, 0)
+              }
+
+            case other =>
+              Result.Failure(
+                List(
+                  DecodeError.TypeMismatch(
+                    "Mapping",
+                    other match {
+                      case YamlValue.Null        => "Null"
+                      case YamlValue.Boolean(_)  => "Boolean"
+                      case YamlValue.Integer(_)  => "Integer"
+                      case YamlValue.Float(_)    => "Float"
+                      case YamlValue.String(_)   => "String"
+                      case YamlValue.Sequence(_) => "Sequence"
+                      case _                     => "Unknown"
+                    },
+                    (line = 1, column = 1, offset = 0)
+                  )
+                ),
+                (line = 1, column = 1, offset = 0)
+              )
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate a decoder for XmlNode -> case class.
+   *
+   * Generates code that:
+   * 1. Expects an XmlNode.Element
+   * 2. Looks up each field by child element name
+   * 3. Decodes each field using its Decoder instance
+   * 4. Reconstructs the case class
+   *
+   * For XML, fields map to child elements with matching names.
+   */
+  private def generateXmlDecoder[To: Type](using q: Quotes)(
+    @annotation.unused className: String,
+    fieldLabels: List[String],
+    fieldSymbols: List[q.reflect.Symbol],
+    mirror: Expr[Mirror.ProductOf[To]]
+  ): Expr[Decoder[XmlNode, To]] = {
+    import q.reflect.*
+
+    val fieldDecoders: List[Expr[Decoder[XmlNode, Any]]] =
+      fieldSymbols.map { field =>
+        val fieldType = field.tree match {
+          case v: ValDef => v.tpt.tpe
+          case _         => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
+        }
+
+        fieldType.asType match {
+          case '[ft] =>
+            Expr.summon[Decoder[XmlNode, ft]] match {
+              case Some(decoderExpr) =>
+                decoderExpr.asExprOf[Decoder[XmlNode, Any]]
+              case None =>
+                report.errorAndAbort(
+                  s"Cannot derive Decoder for ${TypeRepr.of[To].show}: " +
+                    s"missing Decoder[XmlNode, ${fieldType.show}]. " +
+                    s"Please provide a given instance."
+                )
+            }
+        }
+      }.toList
+
+    val fieldLabelsExpr                                 = Expr(fieldLabels)
+    val decodersExpr: Expr[List[Decoder[XmlNode, Any]]] = Expr.ofList(fieldDecoders)
+
+    '{
+      new Decoder[XmlNode, To] {
+        def decode(value: XmlNode): Result[DecodeError, To] = {
+          val fieldLabels   = ${ fieldLabelsExpr }
+          val fieldDecoders = ${ decodersExpr }
+
+          value match {
+            case elem: XmlNode.Element =>
+              val decodedFields = scala.collection.mutable.ListBuffer[Any]()
+              val errors        = scala.collection.mutable.ListBuffer[DecodeError]()
+
+              // Build a map of child elements by local name
+              val childMap: Map[String, XmlNode] = elem.children.collect {
+                case child: XmlNode.Element => child.name.localName -> (child: XmlNode)
+              }.toMap
+
+              for ((fieldName, decoder) <- fieldLabels.zip(fieldDecoders))
+                childMap.get(fieldName) match {
+                  case Some(childElem) =>
+                    decoder.decode(childElem) match {
+                      case Result.Success(v, _) =>
+                        decodedFields += v
+                      case Result.Partial(v, errs, _) =>
+                        decodedFields += v
+                        errors ++= errs
+                      case Result.Failure(errs, _) =>
+                        decodedFields += null
+                        errors ++= errs
+                    }
+                  case None =>
+                    decodedFields += null
+                    errors += DecodeError.MissingField(
+                      fieldName,
+                      (line = 1, column = 1, offset = 0)
+                    )
+                }
+
+              if (errors.isEmpty) {
+                val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
+                Result.Success(product, 0)
+              } else {
+                val product = ${ mirror }.fromProduct(Tuple.fromArray(decodedFields.toArray))
+                Result.Partial(product, errors.toList, 0)
+              }
+
+            case other =>
+              Result.Failure(
+                List(
+                  DecodeError.TypeMismatch(
+                    "Element",
+                    other match {
+                      case XmlNode.Text(_)                     => "Text"
+                      case XmlNode.CData(_)                    => "CData"
+                      case XmlNode.Comment(_)                  => "Comment"
+                      case XmlNode.ProcessingInstruction(_, _) => "ProcessingInstruction"
+                      case _                                   => "Unknown"
                     },
                     (line = 1, column = 1, offset = 0)
                   )
