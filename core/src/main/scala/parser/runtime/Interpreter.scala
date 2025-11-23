@@ -652,33 +652,40 @@ private def growLR[E, A](
 /**
  * Interprets the Many combinator - zero or more repetitions.
  *
- * Uses tail recursion to avoid stack overflow on long inputs.
- * Accumulates results in reverse, then reverses at end for efficiency.
+ * Uses ArrayBuffer for O(1) append, converts to List at end.
+ * This is significantly faster than prepend-then-reverse for long sequences.
  *
  * @param p The parser to repeat
  * @param state Mutable parse state
  * @return Success with list of all parsed values
  */
 private def interpretMany[E, A](p: Parser[E, A], state: ParserState): Result[E, List[A]] = {
-  @scala.annotation.tailrec
-  def loop(acc: List[A], accErrors: List[E], totalConsumed: Int): Result[E, List[A]] = {
+  val acc       = scala.collection.mutable.ArrayBuffer.empty[A]
+  var accErrors = List.empty[E]
+  var totalConsumed = 0
+  var continue  = true
+
+  while (continue) {
     val snapshot = state.save
     interpret(p, state) match {
       case Result.Success(value, consumed) =>
-        loop(value :: acc, accErrors, totalConsumed + consumed)
+        acc += value
+        totalConsumed += consumed
       case Result.Partial(value, errors, consumed) =>
-        loop(value :: acc, accErrors ++ errors, totalConsumed + consumed)
+        acc += value
+        accErrors = accErrors ++ errors
+        totalConsumed += consumed
       case Result.Failure(_, _) =>
         state.restore(snapshot)
-        if (accErrors.isEmpty) {
-          Result.Success(acc.reverse, totalConsumed)
-        } else {
-          Result.Partial(acc.reverse, accErrors, totalConsumed)
-        }
+        continue = false
     }
   }
 
-  loop(Nil, Nil, 0)
+  if (accErrors.isEmpty) {
+    Result.Success(acc.toList, totalConsumed)
+  } else {
+    Result.Partial(acc.toList, accErrors, totalConsumed)
+  }
 }
 
 /**
