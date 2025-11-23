@@ -59,6 +59,8 @@ enum Parser[+E, +A] {
   case Fail[E](error: E)                                            extends Parser[E, Nothing]
   case Satisfy(pred: Char => Boolean, expected: String)             extends Parser[ParseError, Char]
   case StringMatch(target: String)                                  extends Parser[ParseError, String]
+  // Optimized choice of string literals - avoids intermediate result allocation
+  case StringChoice(targets: Array[String])                         extends Parser[ParseError, String]
   case Map[E, A, B](source: Parser[E, A], f: A => B)                extends Parser[E, B]
   case FlatMap[E, A, B](source: Parser[E, A], f: A => Parser[E, B]) extends Parser[E, B]
   case Or[E, A](left: Parser[E, A], right: Parser[E, A])            extends Parser[E, A]
