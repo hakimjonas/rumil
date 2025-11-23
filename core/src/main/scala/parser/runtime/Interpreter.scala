@@ -89,16 +89,8 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           startLoc
         )
       } else {
-        // Compare substring directly (O(n) but no allocations in tight loop)
-        var i       = 0
-        var matched = true
-        while (i < len && matched) {
-          if (state.input.charAt(state.offset + i) != target.charAt(i)) {
-            matched = false
-          }
-          i += 1
-        }
-        if (matched) {
+        // Use regionMatches for optimized string comparison (JVM intrinsic)
+        if (state.input.regionMatches(state.offset, target, 0, len)) {
           state.advanceN(len)
           Result.Success(target, len)
         } else {
