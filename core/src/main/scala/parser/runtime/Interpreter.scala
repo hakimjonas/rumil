@@ -102,7 +102,8 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           state.advanceN(len)
           Result.Success(target, len)
         } else {
-          val found = state.input.substring(state.offset, math.min(state.offset + len, state.input.length))
+          val found =
+            state.input.substring(state.offset, math.min(state.offset + len, state.input.length))
           Result.Failure(
             List(ParseError.Unexpected(found, Set(s"\"$target\""), startLoc)),
             startLoc
@@ -347,7 +348,7 @@ private def interpretMemo[E, A](
   inner: Parser[E, A],
   key: MemoKey[E, A],
   state: ParserState): Result[E, A] = {
-  val pos = state.offset
+  val pos           = state.offset
   val startSnapshot = state.save // Capture line/column for seed growth
 
   state.memo.getRaw(key, pos) match {
@@ -478,8 +479,8 @@ private def growLR[E, A](
   var lastResult: Result[E, A] = castSeed[E, A](lr.seed)
   var lastPos                  = seedEndPos
   // Track the ending line/column for accurate restoration
-  var lastLine                 = state.line
-  var lastColumn               = state.column
+  var lastLine   = state.line
+  var lastColumn = state.column
 
   // Keep growing while we make progress
   var continue = true

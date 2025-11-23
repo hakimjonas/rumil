@@ -74,7 +74,7 @@ class ErrorRecoveryTests extends FunSuite {
   }
 
   test("orElse: with succeed as fallback (default value pattern)") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number      = digit.many1.map(_.mkString.toInt)
     val withDefault = number.orElse(succeed(0))
 
     // Valid number
@@ -93,7 +93,7 @@ class ErrorRecoveryTests extends FunSuite {
     result match {
       case Result.Partial(_, errors, _) =>
         assert(errors.nonEmpty)
-        // Error should be at the start where "hello" was expected
+      // Error should be at the start where "hello" was expected
       case other => fail(s"Expected Partial, got $other")
     }
   }
@@ -201,7 +201,7 @@ class ErrorRecoveryTests extends FunSuite {
   // ============================================================================
 
   test("resilient number parsing with default") {
-    val number = digit.many1.map(_.mkString.toInt)
+    val number          = digit.many1.map(_.mkString.toInt)
     val resilientNumber = number.orElse(succeed(-1)).expect("integer expected")
 
     // Valid numbers
@@ -216,8 +216,8 @@ class ErrorRecoveryTests extends FunSuite {
 
   test("resilient list parsing - continues after error") {
     val number = digit.many1.map(_.mkString.toInt)
-    val item = number.orElse(succeed(0))
-    val list = item.sepBy(char(','))
+    val item   = number.orElse(succeed(0))
+    val list   = item.sepBy(char(','))
 
     // All valid
     assertEquals(list.run("1,2,3").toOption, Some(List(1, 2, 3)))

@@ -2,8 +2,7 @@ package parser.runtime
 
 import scala.collection.mutable
 
-import parser.core._
-import parser.core.MemoKey
+import parser.core.{MemoKey, _}
 
 // ============================================================================
 // Ref - Controlled Mutation (Eru Pattern)

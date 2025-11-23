@@ -18,7 +18,7 @@ class CatsParseComparison extends FunSuite {
     // Warmup
     (0 until 10).foreach(_ => f)
 
-    val start = System.nanoTime()
+    val start     = System.nanoTime()
     var result: A = null.asInstanceOf[A]
     (0 until iterations).foreach { _ =>
       result = f
@@ -189,15 +189,15 @@ class CatsParseComparison extends FunSuite {
     import cats.parse.{Parser => P}
 
     lazy val catsExpr: P[Int] = P.recursive[Int] { recurse =>
-      val num = P.charsWhile(_.isDigit).map(_.toInt)
+      val num            = P.charsWhile(_.isDigit).map(_.toInt)
       val factor: P[Int] = num | (P.char('(') *> recurse <* P.char(')'))
 
       val mulDiv = factor.repSep(P.charIn("*/")).map { nel =>
-        nel.toList.reduceLeft { (acc, n) => acc * n } // Simplified
+        nel.toList.reduceLeft((acc, n) => acc * n) // Simplified
       }
 
       mulDiv.repSep(P.charIn("+-")).map { nel =>
-        nel.toList.reduceLeft { (acc, n) => acc + n } // Simplified
+        nel.toList.reduceLeft((acc, n) => acc + n) // Simplified
       }
     }
 
@@ -239,7 +239,7 @@ class CatsParseComparison extends FunSuite {
 
     val catsValue: P[String] = P.recursive[String] { recurse =>
       val num = P.charsWhile(_.isDigit)
-      val arr = (P.char('[') *> recurse <* P.char(']'))
+      val arr = P.char('[') *> recurse <* P.char(']')
       num | arr
     }
 

@@ -88,19 +88,19 @@ def parseKeyPath(key: scala.Predef.String): KeyPath =
  * @return String representation of the value
  */
 def formatTomlValue(value: TomlValue): scala.Predef.String = value match {
-  case TomlValue.String(s)        => formatTomlString(s)
-  case TomlValue.Integer(n)       => n.toString
-  case TomlValue.Float(d)         =>
+  case TomlValue.String(s)  => formatTomlString(s)
+  case TomlValue.Integer(n) => n.toString
+  case TomlValue.Float(d) =>
     if (d.isNaN) "nan"
     else if (d.isPosInfinity) "inf"
     else if (d.isNegInfinity) "-inf"
     else d.toString
-  case TomlValue.Boolean(b)       => if (b) "true" else "false"
-  case TomlValue.DateTime(dt)     => dt.toString
+  case TomlValue.Boolean(b)        => if (b) "true" else "false"
+  case TomlValue.DateTime(dt)      => dt.toString
   case TomlValue.LocalDateTime(dt) => dt.toString
-  case TomlValue.LocalDate(d)     => d.toString
-  case TomlValue.LocalTime(t)     => t.toString
-  case TomlValue.Array(elements)  =>
+  case TomlValue.LocalDate(d)      => d.toString
+  case TomlValue.LocalTime(t)      => t.toString
+  case TomlValue.Array(elements) =>
     elements.map(formatTomlValue).mkString("[", ", ", "]")
   case TomlValue.InlineTable(pairs) =>
     pairs.map { case (k, v) => s"$k = ${formatTomlValue(v)}" }.mkString("{ ", ", ", " }")

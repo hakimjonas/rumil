@@ -182,7 +182,7 @@ class LeftRecursionTests extends FunSuite {
     // The left-recursive expr greedily parses as much as possible, but stops when
     // the trailing '+' doesn't have a digit after it. So expr returns 3, consuming "1+2".
     val fullParser = expr <* eof
-    val result = fullParser.run("1+2+")
+    val result     = fullParser.run("1+2+")
 
     assert(result.isFailure, s"Expected failure, got $result")
     result match {
