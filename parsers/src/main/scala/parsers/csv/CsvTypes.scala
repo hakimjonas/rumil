@@ -80,3 +80,48 @@ enum CsvError {
   case InconsistentColumns(expected: Int, found: Int, row: Int)
   case ParseError(message: String, line: Int, column: Int)
 }
+
+// ============================================================================
+// CSV FORMATTING - Convert CSV data back to string representation
+// ============================================================================
+
+/**
+ * Formats a CSV document as a string.
+ *
+ * @param doc The CSV document to format
+ * @param config CSV configuration (uses delimiter and quote)
+ * @return String representation of the CSV
+ */
+def formatCsv(doc: CsvDocument, config: CsvConfig = defaultCsvConfig): String =
+  doc.map(row => formatCsvRow(row, config)).mkString("\n")
+
+/**
+ * Formats a single CSV row.
+ */
+def formatCsvRow(row: List[String], config: CsvConfig = defaultCsvConfig): String =
+  row.map(field => formatCsvField(field, config)).mkString(config.delimiter.toString)
+
+/**
+ * Formats a single CSV field with proper quoting.
+ *
+ * A field is quoted if it contains:
+ * - The delimiter
+ * - Newlines
+ * - The quote character
+ */
+def formatCsvField(field: String, config: CsvConfig = defaultCsvConfig): String = {
+  val needsQuoting = field.contains(config.delimiter) ||
+    field.contains('\n') ||
+    field.contains('\r') ||
+    field.contains(config.quote)
+
+  if (needsQuoting) {
+    val escaped = field.replace(
+      config.quote.toString,
+      s"${config.escape}${config.quote}"
+    )
+    s"${config.quote}$escaped${config.quote}"
+  } else {
+    field
+  }
+}

@@ -67,6 +67,9 @@ extension [E, A](p: Parser[E, A]) {
   inline def count(n: Int): Parser[E, List[A]] =
     parser.core.count(n, p)
 
+  inline def times(n: Int): Parser[E, List[A]] =
+    parser.core.times(n, p)
+
   // Operators
   inline def chainl1(op: Parser[E, (A, A) => A]): Parser[E, A] =
     parser.core.chainl1(p, op)

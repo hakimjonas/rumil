@@ -311,6 +311,21 @@ def count[E, A](n: Int, p: Parser[E, A]): Parser[E, List[A]] =
     flatMap(p, (head: A) => map(count(n - 1, p), (tail: List[A]) => head :: tail))
   }
 
+/**
+ * Alias for count - repeats parser exactly n times.
+ *
+ * @param n Number of times to repeat (must be >= 0)
+ * @param p The parser to repeat
+ * @return A parser that returns a list of exactly n elements
+ *
+ * Example:
+ * {{{
+ * times(3, digit).run("123")  // Success(List('1','2','3'), 3)
+ * }}}
+ */
+inline def times[E, A](n: Int, p: Parser[E, A]): Parser[E, List[A]] =
+  count(n, p)
+
 // Lookahead
 
 /**
@@ -367,6 +382,28 @@ inline def notFollowedBy[A](p: Parser[ParseError, A]): Parser[ParseError, Unit] 
  */
 inline def attempt[E, A](p: Parser[E, A]): Parser[Nothing, Result[E, A]] =
   Parser.Attempt(p)
+
+// ============================================================================
+// Error Recovery Combinators
+// ============================================================================
+//
+// These combinators handle parse failures in different ways:
+//
+// | Combinator   | On Success | On Failure           | Returns      | Use When                    |
+// |--------------|------------|----------------------|--------------|-----------------------------|
+// | recover      | value      | f(error) -> value    | Always A     | Default value from error    |
+// | recoverWith  | value      | f(error) -> Parser   | A or fail    | Alternative parser needed   |
+// | orElse       | value      | try fallback parser  | Partial/Fail | Resilient parsing w/ errors |
+//
+// Key differences:
+// - `recover` always succeeds, discards the error, returns pure value
+// - `recoverWith` may still fail if the fallback parser fails
+// - `orElse` preserves errors in Partial result for error reporting
+//
+// For resilient/IDE parsing, prefer `orElse` as it accumulates errors.
+// For simple defaults, use `recover`.
+// For complex recovery logic based on error type, use `recoverWith`.
+// ============================================================================
 
 /**
  * Recovers from parse failures by providing a default value.

@@ -338,4 +338,39 @@ class CsvParserTests extends FunSuite {
     }
     prop.check()
   }
+
+  // ============================================================================
+  // Round-Trip Tests
+  // ============================================================================
+
+  test("round-trip: simple CSV") {
+    val original = List(
+      List("a", "b", "c"),
+      List("1", "2", "3")
+    )
+    val formatted = formatCsv(original)
+    val reparsed  = parseCsv(formatted)
+    assertEquals(reparsed.toOption, Some(original))
+  }
+
+  test("round-trip: CSV with quoted fields") {
+    val original = List(
+      List("name", "description"),
+      List("Widget", "A great, amazing product"),
+      List("Gadget", "Contains \"quotes\"")
+    )
+    val formatted = formatCsv(original)
+    val reparsed  = parseCsv(formatted)
+    assertEquals(reparsed.toOption, Some(original))
+  }
+
+  test("round-trip: CSV with embedded newlines") {
+    val original = List(
+      List("a", "multi\nline"),
+      List("b", "single")
+    )
+    val formatted = formatCsv(original)
+    val reparsed  = parseCsv(formatted)
+    assertEquals(reparsed.toOption, Some(original))
+  }
 }

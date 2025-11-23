@@ -8,6 +8,11 @@ package parser.core
  * - The key identity is established at creation time in `rule`
  * - Type safety is maintained because the same key instance is used for both store and retrieve
  *
+ * IMPORTANT: MemoKey uses reference equality (===), not structural equality (==).
+ * Each MemoKey instance is unique - two keys created separately will never match,
+ * even if they have the same type parameters. This is intentional: each `rule`
+ * call site gets its own unique key for memoization.
+ *
  * The cast in `MemoTable.get` is safe because:
  * 1. Keys are created once per `rule` call site
  * 2. The same key instance is used to store and retrieve
@@ -18,7 +23,7 @@ package parser.core
  * @tparam A The value type of the memoized parser result
  */
 final class MemoKey[E, A] private[parser] () {
-  // Identity is reference equality - each key is unique
+  // Identity is reference equality (eq) - each key instance is unique
 }
 
 object MemoKey {

@@ -252,17 +252,48 @@ def defer[E, A](p: => Parser[E, A]): Parser[E, A] =
  * - Automatic left recursion handling via seed-growth algorithm
  * - Direct left-recursive grammars that "just work"
  *
- * Use `rule` for any recursive parser that might be left-recursive.
- * The algorithm detects left recursion cycles and uses seed-growth
- * to find the longest match.
+ * == When to use `rule` vs `defer` ==
  *
- * Example:
- * {{{{
- * // Direct left recursion - now works!
+ * Use `defer` when:
+ * - Parser is right-recursive or non-recursive
+ * - You just need to break the initialization cycle
+ *
+ * Use `rule` when:
+ * - Parser is directly left-recursive (e.g., `expr -> expr '+' term`)
+ * - You want memoization for performance
+ * - You're unsure if left recursion exists
+ *
+ * == How it works ==
+ *
+ * The seed-growth algorithm (Warth et al.) handles left recursion by:
+ * 1. Detecting when a rule calls itself at the same position
+ * 2. Starting with a "seed" (failure or base case match)
+ * 3. Re-parsing until no more progress is made
+ * 4. Returning the longest successful match
+ *
+ * This gives left-associative results naturally:
+ * - `1+2+3` parses as `(1+2)+3`, not `1+(2+3)`
+ *
+ * == Examples ==
+ *
+ * Direct left recursion (arithmetic expressions):
+ * {{{
+ * // expr -> expr '+' digit | digit
  * lazy val expr: Parser[ParseError, Int] = rule {
- *   (expr ~ char('+') ~ term).map { case ((a, _), b) => a + b } | term
+ *   val add = for {
+ *     left  <- expr
+ *     _     <- char('+')
+ *     right <- digit
+ *   } yield left + (right - '0')
+ *   add | digit.map(_ - '0')
  * }
- * }}}}
+ * expr.run("1+2+3")  // Success(6, 5) - left associative: (1+2)+3
+ * }}}
+ *
+ * Traditional approach with chainl1 (still works, no rule needed):
+ * {{{
+ * val expr = digit.map(_ - '0').chainl1(char('+').as(_ + _))
+ * }}}
  *
  * @param p The parser to memoize (by-name parameter)
  * @return A memoized parser with left recursion support

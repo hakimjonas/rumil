@@ -74,6 +74,7 @@ object Parser {
     // Summon parsers for each field type
     val fieldParsers: List[Expr[parser.core.Parser[ParseError, Any]]] =
       fieldSymbols.map { field =>
+        val fieldName = field.name
         val fieldType = field.tree match {
           case v: ValDef => v.tpt.tpe
           case _         => report.errorAndAbort(s"Expected ValDef for field ${field.name}")
@@ -87,7 +88,7 @@ object Parser {
               case None =>
                 report.errorAndAbort(
                   s"Cannot derive Parser for ${TypeRepr.of[A].show}: " +
-                    s"missing Parser[ParseError, ${fieldType.show}]. " +
+                    s"field '$fieldName' requires Parser[ParseError, ${fieldType.show}]. " +
                     s"Please provide a given instance."
                 )
             }

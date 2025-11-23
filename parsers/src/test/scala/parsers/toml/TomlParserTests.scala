@@ -285,4 +285,68 @@ enabled = true
     val result = parseToml(toml.split("\n").take(2).mkString("\n") + "\n")
     assert(result.isSuccess)
   }
+
+  // ============================================================================
+  // Round-Trip Tests
+  // ============================================================================
+
+  test("round-trip: simple key-value pairs") {
+    val doc: TomlTable = (
+      isArrayTable = false,
+      pairs = Map("name" -> String("Alice"), "age" -> Integer(30)),
+      subtables = Map.empty
+    )
+    val formatted = formatToml(doc)
+    val reparsed  = parseToml(formatted + "\n")
+    assert(reparsed.isSuccess, s"Failed to parse: $formatted")
+    val result = reparsed.toOption.get
+    assertEquals(result.pairs("name"), String("Alice"))
+    assertEquals(result.pairs("age"), Integer(30))
+  }
+
+  test("round-trip: string with escapes") {
+    val doc: TomlTable = (
+      isArrayTable = false,
+      pairs = Map("message" -> String("Hello\nWorld")),
+      subtables = Map.empty
+    )
+    val formatted = formatToml(doc)
+    val reparsed  = parseToml(formatted + "\n")
+    assert(reparsed.isSuccess, s"Failed to parse: $formatted")
+    val result = reparsed.toOption.get
+    result.pairs("message") match {
+      case String(value) => assert(value.contains("\n"))
+      case _             => fail("Expected String")
+    }
+  }
+
+  test("round-trip: array values") {
+    val doc: TomlTable = (
+      isArrayTable = false,
+      pairs = Map("numbers" -> Array(List(Integer(1), Integer(2), Integer(3)))),
+      subtables = Map.empty
+    )
+    val formatted = formatToml(doc)
+    val reparsed  = parseToml(formatted + "\n")
+    assert(reparsed.isSuccess, s"Failed to parse: $formatted")
+    val result = reparsed.toOption.get
+    result.pairs("numbers") match {
+      case Array(elements) => assertEquals(elements, List(Integer(1), Integer(2), Integer(3)))
+      case _               => fail("Expected Array")
+    }
+  }
+
+  test("round-trip: boolean and float") {
+    val doc: TomlTable = (
+      isArrayTable = false,
+      pairs = Map("enabled" -> Boolean(true), "pi" -> Float(3.14)),
+      subtables = Map.empty
+    )
+    val formatted = formatToml(doc)
+    val reparsed  = parseToml(formatted + "\n")
+    assert(reparsed.isSuccess, s"Failed to parse: $formatted")
+    val result = reparsed.toOption.get
+    assertEquals(result.pairs("enabled"), Boolean(true))
+    assertEquals(result.pairs("pi"), Float(3.14))
+  }
 }
