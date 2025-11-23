@@ -73,9 +73,11 @@ class TomlParserTests extends FunSuite {
     val toml   = """str = "line1\nline2""""
     val result = parseToml(toml)
     assert(result.isSuccess)
-    val doc   = result.toOption.get
-    val value = doc.pairs("str").asInstanceOf[String]
-    assert(value.value.contains("\n"))
+    val doc = result.toOption.get
+    doc.pairs("str") match {
+      case String(value) => assert(value.contains("\n"))
+      case _             => fail("Expected String")
+    }
   }
 
   test("parse literal string") {
@@ -136,18 +138,22 @@ class TomlParserTests extends FunSuite {
     val toml   = """inf = inf"""
     val result = parseToml(toml)
     assert(result.isSuccess)
-    val doc   = result.toOption.get
-    val value = doc.pairs("inf").asInstanceOf[Float]
-    assert(value.value.isInfinite)
+    val doc = result.toOption.get
+    doc.pairs("inf") match {
+      case Float(value) => assert(value.isInfinite)
+      case _            => fail("Expected Float")
+    }
   }
 
   test("parse NaN") {
     val toml   = """nan = nan"""
     val result = parseToml(toml)
     assert(result.isSuccess)
-    val doc   = result.toOption.get
-    val value = doc.pairs("nan").asInstanceOf[Float]
-    assert(value.value.isNaN)
+    val doc = result.toOption.get
+    doc.pairs("nan") match {
+      case Float(value) => assert(value.isNaN)
+      case _            => fail("Expected Float")
+    }
   }
 
   // ============================================================================
@@ -159,8 +165,10 @@ class TomlParserTests extends FunSuite {
     val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
-    val arr = doc.pairs("arr").asInstanceOf[Array]
-    assertEquals(arr.elements, List())
+    doc.pairs("arr") match {
+      case Array(elements) => assertEquals(elements, List())
+      case _               => fail("Expected Array")
+    }
   }
 
   test("parse integer array") {
@@ -168,8 +176,10 @@ class TomlParserTests extends FunSuite {
     val result = parseToml(toml)
     assert(result.isSuccess)
     val doc = result.toOption.get
-    val arr = doc.pairs("arr").asInstanceOf[Array]
-    assertEquals(arr.elements, List(Integer(1), Integer(2), Integer(3)))
+    doc.pairs("arr") match {
+      case Array(elements) => assertEquals(elements, List(Integer(1), Integer(2), Integer(3)))
+      case _               => fail("Expected Array")
+    }
   }
 
   test("parse string array") {
@@ -204,19 +214,24 @@ class TomlParserTests extends FunSuite {
     val toml   = """table = {}"""
     val result = parseToml(toml)
     assert(result.isSuccess)
-    val doc   = result.toOption.get
-    val table = doc.pairs("table").asInstanceOf[InlineTable]
-    assert(table.pairs.isEmpty)
+    val doc = result.toOption.get
+    doc.pairs("table") match {
+      case InlineTable(pairs) => assert(pairs.isEmpty)
+      case _                  => fail("Expected InlineTable")
+    }
   }
 
   test("parse inline table with values") {
     val toml   = """point = { x = 1, y = 2 }"""
     val result = parseToml(toml)
     assert(result.isSuccess)
-    val doc   = result.toOption.get
-    val table = doc.pairs("point").asInstanceOf[InlineTable]
-    assertEquals(table.pairs("x"), Integer(1))
-    assertEquals(table.pairs("y"), Integer(2))
+    val doc = result.toOption.get
+    doc.pairs("point") match {
+      case InlineTable(pairs) =>
+        assertEquals(pairs("x"), Integer(1))
+        assertEquals(pairs("y"), Integer(2))
+      case _ => fail("Expected InlineTable")
+    }
   }
 
   // ============================================================================

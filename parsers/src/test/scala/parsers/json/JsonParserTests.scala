@@ -316,9 +316,12 @@ class JsonParserTests extends FunSuite {
 
     val result = parseJson(json)
     assert(result.isSuccess)
-    val obj = result.toOption.get.asInstanceOf[Object]
-    assertEquals(obj.fields("name"), Str("Alice Smith"))
-    assertEquals(obj.fields("age"), Number(30))
+    result.toOption.get match {
+      case Object(fields) =>
+        assertEquals(fields("name"), Str("Alice Smith"))
+        assertEquals(fields("age"), Number(30))
+      case _ => fail("Expected Object")
+    }
   }
 
   test("parse array of objects") {
@@ -330,8 +333,10 @@ class JsonParserTests extends FunSuite {
 
     val result = parseJson(json)
     assert(result.isSuccess)
-    val arr = result.toOption.get.asInstanceOf[Array]
-    assertEquals(arr.elements.length, 3)
+    result.toOption.get match {
+      case Array(elements) => assertEquals(elements.length, 3)
+      case _               => fail("Expected Array")
+    }
   }
 
   test("parse deeply nested structure") {

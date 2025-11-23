@@ -52,15 +52,19 @@ class YamlParserTests extends FunSuite {
   test("parse flow sequence") {
     val result = parseYaml("[1, 2, 3]")
     assert(result.isSuccess)
-    val seq = result.toOption.get.root.asInstanceOf[Sequence]
-    assertEquals(seq.elements.length, 3)
+    result.toOption.get.root match {
+      case Sequence(elements) => assertEquals(elements.length, 3)
+      case _                  => fail("Expected Sequence")
+    }
   }
 
   test("parse flow mapping") {
     val result = parseYaml("{name: Alice, age: 30}")
     assert(result.isSuccess)
-    val map = result.toOption.get.root.asInstanceOf[Mapping]
-    assert(map.pairs.contains("name"))
+    result.toOption.get.root match {
+      case Mapping(pairs) => assert(pairs.contains("name"))
+      case _              => fail("Expected Mapping")
+    }
   }
 
   test("parse block sequence") {
@@ -70,8 +74,10 @@ class YamlParserTests extends FunSuite {
 """
     val result = parseYaml(yaml)
     assert(result.isSuccess)
-    val seq = result.toOption.get.root.asInstanceOf[Sequence]
-    assertEquals(seq.elements.length, 3)
+    result.toOption.get.root match {
+      case Sequence(elements) => assertEquals(elements.length, 3)
+      case _                  => fail("Expected Sequence")
+    }
   }
 
   test("parse block mapping") {
@@ -81,8 +87,10 @@ city: NYC
 """
     val result = parseYaml(yaml)
     assert(result.isSuccess)
-    val map = result.toOption.get.root.asInstanceOf[Mapping]
-    assertEquals(map.pairs("name"), String("Alice"))
+    result.toOption.get.root match {
+      case Mapping(pairs) => assertEquals(pairs("name"), String("Alice"))
+      case _              => fail("Expected Mapping")
+    }
   }
 
   test("parse with document markers") {

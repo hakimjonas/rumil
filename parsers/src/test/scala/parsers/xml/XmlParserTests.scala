@@ -23,25 +23,32 @@ class XmlParserTests extends FunSuite {
   test("parse element with text content") {
     val result = parseXmlFragment("<root>hello</root>")
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.name.localName, "root")
-    assertEquals(elem.children.length, 1)
+    result.toOption.get match {
+      case Element(name, _, children) =>
+        assertEquals(name.localName, "root")
+        assertEquals(children.length, 1)
+      case _ => fail("Expected Element")
+    }
   }
 
   test("parse nested elements") {
     val xml    = "<root><child>text</child></root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val root = result.toOption.get.asInstanceOf[Element]
-    assertEquals(root.children.length, 1)
+    result.toOption.get match {
+      case Element(_, _, children) => assertEquals(children.length, 1)
+      case _                       => fail("Expected Element")
+    }
   }
 
   test("parse multiple child elements") {
     val xml    = "<root><a>1</a><b>2</b><c>3</c></root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val root = result.toOption.get.asInstanceOf[Element]
-    assertEquals(root.children.length, 3)
+    result.toOption.get match {
+      case Element(_, _, children) => assertEquals(children.length, 3)
+      case _                       => fail("Expected Element")
+    }
   }
 
   // ============================================================================
@@ -52,34 +59,43 @@ class XmlParserTests extends FunSuite {
     val xml    = """<root id="123"/>"""
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.attributes.length, 1)
-    assertEquals(elem.attributes.head.name.localName, "id")
-    assertEquals(elem.attributes.head.value, "123")
+    result.toOption.get match {
+      case Element(_, attributes, _) =>
+        assertEquals(attributes.length, 1)
+        assertEquals(attributes.head.name.localName, "id")
+        assertEquals(attributes.head.value, "123")
+      case _ => fail("Expected Element")
+    }
   }
 
   test("parse element with multiple attributes") {
     val xml    = """<root id="123" name="test" active="true"/>"""
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.attributes.length, 3)
+    result.toOption.get match {
+      case Element(_, attributes, _) => assertEquals(attributes.length, 3)
+      case _                         => fail("Expected Element")
+    }
   }
 
   test("parse attribute with single quotes") {
     val xml    = """<root id='123'/>"""
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.attributes.head.value, "123")
+    result.toOption.get match {
+      case Element(_, attributes, _) => assertEquals(attributes.head.value, "123")
+      case _                         => fail("Expected Element")
+    }
   }
 
   test("parse attribute with entity") {
     val xml    = """<root msg="Hello &amp; goodbye"/>"""
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.attributes.head.value, "Hello & goodbye")
+    result.toOption.get match {
+      case Element(_, attributes, _) => assertEquals(attributes.head.value, "Hello & goodbye")
+      case _                         => fail("Expected Element")
+    }
   }
 
   // ============================================================================
@@ -90,45 +106,50 @@ class XmlParserTests extends FunSuite {
     val xml    = "<root>5 &lt; 10</root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assertEquals(text.content, "5 < 10")
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assertEquals(content, "5 < 10")
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   test("parse text with gt entity") {
     val xml    = "<root>10 &gt; 5</root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assertEquals(text.content, "10 > 5")
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assertEquals(content, "10 > 5")
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   test("parse text with amp entity") {
     val xml    = "<root>Tom &amp; Jerry</root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assertEquals(text.content, "Tom & Jerry")
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assertEquals(content, "Tom & Jerry")
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   test("parse text with quot entity") {
     val xml    = "<root>Say &quot;hello&quot;</root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assert(text.content.contains("\""))
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assert(content.contains("\""))
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   test("parse text with apos entity") {
     val xml    = "<root>It&apos;s working</root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assert(text.content.contains("'"))
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assert(content.contains("'"))
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   // ============================================================================
@@ -139,18 +160,20 @@ class XmlParserTests extends FunSuite {
     val xml    = "<root>&#65;BC</root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assertEquals(text.content, "ABC")
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assertEquals(content, "ABC")
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   test("parse hexadecimal character reference") {
     val xml    = "<root>&#x41;BC</root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assertEquals(text.content, "ABC")
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assertEquals(content, "ABC")
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   // ============================================================================
@@ -161,19 +184,22 @@ class XmlParserTests extends FunSuite {
     val xml    = "<root><![CDATA[<>&\"']]></root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem  = result.toOption.get.asInstanceOf[Element]
-    val cdata = elem.children.head.asInstanceOf[CData]
-    assertEquals(cdata.content, "<>&\"'")
+    result.toOption.get match {
+      case Element(_, _, CData(content) :: _) => assertEquals(content, "<>&\"'")
+      case _                                  => fail("Expected Element with CData child")
+    }
   }
 
   test("parse CDATA with special content") {
     val xml    = "<root><![CDATA[function() { if (x < 5 && y > 10) return true; }]]></root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem  = result.toOption.get.asInstanceOf[Element]
-    val cdata = elem.children.head.asInstanceOf[CData]
-    assert(cdata.content.contains("<"))
-    assert(cdata.content.contains("&&"))
+    result.toOption.get match {
+      case Element(_, _, CData(content) :: _) =>
+        assert(content.contains("<"))
+        assert(content.contains("&&"))
+      case _ => fail("Expected Element with CData child")
+    }
   }
 
   // ============================================================================
@@ -184,18 +210,27 @@ class XmlParserTests extends FunSuite {
     val xml    = "<root><!-- this is a comment --></root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.children.length, 1)
-    val comment = elem.children.head.asInstanceOf[Comment]
-    assert(comment.content.contains("this is a comment"))
+    result.toOption.get match {
+      case Element(_, _, children) =>
+        assertEquals(children.length, 1)
+        children.head match {
+          case Comment(content) => assert(content.contains("this is a comment"))
+          case _                => fail("Expected Comment")
+        }
+      case _ => fail("Expected Element")
+    }
   }
 
   test("parse multiple comments") {
     val xml    = "<root><!-- first --><!-- second --></root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.children.count(_.isInstanceOf[Comment]), 2)
+    result.toOption.get match {
+      case Element(_, _, children) =>
+        val commentCount = children.count { case Comment(_) => true; case _ => false }
+        assertEquals(commentCount, 2)
+      case _ => fail("Expected Element")
+    }
   }
 
   // ============================================================================
@@ -206,10 +241,12 @@ class XmlParserTests extends FunSuite {
     val xml    = "<root><?target content?></root>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val pi   = elem.children.head.asInstanceOf[ProcessingInstruction]
-    assertEquals(pi.target, "target")
-    assertEquals(pi.content, "content")
+    result.toOption.get match {
+      case Element(_, _, ProcessingInstruction(target, content) :: _) =>
+        assertEquals(target, "target")
+        assertEquals(content, "content")
+      case _ => fail("Expected Element with ProcessingInstruction child")
+    }
   }
 
   // ============================================================================
@@ -220,17 +257,22 @@ class XmlParserTests extends FunSuite {
     val xml    = "<xs:element/>"
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assertEquals(elem.name.prefix, Some("xs"))
-    assertEquals(elem.name.localName, "element")
+    result.toOption.get match {
+      case Element(name, _, _) =>
+        assertEquals(name.prefix, Some("xs"))
+        assertEquals(name.localName, "element")
+      case _ => fail("Expected Element")
+    }
   }
 
   test("parse element with namespace attribute") {
     val xml    = """<root xmlns="http://example.com"/>"""
     val result = parseXmlFragment(xml)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    assert(elem.attributes.exists(_.name.localName == "xmlns"))
+    result.toOption.get match {
+      case Element(_, attributes, _) => assert(attributes.exists(_.name.localName == "xmlns"))
+      case _                         => fail("Expected Element")
+    }
   }
 
   test("parse element with prefixed namespace declaration") {
@@ -263,9 +305,10 @@ class XmlParserTests extends FunSuite {
     val xml    = "<root>  text  </root>"
     val result = parseXmlFragment(xml, config)
     assert(result.isSuccess)
-    val elem = result.toOption.get.asInstanceOf[Element]
-    val text = elem.children.head.asInstanceOf[Text]
-    assert(text.content.startsWith("  "))
+    result.toOption.get match {
+      case Element(_, _, Text(content) :: _) => assert(content.startsWith("  "))
+      case _                                 => fail("Expected Element with Text child")
+    }
   }
 
   // ============================================================================
