@@ -72,6 +72,9 @@ enum Parser[+E, +A] {
   case Debug[E, A](parser: Parser[E, A], label: String)             extends Parser[E, A]
   case Defer[E, A](thunk: () => Parser[E, A])                       extends Parser[E, A]
   case Eof()                                                        extends Parser[ParseError, Unit]
+  // Error recovery combinators
+  case RecoverWith[E, A](parser: Parser[E, A], recovery: Parser[E, A]) extends Parser[E, A]
+  case Expect[A](parser: Parser[ParseError, A], message: String)       extends Parser[ParseError, A]
 }
 
 /**

@@ -255,6 +255,42 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           state.location
         )
       }
+
+    case Parser.RecoverWith(p, recovery) =>
+      val snapshot = state.save
+      interpret(p, state) match {
+        case success @ Result.Success(_, _)    => success
+        case partial @ Result.Partial(_, _, _) => partial
+        case Result.Failure(errors, furthest) =>
+          state.restore(snapshot)
+          interpret(recovery, state) match {
+            case Result.Success(value, consumed) =>
+              // Recovered successfully, but note the original errors
+              Result.Partial(value, errors, consumed)
+            case Result.Partial(value, recoveryErrors, consumed) =>
+              // Recovery was partial, combine all errors
+              Result.Partial(value, errors ++ recoveryErrors, consumed)
+            case Result.Failure(recoveryErrors, recoveryFurthest) =>
+              // Both failed, combine errors and use furthest location
+              val combinedErrors = errors ++ recoveryErrors
+              val finalFurthest =
+                if (furthest.offset > recoveryFurthest.offset) furthest
+                else recoveryFurthest
+              Result.Failure(combinedErrors, finalFurthest)
+          }
+      }
+
+    case Parser.Expect(p, message) =>
+      interpret(p, state) match {
+        case success @ Result.Success(_, _)    => success
+        case partial @ Result.Partial(_, _, _) => partial
+        case Result.Failure(_, furthest) =>
+          // Replace the error with a custom message
+          Result.Failure(
+            List(ParseError.Custom(message, furthest)),
+            furthest
+          )
+      }
   }
 }
 
