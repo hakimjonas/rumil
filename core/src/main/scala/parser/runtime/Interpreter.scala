@@ -80,13 +80,13 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
       }
 
     case Parser.StringMatch(target) =>
-      val startLoc = state.location
-      val len      = target.length
+      val len = target.length
       // Check if we have enough input remaining
       if (state.offset + len > state.input.length) {
+        val loc = state.location // Only compute location on failure
         Result.Failure(
-          List(ParseError.EndOfInput(s"\"$target\"", startLoc)),
-          startLoc
+          List(ParseError.EndOfInput(s"\"$target\"", loc)),
+          loc
         )
       } else {
         // Use regionMatches for optimized string comparison (JVM intrinsic)
@@ -94,11 +94,12 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           state.advanceN(len)
           Result.Success(target, len)
         } else {
+          val loc = state.location // Only compute location on failure
           val found =
             state.input.substring(state.offset, math.min(state.offset + len, state.input.length))
           Result.Failure(
-            List(ParseError.Unexpected(found, Set(s"\"$target\""), startLoc)),
-            startLoc
+            List(ParseError.Unexpected(found, Set(s"\"$target\""), loc)),
+            loc
           )
         }
       }
