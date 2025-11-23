@@ -317,6 +317,7 @@ private def interpretMemo[E, A](
   key: MemoKey[E, A],
   state: ParserState): Result[E, A] = {
   val pos = state.offset
+  val startSnapshot = state.save // Capture line/column for seed growth
 
   state.memo.getRaw(key, pos) match {
     case Some(Left(lr)) =>
@@ -369,7 +370,7 @@ private def interpretMemo[E, A](
             case _ =>
               // Base case succeeded - now grow it
               lr.seed = eraseSeed(result)
-              growLR(inner, key, pos, lr, endPos, state)
+              growLR(inner, key, startSnapshot, lr, endPos, state)
           }
       }
   }
@@ -428,25 +429,32 @@ private def setupLR(key: AnyRef, lr: LR, state: ParserState): Unit = {
  *
  * Type safety: The key carries type parameters [E, A] ensuring all operations
  * maintain type consistency throughout the seed growth process.
+ *
+ * @param startSnapshot The saved state (offset, line, column) at rule start,
+ *                      used to correctly restore position with accurate line/column
  */
 private def growLR[E, A](
   inner: Parser[E, A],
   key: MemoKey[E, A],
-  pos: Int,
+  startSnapshot: StateSnapshot,
   lr: LR,
   seedEndPos: Int,
   state: ParserState
 ): Result[E, A] = {
+  val pos = startSnapshot.offset
   state.heads.put(pos, lr.head.get)
 
   var lastResult: Result[E, A] = castSeed[E, A](lr.seed)
   var lastPos                  = seedEndPos
+  // Track the ending line/column for accurate restoration
+  var lastLine                 = state.line
+  var lastColumn               = state.column
 
   // Keep growing while we make progress
   var continue = true
   while (continue) {
-    // Reset position to start of this rule
-    state.restore((offset = pos, line = 1, column = 1)) // Simplified line/column
+    // Reset position to start of this rule with correct line/column
+    state.restore(startSnapshot)
 
     // Update memo with current seed so recursive calls see it
     state.memo.put(key, pos, lastResult, lastPos)
@@ -467,12 +475,15 @@ private def growLR[E, A](
         // Made progress - update seed and continue
         lastResult = result
         lastPos = resultPos
+        lastLine = state.line
+        lastColumn = state.column
         lr.seed = eraseSeed(result)
     }
   }
 
   state.heads.remove(pos)
-  state.restore((offset = lastPos, line = 1, column = 1))
+  // Restore to final position with accurate line/column
+  state.restore((offset = lastPos, line = lastLine, column = lastColumn))
   state.memo.put(key, pos, lastResult, lastPos)
   lastResult
 }
