@@ -88,6 +88,102 @@ class LeftRecursionTests extends FunSuite {
     assertEquals(expr.run("2*3").toOption, Some(6))
   }
 
+  // ============================================================================
+  // Indirect Left Recursion Tests
+  // ============================================================================
+
+  test("rule: indirect left recursion - expr/term/factor") {
+    // Classic expression grammar with indirect left recursion:
+    // expr   -> expr '+' term | term
+    // term   -> term '*' factor | factor
+    // factor -> digit | '(' expr ')'
+    //
+    // The indirect recursion is: expr -> term -> factor -> '(' expr ')'
+
+    lazy val expr: Parser[ParseError, Int] = rule {
+      val add = for {
+        left  <- expr
+        _     <- char('+')
+        right <- term
+      } yield left + right
+
+      add | term
+    }
+
+    lazy val term: Parser[ParseError, Int] = rule {
+      val mul = for {
+        left  <- term
+        _     <- char('*')
+        right <- factor
+      } yield left * right
+
+      mul | factor
+    }
+
+    lazy val factor: Parser[ParseError, Int] = rule {
+      val parens = for {
+        _ <- char('(')
+        e <- expr
+        _ <- char(')')
+      } yield e
+
+      parens | digit.map(_ - '0')
+    }
+
+    // Simple cases
+    assertEquals(expr.run("5").toOption, Some(5))
+    assertEquals(expr.run("2*3").toOption, Some(6))
+    assertEquals(expr.run("1+2").toOption, Some(3))
+
+    // Combined - should be 1 + (2 * 3) = 7 due to precedence
+    assertEquals(expr.run("1+2*3").toOption, Some(7))
+
+    // With parentheses - indirect recursion through factor
+    assertEquals(expr.run("(5)").toOption, Some(5))
+    assertEquals(expr.run("(1+2)").toOption, Some(3))
+    assertEquals(expr.run("(1+2)*3").toOption, Some(9))
+
+    // Left associativity for same precedence
+    assertEquals(expr.run("1+2+3").toOption, Some(6))  // (1+2)+3
+    assertEquals(expr.run("2*3*4").toOption, Some(24)) // (2*3)*4
+  }
+
+  test("rule: simple indirect left recursion - A calls B calls A") {
+    // Simplest indirect left recursion:
+    // A -> B 'a' | 'a'
+    // B -> A 'b'
+    //
+    // This creates the cycle: A -> B -> A
+
+    lazy val a: Parser[ParseError, String] = rule {
+      val indirect = for {
+        bResult <- b
+        _       <- char('a')
+      } yield bResult + "a"
+
+      indirect | char('a').map(_.toString)
+    }
+
+    lazy val b: Parser[ParseError, String] = rule {
+      for {
+        aResult <- a
+        _       <- char('b')
+      } yield aResult + "b"
+    }
+
+    // Base case
+    assertEquals(a.run("a").toOption, Some("a"))
+
+    // One level of indirection: a -> b -> a
+    // Input "aba":
+    //   Round 1: A tries B, B tries A, A returns seed (fail), B fails, A matches 'a' -> seed="a"
+    //   Round 2 (grow): A tries B, B tries A (returns seed "a"), B matches 'b' -> "ab", A matches 'a' -> "aba"
+    assertEquals(a.run("aba").toOption, Some("aba"))
+
+    // Two levels: "ababa"
+    assertEquals(a.run("ababa").toOption, Some("ababa"))
+  }
+
   test("rule: nested rules - addition with term") {
     // Skip for now - indirect left recursion needs more work
     // This is a known limitation of the simple seed-growth algorithm

@@ -325,7 +325,13 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
       }
 
     case Parser.Memo(inner, key) =>
-      interpretMemo(inner, key, state)
+      if (DEBUG_LR)
+        System.err.println(s"[LR] Parser.Memo: key=$key, lrStack size before=${state.lrStack.size}")
+      val result = interpretMemo(inner, key, state)
+      if (DEBUG_LR)
+        System.err.println(
+          s"[LR] Parser.Memo: key=$key done, lrStack size after=${state.lrStack.size}")
+      result
   }
 }
 
@@ -344,6 +350,9 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
  * @param state Mutable parse state with memo tables
  * @return Parse result
  */
+// Debug flag - set to true to trace indirect left recursion
+private val DEBUG_LR = false
+
 private def interpretMemo[E, A](
   inner: Parser[E, A],
   key: MemoKey[E, A],
@@ -351,14 +360,89 @@ private def interpretMemo[E, A](
   val pos           = state.offset
   val startSnapshot = state.save // Capture line/column for seed growth
 
+  if (DEBUG_LR) {
+    val headInfo = state.heads
+      .get(pos)
+      .map(h => s"head=${h.rule}, involved=${h.involvedSet}, eval=${h.evalSet}")
+      .getOrElse("no head")
+    System.err.println(s"[LR] interpretMemo key=$key pos=$pos $headInfo")
+  }
+
+  // RECALL check for indirect left recursion (Warth et al.)
+  // If we're inside a grow-LR phase and this rule is in the evalSet,
+  // we need to re-evaluate it instead of returning the cached result.
+  state.heads.get(pos) match {
+    case Some(head) if head.evalSet.contains(key) =>
+      if (DEBUG_LR) System.err.println(s"[LR]   -> in evalSet, re-evaluating fresh")
+      // This rule needs re-evaluation during seed growth
+      head.evalSet.remove(key)
+      // Re-evaluate this rule FRESH - bypass memo entirely and parse inner directly
+      // This is necessary for indirect left recursion where the involved rule
+      // has a stale cached result from the initial parse
+      val result = interpret(inner, state)
+      val endPos = state.offset
+      // Update memo with fresh result
+      state.memo.put(key, pos, result, endPos)
+      result
+
+    case Some(head) if head.rule eq key =>
+      // This is the HEAD rule during grow phase - return current seed
+      if (DEBUG_LR) System.err.println(s"[LR]   -> this IS the head, returning seed")
+      state.memo.getRaw(key, pos) match {
+        case Some(Left(lr)) =>
+          castSeed[E, A](lr.seed)
+        case Some(Right(entry)) =>
+          // Return the cached/grown result
+          state.restore((offset = entry.pos, line = state.line, column = state.column))
+          state.memo.getResult(key, pos).get
+        case None =>
+          // Shouldn't happen but fall back to normal evaluation
+          evaluateMemo(inner, key, pos, startSnapshot, state)
+      }
+
+    case Some(head) if head.involvedSet.contains(key) =>
+      if (DEBUG_LR) System.err.println(s"[LR]   -> in involvedSet but not evalSet")
+      // Rule is involved in cycle but not in evalSet - return cached/LR result
+      state.memo.getRaw(key, pos) match {
+        case Some(Left(lr)) =>
+          if (DEBUG_LR) System.err.println(s"[LR]   -> returning seed: ${lr.seed}")
+          // Return the seed for this rule
+          castSeed[E, A](lr.seed)
+        case Some(Right(entry)) =>
+          if (DEBUG_LR) System.err.println(s"[LR]   -> returning cached result")
+          state.restore((offset = entry.pos, line = state.line, column = state.column))
+          state.memo.getResult(key, pos).get
+        case None =>
+          if (DEBUG_LR) System.err.println(s"[LR]   -> no entry, evaluating normally")
+          // No entry yet - evaluate normally
+          evaluateMemo(inner, key, pos, startSnapshot, state)
+      }
+
+    case _ =>
+      // Normal case - not involved in current head's cycle
+      evaluateMemo(inner, key, pos, startSnapshot, state)
+  }
+}
+
+/**
+ * Core memoization logic, separated for RECALL handling.
+ */
+private def evaluateMemo[E, A](
+  inner: Parser[E, A],
+  key: MemoKey[E, A],
+  pos: Int,
+  startSnapshot: StateSnapshot,
+  state: ParserState): Result[E, A] =
   state.memo.getRaw(key, pos) match {
     case Some(Left(lr)) =>
+      if (DEBUG_LR) System.err.println(s"[LR]   evaluateMemo: found LR marker, calling setupLR")
       // Left recursion detected - mark this LR as having a head (we're in a cycle)
       setupLR(key, lr, state)
       // LR.seed is type-erased but we know it matches our key's type
       castSeed[E, A](lr.seed)
 
     case Some(Right(entry)) =>
+      if (DEBUG_LR) System.err.println(s"[LR]   evaluateMemo: returning cached result")
       // Cached result - restore position and return
       state.restore((offset = entry.pos, line = state.line, column = state.column))
       // Use type-safe retrieval through MemoTable
@@ -366,6 +450,7 @@ private def interpretMemo[E, A](
 
     case None =>
       // First time seeing this parser at this position
+      if (DEBUG_LR) System.err.println(s"[LR]   evaluateMemo: first time, pushing LR for $key")
       val lr = LR(
         seed = Result.Failure(List.empty, state.location),
         rule = key,
@@ -373,11 +458,16 @@ private def interpretMemo[E, A](
       )
       state.lrStack.append(lr)
       state.memo.putLR(key, pos, lr)
+      if (DEBUG_LR)
+        System.err.println(s"[LR]   evaluateMemo: lrStack now has ${state.lrStack.size} items")
 
       // Parse the inner parser
       val result = interpret(inner, state)
       val endPos = state.offset
 
+      if (DEBUG_LR)
+        System.err.println(
+          s"[LR]   evaluateMemo: popping LR for $key, lrStack had ${state.lrStack.size} items")
       state.lrStack.remove(state.lrStack.length - 1)
 
       // Check if left recursion was detected during parsing
@@ -406,7 +496,6 @@ private def interpretMemo[E, A](
           }
       }
   }
-}
 
 // =============================================================================
 // Seed Type Erasure Helpers
@@ -435,17 +524,57 @@ private def castSeed[E, A](result: Result[Any, Any]): Result[E, A] =
 
 /**
  * Sets up the left recursion head when a cycle is detected.
+ *
+ * When we detect LR (by finding our own LR marker on the stack), we need to:
+ * 1. Find or create the HEAD for this cycle
+ * 2. Mark all rules between the head and this LR as "involved" in the cycle
+ *
+ * The HEAD should be the OUTERMOST left-recursive rule (first on stack).
+ * When there are nested LR rules (like expr -> term where both are LR),
+ * the outermost rule (expr) should be the head.
  */
 private def setupLR(key: AnyRef, lr: LR, state: ParserState): Unit = {
-  if (lr.head.isEmpty) {
-    lr.head = Some(
-      new LRHead(key, scala.collection.mutable.Set.empty, scala.collection.mutable.Set.empty))
+  if (DEBUG_LR) {
+    System.err.println(s"[LR] setupLR: key=$key, lrStack size=${state.lrStack.size}")
+    state.lrStack.foreach(slr =>
+      System.err.println(s"[LR]   stack item: ${slr.rule}, head=${slr.head.map(_.rule)}"))
   }
-  // Mark all LRs on the stack as involved in this cycle
-  val head = lr.head.get
-  for (stackLr <- state.lrStack.reverseIterator if !(stackLr.rule eq key)) {
-    stackLr.head = Some(head)
-    head.involvedSet.add(stackLr.rule)
+
+  // Find if there's an existing head on the stack that should be the actual head
+  // Look for the outermost LR that already has a head set
+  val existingHead = state.lrStack.find(_.head.isDefined).flatMap(_.head)
+
+  val actualHead = existingHead match {
+    case Some(h) =>
+      // Reuse existing head (the outermost LR rule)
+      if (DEBUG_LR) System.err.println(s"[LR] setupLR: reusing existing head ${h.rule}")
+      lr.head = Some(h)
+      // When we're an inner LR rule and find an existing outer head,
+      // we (key) should be added to the head's involvedSet - but NOT if we ARE the head
+      if (!(key eq h.rule)) {
+        h.involvedSet.add(key)
+        if (DEBUG_LR) System.err.println(s"[LR] setupLR: added $key to involvedSet of ${h.rule}")
+      }
+      h
+    case None =>
+      // Create new head for this rule
+      if (lr.head.isEmpty) {
+        lr.head = Some(
+          new LRHead(key, scala.collection.mutable.Set.empty, scala.collection.mutable.Set.empty))
+        if (DEBUG_LR) System.err.println(s"[LR] setupLR: created head for $key")
+      }
+      lr.head.get
+  }
+
+  // Mark all LRs on the stack (between us and the head) as involved in this cycle
+  // This handles the case where there are intermediate rules
+  for (stackLr <- state.lrStack.reverseIterator
+    if !(stackLr.rule eq key) && !(stackLr.rule eq actualHead.rule)) {
+    stackLr.head = Some(actualHead)
+    actualHead.involvedSet.add(stackLr.rule)
+    if (DEBUG_LR)
+      System.err.println(
+        s"[LR] setupLR: added ${stackLr.rule} to involvedSet of ${actualHead.rule}")
   }
 }
 
