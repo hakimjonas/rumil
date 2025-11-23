@@ -48,6 +48,7 @@ final class MemoKey[E, A] private[parser] () {
 }
 
 object MemoKey {
+
   /** Creates a new unique memo key. Called once per `rule` instantiation. */
   private[parser] def apply[E, A](): MemoKey[E, A] = new MemoKey[E, A]()
 }

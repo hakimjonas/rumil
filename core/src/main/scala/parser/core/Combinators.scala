@@ -400,6 +400,58 @@ def recoverWith[E, E2, A](p: Parser[E, A])(f: E => Parser[E2, A]): Parser[E2, A]
   )
 
 /**
+ * Provides a static fallback parser for error recovery.
+ *
+ * Unlike `recoverWith` which chooses recovery based on the error,
+ * `orElse` always uses the same fallback parser. When the primary
+ * parser fails, the fallback runs and the result is `Partial` to
+ * preserve the original error information.
+ *
+ * This is useful for resilient parsing where you want to:
+ * - Continue parsing despite errors
+ * - Accumulate all errors for later reporting
+ * - Produce a best-effort parse result
+ *
+ * @param p The primary parser to try first
+ * @param fallback The parser to use if p fails
+ * @return A parser that tries p, then fallback on failure
+ *
+ * Example:
+ * {{{
+ * val number = digit.many1.map(_.mkString.toInt)
+ * val resilient = orElse(number, succeed(0))
+ * resilient.run("abc")  // Partial(0, List(error), 0) - recovered with default
+ * resilient.run("42")   // Success(42, 2) - primary succeeded
+ * }}}
+ */
+inline def orElse[E, A](p: Parser[E, A], fallback: Parser[E, A]): Parser[E, A] =
+  Parser.RecoverWith(p, fallback)
+
+/**
+ * Replaces parser errors with a custom message.
+ *
+ * When the parser fails, the error is replaced with a single
+ * `ParseError.Custom` containing the provided message. This is
+ * useful for providing domain-specific error messages.
+ *
+ * Unlike `named` which adds to the expected set, `expect` completely
+ * replaces the error with a custom message.
+ *
+ * @param p The parser whose errors to replace
+ * @param message The custom error message
+ * @return A parser with custom error messages on failure
+ *
+ * Example:
+ * {{{
+ * val email = (alphaNum.many1 ~ char('@') ~ alphaNum.many1).map(...)
+ * val emailWithError = expect(email, "valid email address required")
+ * emailWithError.run("invalid")  // Failure: "valid email address required"
+ * }}}
+ */
+inline def expect[A](p: Parser[ParseError, A], message: String): Parser[ParseError, A] =
+  Parser.Expect(p, message)
+
+/**
  * Labels a parser with a name for better error messages.
  *
  * When the parser fails, the name will appear in the expected set.

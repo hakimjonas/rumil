@@ -85,6 +85,22 @@ extension [E, A](p: Parser[E, A]) {
   inline def recoverWith[E2](f: E => Parser[E2, A]): Parser[E2, A] =
     parser.core.recoverWith(p)(f)
 
+  /**
+   * Provides a static fallback parser for error recovery.
+   *
+   * When this parser fails, the fallback runs and the result is `Partial`
+   * to preserve the original error information. This enables resilient
+   * parsing where errors are accumulated but parsing continues.
+   *
+   * Example:
+   * {{{
+   * val number = digit.many1.map(_.mkString.toInt)
+   * number.orElse(succeed(0)).run("abc")  // Partial(0, errors, 0)
+   * }}}
+   */
+  inline def orElse(fallback: Parser[E, A]): Parser[E, A] =
+    parser.core.orElse(p, fallback)
+
   // Debugging
   inline def trace(label: String): Parser[E, A] =
     parser.core.trace(p, label)
@@ -107,6 +123,21 @@ extension [A](p: Parser[ParseError, A]) {
 
   inline def label(name: String): Parser[ParseError, A] =
     named(name)
+
+  /**
+   * Replaces parser errors with a custom message.
+   *
+   * When the parser fails, all errors are replaced with a single
+   * `ParseError.Custom` containing the provided message.
+   *
+   * Example:
+   * {{{
+   * val email = emailParser.expect("valid email address required")
+   * email.run("invalid")  // Failure: "valid email address required"
+   * }}}
+   */
+  inline def expect(message: String): Parser[ParseError, A] =
+    parser.core.expect(p, message)
 }
 
 extension [E, A](result: Result[E, A]) {

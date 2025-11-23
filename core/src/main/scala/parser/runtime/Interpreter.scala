@@ -440,7 +440,7 @@ private def growLR[E, A](
   state.heads.put(pos, lr.head.get)
 
   var lastResult: Result[E, A] = castSeed[E, A](lr.seed)
-  var lastPos = seedEndPos
+  var lastPos                  = seedEndPos
 
   // Keep growing while we make progress
   var continue = true
