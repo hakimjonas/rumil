@@ -2,15 +2,12 @@ package parser.benchmarks
 
 import java.util.concurrent.TimeUnit
 
-import org.openjdk.jmh.annotations._
-import org.openjdk.jmh.infra.Blackhole
-
 import scala.compiletime.uninitialized
 
+import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.infra.Blackhole
 import parser.core._
 import parser.runtime.run
-
-// Extension methods for map
 import parser.syntax.map
 
 /**
