@@ -632,3 +632,150 @@ def chainr1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
         succeed(left)
       )
   )
+
+// ============================================================================
+// CLEARER NAME ALIASES
+// ============================================================================
+// These provide more descriptive names for common combinators.
+// The original short names are retained for compatibility.
+
+/**
+ * Parses one or more occurrences of p.
+ *
+ * Alias for `many1` with a clearer name.
+ *
+ * @param p The parser to repeat
+ * @return A parser that returns a non-empty list of results
+ */
+inline def manyNonEmpty[E, A](p: Parser[E, A]): Parser[E, List[A]] =
+  many1(p)
+
+/**
+ * Parses zero or more occurrences of p separated by sep.
+ *
+ * Alias for `sepBy` with a clearer name.
+ *
+ * @param p The element parser
+ * @param sep The separator parser
+ * @return A parser that returns a list of elements
+ */
+def separatedBy[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] =
+  sepBy(p, sep)
+
+/**
+ * Parses one or more occurrences of p separated by sep.
+ *
+ * Alias for `sepBy1` with a clearer name.
+ *
+ * @param p The element parser
+ * @param sep The separator parser
+ * @return A parser that returns a non-empty list of elements
+ */
+def separatedByNonEmpty[E, A, Sep](p: Parser[E, A], sep: Parser[E, Sep]): Parser[E, List[A]] =
+  sepBy1(p, sep)
+
+/**
+ * Parses zero or more occurrences of p, each terminated by end.
+ *
+ * Alias for `endBy` with a clearer name.
+ *
+ * @param p The element parser
+ * @param end The terminator parser
+ * @return A parser that returns a list of elements
+ */
+def endedBy[E, A, End](p: Parser[E, A], end: Parser[E, End]): Parser[E, List[A]] =
+  endBy(p, end)
+
+/**
+ * Parses one or more occurrences of p separated by op, left-associative.
+ *
+ * Alias for `chainl1` with a clearer name.
+ *
+ * @param p The parser for operands
+ * @param op The parser for operators, returns a binary function
+ * @return A parser that builds left-associative parse tree
+ */
+def chainLeft1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
+  chainl1(p, op)
+
+/**
+ * Parses one or more occurrences of p separated by op, right-associative.
+ *
+ * Alias for `chainr1` with a clearer name.
+ *
+ * @param p The parser for operands
+ * @param op The parser for operators, returns a binary function
+ * @return A parser that builds right-associative parse tree
+ */
+def chainRight1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
+  chainr1(p, op)
+
+/**
+ * Parses zero or more occurrences of p, discarding the results.
+ *
+ * More efficient than `many(p).void` as it doesn't build a list.
+ *
+ * @param p The parser to repeat
+ * @return A parser that returns Unit
+ */
+def skipMany[E, A](p: Parser[E, A]): Parser[E, Unit] =
+  map(many(p), (_: List[A]) => ())
+
+/**
+ * Parses one or more occurrences of p, discarding the results.
+ *
+ * More efficient than `many1(p).void` as it doesn't build a list.
+ *
+ * @param p The parser to repeat
+ * @return A parser that returns Unit
+ */
+def skipManyNonEmpty[E, A](p: Parser[E, A]): Parser[E, Unit] =
+  map(many1(p), (_: List[A]) => ())
+
+/**
+ * Parses at least n occurrences of p.
+ *
+ * @param n Minimum number of matches required
+ * @param p The parser to repeat
+ * @return A parser that returns a list of at least n elements
+ */
+def manyAtLeast[E, A](n: Int)(p: Parser[E, A]): Parser[E, List[A]] =
+  flatMap(count(n, p), (required: List[A]) => map(many(p), (rest: List[A]) => required ++ rest))
+
+/**
+ * Parses p surrounded by the same delimiter on both sides.
+ *
+ * Convenience for `between(p, delim, delim)`.
+ *
+ * @param delim The delimiter parser
+ * @param p The content parser
+ * @return A parser that parses delim-p-delim and returns p's result
+ */
+def surroundedBy[E, A, D](delim: Parser[E, D])(p: Parser[E, A]): Parser[E, A] =
+  between(p, delim, delim)
+
+/**
+ * Parses zero or more occurrences of p separated by op, left-associative.
+ *
+ * Returns default if no matches.
+ *
+ * @param p The parser for operands
+ * @param op The parser for operators
+ * @param default Value to return if no matches
+ * @return A parser that builds left-associative parse tree or returns default
+ */
+def chainLeft[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+  or(chainl1(p, op), succeed(default))
+
+/**
+ * Parses zero or more occurrences of p separated by op, right-associative.
+ *
+ * Returns default if no matches.
+ *
+ * @param p The parser for operands
+ * @param op The parser for operators
+ * @param default Value to return if no matches
+ * @return A parser that builds right-associative parse tree or returns default
+ */
+def chainRight[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+  or(chainr1(p, op), succeed(default))

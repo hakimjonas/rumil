@@ -52,16 +52,32 @@ extension [E, A](p: Parser[E, A]) {
   inline def many1: Parser[E, List[A]] =
     parser.core.many1(p)
 
+  /** Alias for many1 with a clearer name */
+  inline def manyNonEmpty: Parser[E, List[A]] =
+    parser.core.many1(p)
+
   inline def optional: Parser[E, Option[A]] =
     parser.core.optional(p)
 
   inline def sepBy[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
     parser.core.sepBy(p, sep)
 
+  /** Alias for sepBy with a clearer name */
+  inline def separatedBy[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
+    parser.core.sepBy(p, sep)
+
   inline def sepBy1[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
     parser.core.sepBy1(p, sep)
 
+  /** Alias for sepBy1 with a clearer name */
+  inline def separatedByNonEmpty[Sep](sep: Parser[E, Sep]): Parser[E, List[A]] =
+    parser.core.sepBy1(p, sep)
+
   inline def endBy[End](end: Parser[E, End]): Parser[E, List[A]] =
+    parser.core.endBy(p, end)
+
+  /** Alias for endBy with a clearer name */
+  inline def endedBy[End](end: Parser[E, End]): Parser[E, List[A]] =
     parser.core.endBy(p, end)
 
   inline def count(n: Int): Parser[E, List[A]] =
@@ -70,12 +86,44 @@ extension [E, A](p: Parser[E, A]) {
   inline def times(n: Int): Parser[E, List[A]] =
     parser.core.times(n, p)
 
+  /** Parses zero or more, discarding results */
+  inline def skipMany: Parser[E, Unit] =
+    parser.core.skipMany(p)
+
+  /** Parses one or more, discarding results */
+  inline def skipManyNonEmpty: Parser[E, Unit] =
+    parser.core.skipManyNonEmpty(p)
+
+  /** Parses at least n occurrences */
+  inline def manyAtLeast(n: Int): Parser[E, List[A]] =
+    parser.core.manyAtLeast(n)(p)
+
+  /** Parses p between same delimiter on both sides */
+  inline def surroundedBy[Delim](delim: Parser[E, Delim]): Parser[E, A] =
+    parser.core.surroundedBy(delim)(p)
+
   // Operators
   inline def chainl1(op: Parser[E, (A, A) => A]): Parser[E, A] =
     parser.core.chainl1(p, op)
 
+  /** Alias for chainl1 with a clearer name */
+  inline def chainLeft1(op: Parser[E, (A, A) => A]): Parser[E, A] =
+    parser.core.chainl1(p, op)
+
   inline def chainr1(op: Parser[E, (A, A) => A]): Parser[E, A] =
     parser.core.chainr1(p, op)
+
+  /** Alias for chainr1 with a clearer name */
+  inline def chainRight1(op: Parser[E, (A, A) => A]): Parser[E, A] =
+    parser.core.chainr1(p, op)
+
+  /** Left-associative chain with default value */
+  inline def chainLeft(op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+    parser.core.chainLeft(p, op, default)
+
+  /** Right-associative chain with default value */
+  inline def chainRight(op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
+    parser.core.chainRight(p, op, default)
 
   // Lookahead
   inline def lookAhead: Parser[E, A] =
