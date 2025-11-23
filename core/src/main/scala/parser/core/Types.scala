@@ -75,8 +75,8 @@ enum Parser[+E, +A] {
   // Error recovery combinators
   case RecoverWith[E, A](parser: Parser[E, A], recovery: Parser[E, A]) extends Parser[E, A]
   case Expect[A](parser: Parser[ParseError, A], message: String)       extends Parser[ParseError, A]
-  // Left recursion support - memoized parser with identity for cycle detection
-  case Memo[E, A](parser: Parser[E, A], id: AnyRef) extends Parser[E, A]
+  // Left recursion support - memoized parser with typed key for cycle detection
+  case Memo[E, A](inner: Parser[E, A], key: _root_.parser.runtime.MemoKey[E, A]) extends Parser[E, A]
 }
 
 /**

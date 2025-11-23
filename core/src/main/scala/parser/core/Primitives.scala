@@ -276,7 +276,8 @@ def defer[E, A](p: => Parser[E, A]): Parser[E, A] =
  * @return A memoized parser with left recursion support
  */
 def rule[E, A](p: => Parser[E, A]): Parser[E, A] = {
-  // Each call to rule creates a unique identity object
-  val id = new Object()
-  Parser.Memo(Parser.Defer(() => p), id)
+  // Each call to rule creates a unique typed key for memoization
+  // The key carries type parameters [E, A] ensuring type-safe retrieval
+  val key = parser.runtime.MemoKey[E, A]()
+  Parser.Memo(Parser.Defer(() => p), key)
 }

@@ -27,7 +27,145 @@ final private class Ref[A](private var value: A) {
 // ============================================================================
 
 /**
+ * Type-safe key for memoization table.
+ *
+ * This is the principled approach to heterogeneous memoization:
+ * - Each MemoKey carries phantom type parameters [E, A] representing the result type
+ * - The key identity is established at creation time in `rule`
+ * - Type safety is maintained because the same key instance is used for both store and retrieve
+ *
+ * The cast in `MemoTable.get` is safe because:
+ * 1. Keys are created once per `rule` call site
+ * 2. The same key instance is used to store and retrieve
+ * 3. Store operation uses the key's type parameters
+ * 4. Therefore retrieve returns the same type that was stored
+ *
+ * @tparam E The error type of the memoized parser result
+ * @tparam A The value type of the memoized parser result
+ */
+final class MemoKey[E, A] private[parser] () {
+  // Identity is reference equality - each key is unique
+}
+
+object MemoKey {
+  /** Creates a new unique memo key. Called once per `rule` instantiation. */
+  private[parser] def apply[E, A](): MemoKey[E, A] = new MemoKey[E, A]()
+}
+
+/**
+ * Type-safe memoization table for left recursion support.
+ *
+ * Stores parse results keyed by (MemoKey, position). The MemoKey carries
+ * type information ensuring that retrieval returns the correct type.
+ *
+ * Implementation note: Internally uses type erasure (Any) but the API
+ * is type-safe because MemoKey[E, A] can only be used with Result[E, A].
+ */
+final private[runtime] class MemoTable private () {
+  private val table: mutable.Map[(AnyRef, Int), Either[LR, MemoEntry]] = mutable.Map.empty
+
+  /**
+   * Store a result with type-safe key.
+   *
+   * Type safety: key's [E, A] matches result's [E, A] at compile time.
+   * Internally erases to Any for heterogeneous storage.
+   */
+  def put[E, A](key: MemoKey[E, A], pos: Int, result: Result[E, A], endPos: Int): Unit = {
+    val _ = table.put((key, pos), Right(MemoEntry(Some(eraseResult(result)), endPos)))
+  }
+
+  /** Store an LR marker with type-safe key. */
+  def putLR[E, A](key: MemoKey[E, A], pos: Int, lr: LR): Unit = {
+    val _ = table.put((key, pos), Left(lr))
+  }
+
+  /**
+   * Retrieve and cast a cached result with type-safe key.
+   *
+   * SAFETY PROOF for the cast:
+   * 1. MemoKey[E, A] instances are unique (created once per `rule` call)
+   * 2. The same key is used for both put() and getResult()
+   * 3. put() stores Result[E, A] (erased to Any)
+   * 4. Therefore getResult() returns the same Result[E, A]
+   *
+   * This is the ONLY cast point for typed retrieval.
+   */
+  def getResult[E, A](key: MemoKey[E, A], pos: Int): Option[Result[E, A]] =
+    table.get((key, pos)).flatMap {
+      case Right(entry) => entry.result.map(castResult[E, A])
+      case Left(_)      => None
+    }
+
+  /**
+   * Retrieve LR marker if present.
+   */
+  def getLR[E, A](key: MemoKey[E, A], pos: Int): Option[LR] =
+    table.get((key, pos)).flatMap {
+      case Left(lr) => Some(lr)
+      case Right(_) => None
+    }
+
+  /**
+   * Get the end position from a cached entry.
+   */
+  def getEndPos[E, A](key: MemoKey[E, A], pos: Int): Option[Int] =
+    table.get((key, pos)).flatMap {
+      case Right(entry) => Some(entry.pos)
+      case Left(_)      => None
+    }
+
+  /**
+   * Check if entry exists (either LR or cached result).
+   */
+  def contains[E, A](key: MemoKey[E, A], pos: Int): Boolean =
+    table.contains((key, pos))
+
+  /**
+   * Get raw entry for LR algorithm internals.
+   * Returns Left(LR) if in left-recursive cycle, Right(MemoEntry) if cached.
+   */
+  def getRaw[E, A](key: MemoKey[E, A], pos: Int): Option[Either[LR, MemoEntry]] =
+    table.get((key, pos))
+
+  /**
+   * Store raw entry for seed growth algorithm.
+   * Used internally when growing seeds - maintains type safety through
+   * the algorithm's invariant that the same key is always used.
+   */
+  def putRaw[E, A](key: MemoKey[E, A], pos: Int, entry: Either[LR, MemoEntry]): Unit = {
+    val _ = table.put((key, pos), entry)
+  }
+
+  // ===========================================================================
+  // Type Erasure Helpers - The ONLY place where casts occur
+  // ===========================================================================
+
+  /**
+   * Erase result type for heterogeneous storage.
+   * Safe because we track type through MemoKey.
+   */
+  private def eraseResult[E, A](result: Result[E, A]): Result[Any, Any] =
+    result.asInstanceOf[Result[Any, Any]]
+
+  /**
+   * Cast erased result back to typed result.
+   *
+   * SAFETY: This cast is safe when called through getResult() because
+   * the MemoKey[E, A] used for retrieval is the same instance used for storage.
+   */
+  private def castResult[E, A](result: Result[Any, Any]): Result[E, A] =
+    result.asInstanceOf[Result[E, A]]
+}
+
+private[runtime] object MemoTable {
+  def apply(): MemoTable = new MemoTable()
+}
+
+/**
  * Entry in the memoization table for left recursion handling.
+ *
+ * Stores type-erased result because the table is heterogeneous.
+ * Type safety is maintained by MemoKey at the API boundary.
  *
  * @param result The cached parse result (None if currently being evaluated)
  * @param pos The position after parsing (for detecting progress)
@@ -41,7 +179,7 @@ final private[runtime] case class MemoEntry(
  * Tracks the "head" of a left-recursive rule.
  * Used to detect when we're in a left-recursive cycle.
  *
- * @param rule The parser identity that started the left recursion
+ * @param rule The parser identity (MemoKey) that started the left recursion
  * @param involvedSet Parsers involved in this left-recursive cycle
  * @param evalSet Parsers that need re-evaluation during seed growth
  */
@@ -54,8 +192,8 @@ final private[runtime] class LRHead(
 /**
  * Left recursion marker used during seed detection.
  *
- * @param seed The current seed result
- * @param rule The parser identity
+ * @param seed The current seed result (type-erased for heterogeneous storage)
+ * @param rule The parser identity (MemoKey)
  * @param head The head of the left-recursive cycle (if known)
  */
 final private[runtime] case class LR(
@@ -65,7 +203,7 @@ final private[runtime] case class LR(
 )
 
 // ============================================================================
-// ParserState - Controlled Mutation via Refs
+// ParserState - Contrfolled Mutation via Refs
 // ============================================================================
 
 /**
@@ -94,7 +232,7 @@ final class ParserState private[runtime] (
   private val lineRef: Ref[Int],
   private val columnRef: Ref[Int],
   // Left recursion support
-  private[runtime] val memo: mutable.Map[(AnyRef, Int), Either[LR, MemoEntry]] = mutable.Map.empty,
+  private[runtime] val memo: MemoTable = MemoTable(),
   private[runtime] val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty,
   private[runtime] val heads: mutable.Map[Int, LRHead] = mutable.Map.empty
 ) {
