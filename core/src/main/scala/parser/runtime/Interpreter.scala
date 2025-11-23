@@ -63,20 +63,25 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
       Result.Failure(List(error), state.location)
 
     case Parser.Satisfy(pred, expected) =>
-      state.current match {
-        case Some(c) if pred(c) =>
+      // Use inline methods to avoid Option boxing on hot path
+      if (state.hasChar) {
+        val c = state.currentChar
+        if (pred(c)) {
           state.advance()
           Result.Success(c, 1)
-        case Some(c) =>
+        } else {
+          val loc = state.location
           Result.Failure(
-            List(ParseError.Unexpected(c.toString, Set(expected), state.location)),
-            state.location
+            List(ParseError.Unexpected(c.toString, Set(expected), loc)),
+            loc
           )
-        case None =>
-          Result.Failure(
-            List(ParseError.EndOfInput(expected, state.location)),
-            state.location
-          )
+        }
+      } else {
+        val loc = state.location
+        Result.Failure(
+          List(ParseError.EndOfInput(expected, loc)),
+          loc
+        )
       }
 
     case Parser.StringMatch(target) =>

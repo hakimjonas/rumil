@@ -229,6 +229,12 @@ final class ParserState private[runtime] (
       Some(input(offsetRef.get))
     }
 
+  /** Inline check for character availability - avoids Option boxing */
+  inline def hasChar: Boolean = offsetRef.get < input.length
+
+  /** Inline character access - only call when hasChar is true */
+  inline def currentChar: Char = input.charAt(offsetRef.get)
+
   def peek(n: Int): Option[Char] = {
     val idx = offsetRef.get + n
     if (idx < 0 || idx >= input.length) {
