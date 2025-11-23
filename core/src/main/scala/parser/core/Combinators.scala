@@ -153,8 +153,12 @@ def between[E, A, L, R](p: Parser[E, A], left: Parser[E, L], right: Parser[E, R]
 /**
  * Tries the left parser, and if it fails, tries the right parser.
  *
- * Backtracking alternative combinator. If left fails without consuming
- * input, tries right. Collects errors from the furthest parse point.
+ * Backtracking alternative combinator. If left fails (returns Failure),
+ * restores position and tries right. Collects errors from the furthest parse point.
+ *
+ * Note: If left returns Success or Partial, right is NOT tried. Partial means
+ * "succeeded with errors" - for error recovery where you want to try alternatives
+ * even on partial success, use `orElse` instead.
  *
  * @param left First parser to try
  * @param right Alternative parser if left fails

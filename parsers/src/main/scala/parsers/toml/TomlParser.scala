@@ -151,18 +151,22 @@ private def multiLineBasicString: Parser[ParseError, scala.Predef.String] = {
 
 /**
  * Multi-line literal string: '''...'''
+ *
+ * No escape sequences - content is taken literally.
+ * Uses notFollowedBy to detect closing delimiter without consuming it.
  */
-private def multiLineLiteralString: Parser[ParseError, scala.Predef.String] =
+private def multiLineLiteralString: Parser[ParseError, scala.Predef.String] = {
+  // A content character is any character, but we must NOT be at the closing delimiter
+  val contentChar =
+    parser.core.notFollowedBy(string("'''")) *> satisfy(_ => true, "any char")
+
   for {
     _     <- string("'''")
-    _     <- newline.optional
-    chars <- satisfy(_ => true, "any char").many
+    _     <- newline.optional // Skip immediate newline after opening
+    chars <- contentChar.many
     _     <- string("'''")
-  } yield {
-    val content = chars.mkString
-    val endIdx  = content.lastIndexOf("'''")
-    if (endIdx >= 0) content.substring(0, endIdx) else content
-  }
+  } yield chars.mkString
+}
 
 /**
  * Any TOML string.

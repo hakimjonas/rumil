@@ -107,10 +107,10 @@ given [A](using CirceDecoder[A]): Decoder[JsonValue, A] = ...
 
 ### Priority 2: Performance & Power (v0.3.0)
 
-**2.1 Left Recursion Support**
-- Implement seed-growth algorithm (Warth et al.)
-- Remove need for `chainl1`/`chainr1` workarounds
-- Effort: 8-10 hours
+**2.1 Left Recursion Support** ✅ COMPLETE
+- ~~Implement seed-growth algorithm (Warth et al.)~~
+- ~~Remove need for `chainl1`/`chainr1` workarounds~~
+- **Status:** Implemented! Supports both direct and indirect left recursion.
 
 **2.2 Memoization/Packrat Parsing**
 - Add `.memoize` combinator
