@@ -232,7 +232,7 @@ def symbol(s: String): Parser[ParseError, String] =
  * }}}
  */
 def eof: Parser[ParseError, Unit] =
-  Parser.Eof
+  Parser.Eof()
 
 /**
  * Defers parser construction until needed.

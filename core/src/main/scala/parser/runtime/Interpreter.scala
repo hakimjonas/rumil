@@ -246,8 +246,8 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
     case Parser.Defer(thunk) =>
       interpret(thunk(), state)
 
-    case _: Parser.Eof.type =>
-      val result: Result[ParseError, Unit] = if (state.atEnd) {
+    case Parser.Eof() =>
+      if (state.atEnd) {
         Result.Success((), 0)
       } else {
         Result.Failure(
@@ -255,7 +255,6 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           state.location
         )
       }
-      result.asInstanceOf[Result[E, A]]
   }
 }
 

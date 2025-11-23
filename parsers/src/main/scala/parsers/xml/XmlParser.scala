@@ -394,8 +394,13 @@ def formatXml(node: XmlNode, indent: Int = 2, depth: Int = 0): String = {
         }
 
         if (hasTextOnly && children.length == 1) {
-          val text = children.head.asInstanceOf[XmlNode.Text].content
-          s"$indentStr<$nameStr$attrsStr>${escapeText(text)}</$nameStr>"
+          children.head match {
+            case XmlNode.Text(content) =>
+              s"$indentStr<$nameStr$attrsStr>${escapeText(content)}</$nameStr>"
+            case _ =>
+              // Unreachable due to hasTextOnly guard, but needed for exhaustivity
+              s"$indentStr<$nameStr$attrsStr/>"
+          }
         } else {
           val childrenStr = children.map(c => formatXml(c, indent, depth + 1)).mkString("\n")
           s"$indentStr<$nameStr$attrsStr>\n$childrenStr\n$indentStr</$nameStr>"
