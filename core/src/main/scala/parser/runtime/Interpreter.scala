@@ -284,7 +284,7 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
       interpret(p, state) match {
         case success @ Result.Success(_, _)    => success
         case partial @ Result.Partial(_, _, _) => partial
-        case Result.Failure(_, furthest) =>
+        case Result.Failure(_, furthest)       =>
           // Replace the error with a custom message
           Result.Failure(
             List(ParseError.Custom(message, furthest)),
@@ -312,7 +312,10 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
  * @param state Mutable parse state with memo tables
  * @return Parse result
  */
-private def interpretMemo[E, A](inner: Parser[E, A], id: AnyRef, state: ParserState): Result[E, A] = {
+private def interpretMemo[E, A](
+  inner: Parser[E, A],
+  id: AnyRef,
+  state: ParserState): Result[E, A] = {
   val pos = state.offset
   val key = (id, pos)
 
@@ -360,7 +363,9 @@ private def interpretMemo[E, A](inner: Parser[E, A], id: AnyRef, state: ParserSt
           result match {
             case _: Result.Failure[?, ?] =>
               // Base case failed, cache and return
-              state.memo.put(key, Right(MemoEntry(Some(result.asInstanceOf[Result[Any, Any]]), endPos)))
+              state.memo.put(
+                key,
+                Right(MemoEntry(Some(result.asInstanceOf[Result[Any, Any]]), endPos)))
               result
             case _ =>
               // Base case succeeded - now grow it
@@ -376,7 +381,8 @@ private def interpretMemo[E, A](inner: Parser[E, A], id: AnyRef, state: ParserSt
  */
 private def setupLR(id: AnyRef, lr: LR, state: ParserState): Unit = {
   if (lr.head.isEmpty) {
-    lr.head = Some(new LRHead(id, scala.collection.mutable.Set.empty, scala.collection.mutable.Set.empty))
+    lr.head = Some(
+      new LRHead(id, scala.collection.mutable.Set.empty, scala.collection.mutable.Set.empty))
   }
   // Mark all LRs on the stack as involved in this cycle
   val head = lr.head.get

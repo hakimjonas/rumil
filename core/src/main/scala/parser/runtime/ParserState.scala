@@ -1,7 +1,8 @@
 package parser.runtime
 
-import parser.core._
 import scala.collection.mutable
+
+import parser.core._
 
 // ============================================================================
 // Ref - Controlled Mutation (Eru Pattern)
@@ -31,7 +32,7 @@ final private class Ref[A](private var value: A) {
  * @param result The cached parse result (None if currently being evaluated)
  * @param pos The position after parsing (for detecting progress)
  */
-private[runtime] final case class MemoEntry(
+final private[runtime] case class MemoEntry(
   result: Option[Result[Any, Any]],
   pos: Int
 )
@@ -44,7 +45,7 @@ private[runtime] final case class MemoEntry(
  * @param involvedSet Parsers involved in this left-recursive cycle
  * @param evalSet Parsers that need re-evaluation during seed growth
  */
-private[runtime] final class LRHead(
+final private[runtime] class LRHead(
   val rule: AnyRef,
   val involvedSet: mutable.Set[AnyRef],
   var evalSet: mutable.Set[AnyRef]
@@ -57,7 +58,7 @@ private[runtime] final class LRHead(
  * @param rule The parser identity
  * @param head The head of the left-recursive cycle (if known)
  */
-private[runtime] final case class LR(
+final private[runtime] case class LR(
   var seed: Result[Any, Any],
   rule: AnyRef,
   var head: Option[LRHead]

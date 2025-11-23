@@ -11,7 +11,7 @@ class LeftRecursionTests extends FunSuite {
   // ============================================================================
 
   test("rule: simple non-recursive parser works") {
-    val p = rule(char('a'))
+    val p      = rule(char('a'))
     val result = p.run("a")
     assert(result.isSuccess)
     assertEquals(result.toOption, Some('a'))
@@ -31,8 +31,8 @@ class LeftRecursionTests extends FunSuite {
     // This is directly left-recursive
     lazy val expr: Parser[ParseError, Int] = rule {
       val recurse = for {
-        left <- expr
-        _    <- char('+')
+        left  <- expr
+        _     <- char('+')
         right <- digit
       } yield left + (right - '0')
 
@@ -54,8 +54,8 @@ class LeftRecursionTests extends FunSuite {
     // 5 - 3 - 1 should be (5 - 3) - 1 = 1, not 5 - (3 - 1) = 3
     lazy val expr: Parser[ParseError, Int] = rule {
       val recurse = for {
-        left <- expr
-        _    <- char('-')
+        left  <- expr
+        _     <- char('-')
         right <- digit
       } yield left - (right - '0')
 
@@ -71,8 +71,8 @@ class LeftRecursionTests extends FunSuite {
     // Simpler test: expr just uses term, no left recursion in expr
     lazy val term: Parser[ParseError, Int] = rule {
       val recurse = for {
-        left <- term
-        _    <- char('*')
+        left  <- term
+        _     <- char('*')
         right <- digit
       } yield left * (right - '0')
 
@@ -100,8 +100,8 @@ class LeftRecursionTests extends FunSuite {
   test("chainl1: works for same grammar as comparison") {
     // Same grammar using chainl1
     val digitP = digit.map(_ - '0')
-    val addOp = char('+').as((a: Int, b: Int) => a + b)
-    val expr = digitP.chainl1(addOp)
+    val addOp  = char('+').as((a: Int, b: Int) => a + b)
+    val expr   = digitP.chainl1(addOp)
 
     assertEquals(expr.run("5").toOption, Some(5))
     assertEquals(expr.run("3+2").toOption, Some(5))
@@ -115,8 +115,8 @@ class LeftRecursionTests extends FunSuite {
   test("rule: empty input fails gracefully") {
     lazy val expr: Parser[ParseError, Int] = rule {
       val recurse = for {
-        left <- expr
-        _    <- char('+')
+        left  <- expr
+        _     <- char('+')
         right <- digit
       } yield left + (right - '0')
 
@@ -129,8 +129,8 @@ class LeftRecursionTests extends FunSuite {
   test("rule: partial match") {
     lazy val expr: Parser[ParseError, Int] = rule {
       val recurse = for {
-        left <- expr
-        _    <- char('+')
+        left  <- expr
+        _     <- char('+')
         right <- digit
       } yield left + (right - '0')
 
@@ -151,8 +151,8 @@ class LeftRecursionTests extends FunSuite {
   test("rule: deeply nested left recursion") {
     lazy val expr: Parser[ParseError, Int] = rule {
       val recurse = for {
-        left <- expr
-        _    <- char('+')
+        left  <- expr
+        _     <- char('+')
         right <- digit
       } yield left + (right - '0')
 
