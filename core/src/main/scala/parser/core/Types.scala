@@ -70,7 +70,8 @@ enum Parser[+E, +A] {
   case Named[A](parser: Parser[ParseError, A], name: String)         extends Parser[ParseError, A]
   case Trace[E, A](parser: Parser[E, A], label: String)              extends Parser[E, A]
   case Debug[E, A](parser: Parser[E, A], label: String)              extends Parser[E, A]
-  case Custom[E, A](run: parser.runtime.ParserState => Result[E, A]) extends Parser[E, A]
+  case Defer[E, A](thunk: () => Parser[E, A])                        extends Parser[E, A]
+  case Eof                                                           extends Parser[ParseError, Unit]
 }
 
 /**

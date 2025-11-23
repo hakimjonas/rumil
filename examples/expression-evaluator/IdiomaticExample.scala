@@ -33,32 +33,22 @@ import parser.syntax._
 
   import Expr._
 
-  // Parsers that build the AST
-  lazy val expr: Parser[ParseError, Expr] = Parser.Custom { state =>
-    parser.runtime.interpret(
-      term.chainl1(
-        char('+').as((a: Expr, b: Expr) => Add(a, b)) |
-        char('-').as((a: Expr, b: Expr) => Sub(a, b))
-      ),
-      state
+  // Parsers that build the AST using defer for recursion
+  lazy val expr: Parser[ParseError, Expr] =
+    defer(term).chainl1(
+      char('+').as((a: Expr, b: Expr) => Add(a, b)) |
+      char('-').as((a: Expr, b: Expr) => Sub(a, b))
     )
-  }
 
-  lazy val term: Parser[ParseError, Expr] = Parser.Custom { state =>
-    parser.runtime.interpret(
-      factor.chainl1(
-        char('*').as((a: Expr, b: Expr) => Mul(a, b)) |
-        char('/').as((a: Expr, b: Expr) => Div(a, b))
-      ),
-      state
+  lazy val term: Parser[ParseError, Expr] =
+    defer(factor).chainl1(
+      char('*').as((a: Expr, b: Expr) => Mul(a, b)) |
+      char('/').as((a: Expr, b: Expr) => Div(a, b))
     )
-  }
 
   lazy val factor: Parser[ParseError, Expr] = {
     val number = digit.many1.map(digits => Num(digits.mkString.toInt))
-    number | Parser.Custom { state =>
-      parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-    }
+    number | (char('(') *> defer(expr) <* char(')'))
   }
 
   // Evaluator: Traverse the AST and compute the result

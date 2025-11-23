@@ -46,8 +46,8 @@ private def formatError(error: Any): String = error match {
 /**
  * Interprets a parser against mutable state.
  *
- * This function is public to enable advanced use cases like recursive
- * grammars with Parser.Custom. Most users should use `run` instead.
+ * This is the core interpreter that executes parser descriptions.
+ * Most users should use `run` instead.
  *
  * @param parser The parser description to interpret
  * @param state Mutable state tracking parse position
@@ -243,8 +243,19 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           failure
       }
 
-    case Parser.Custom(runFn) =>
-      runFn(state)
+    case Parser.Defer(thunk) =>
+      interpret(thunk(), state)
+
+    case _: Parser.Eof.type =>
+      val result: Result[ParseError, Unit] = if (state.atEnd) {
+        Result.Success((), 0)
+      } else {
+        Result.Failure(
+          List(ParseError.Custom("Expected end of input", state.location)),
+          state.location
+        )
+      }
+      result.asInstanceOf[Result[E, A]]
   }
 }
 

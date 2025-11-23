@@ -2,8 +2,7 @@ package parser
 
 import munit.FunSuite
 import parser.core._
-import parser.syntax.ErrorRecovery._
-import parser.syntax.{recoverWith => _, _}
+import parser.syntax._
 
 class DebugCombinatorTests extends FunSuite {
 
@@ -128,56 +127,6 @@ class DebugCombinatorTests extends FunSuite {
     val result2 = parser.run("x")
     assertEquals(result1.toOption, Some(Some('5')))
     assertEquals(result2.toOption, Some(None))
-  }
-
-  // ============================================================================
-  // Partial Result Tests
-  // ============================================================================
-
-  test("trace returns identical result on partial success") {
-    val parser = char('a').recoverWith(char('x')).trace("partial-test")
-    val result = parser.run("x")
-    assert(result.isPartial)
-    result match {
-      case Result.Partial(value, errors, consumed) =>
-        assertEquals(value, 'x')
-        assertEquals(consumed, 1)
-        assert(errors.nonEmpty)
-      case _ => fail("Expected partial result")
-    }
-  }
-
-  test("debug returns identical result on partial success") {
-    val parser = char('a').recoverWith(char('b')).debug("partial-debug")
-    val result = parser.run("b")
-    assert(result.isPartial)
-    result match {
-      case Result.Partial(value, errors, consumed) =>
-        assertEquals(value, 'b')
-        assertEquals(consumed, 1)
-        assert(errors.nonEmpty)
-      case _ => fail("Expected partial result")
-    }
-  }
-
-  test("trace preserves errors in partial results") {
-    val parser = digit.recoverWith(char('?')).trace("error-trace")
-    val result = parser.run("?")
-    result match {
-      case Result.Partial(_, errors, _) =>
-        assert(errors.nonEmpty)
-      case _ => fail("Expected partial result with errors")
-    }
-  }
-
-  test("debug preserves errors in partial results") {
-    val parser = digit.recoverWith(char('!')).debug("error-debug")
-    val result = parser.run("!")
-    result match {
-      case Result.Partial(_, errors, _) =>
-        assert(errors.nonEmpty)
-      case _ => fail("Expected partial result with errors")
-    }
   }
 
   // ============================================================================

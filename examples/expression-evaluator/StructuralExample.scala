@@ -26,32 +26,22 @@ import parser.syntax._
 @main def structuralExpressionExample(): Unit = {
   println("=== Expression Evaluator (Direct Evaluation) ===\n")
 
-  // Forward declarations for recursive grammar
-  lazy val expr: Parser[ParseError, Int] = Parser.Custom { state =>
-    parser.runtime.interpret(
-      term.chainl1(
-        char('+').as((a: Int, b: Int) => a + b) |
-        char('-').as((a: Int, b: Int) => a - b)
-      ),
-      state
+  // Forward declarations for recursive grammar using defer
+  lazy val expr: Parser[ParseError, Int] =
+    defer(term).chainl1(
+      char('+').as((a: Int, b: Int) => a + b) |
+      char('-').as((a: Int, b: Int) => a - b)
     )
-  }
 
-  lazy val term: Parser[ParseError, Int] = Parser.Custom { state =>
-    parser.runtime.interpret(
-      factor.chainl1(
-        char('*').as((a: Int, b: Int) => a * b) |
-        char('/').as((a: Int, b: Int) => a / b)
-      ),
-      state
+  lazy val term: Parser[ParseError, Int] =
+    defer(factor).chainl1(
+      char('*').as((a: Int, b: Int) => a * b) |
+      char('/').as((a: Int, b: Int) => a / b)
     )
-  }
 
   lazy val factor: Parser[ParseError, Int] = {
     val number = digit.many1.map(_.mkString.toInt)
-    number | Parser.Custom { state =>
-      parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-    }
+    number | (char('(') *> defer(expr) <* char(')'))
   }
 
   // Test cases

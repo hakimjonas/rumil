@@ -332,19 +332,15 @@ private def tomlDateTime: Parser[ParseError, TomlValue] =
 /**
  * Array: [ values ]
  */
-private def tomlArray: Parser[ParseError, TomlValue] =
-  Parser.Custom { state =>
-    val arrayParser = for {
-      _        <- char('[')
-      _        <- skip
-      elements <- tomlValue.sepBy(skip *> char(',') *> skip)
-      _        <- (skip *> char(',') *> skip).optional // Trailing comma
-      _        <- skip
-      _        <- char(']')
-    } yield TomlValue.Array(elements)
-
-    parser.runtime.interpret(arrayParser, state)
-  }
+private lazy val tomlArray: Parser[ParseError, TomlValue] =
+  for {
+    _        <- char('[')
+    _        <- skip
+    elements <- defer(tomlValue).sepBy(skip *> char(',') *> skip)
+    _        <- (skip *> char(',') *> skip).optional // Trailing comma
+    _        <- skip
+    _        <- char(']')
+  } yield TomlValue.Array(elements)
 
 // ============================================================================
 // Inline Tables
@@ -353,24 +349,21 @@ private def tomlArray: Parser[ParseError, TomlValue] =
 /**
  * Inline table: { key = value, ... }
  */
-private def inlineTable: Parser[ParseError, TomlValue] =
-  Parser.Custom { state =>
-    val pair = for {
-      key   <- simpleKey
-      _     <- ws *> char('=') *> ws
-      value <- tomlValue
-    } yield (key, value)
+private lazy val inlineTable: Parser[ParseError, TomlValue] = {
+  val pair = for {
+    key   <- simpleKey
+    _     <- ws *> char('=') *> ws
+    value <- defer(tomlValue)
+  } yield (key, value)
 
-    val tableParser = for {
-      _     <- char('{')
-      _     <- ws
-      pairs <- pair.sepBy(ws *> char(',') *> ws)
-      _     <- ws
-      _     <- char('}')
-    } yield TomlValue.InlineTable(pairs.toMap)
-
-    parser.runtime.interpret(tableParser, state)
-  }
+  for {
+    _     <- char('{')
+    _     <- ws
+    pairs <- pair.sepBy(ws *> char(',') *> ws)
+    _     <- ws
+    _     <- char('}')
+  } yield TomlValue.InlineTable(pairs.toMap)
+}
 
 // ============================================================================
 // Values
@@ -385,7 +378,7 @@ private def inlineTable: Parser[ParseError, TomlValue] =
  * - Numbers must come before datetime (datetime's fallback catches numeric strings)
  * - Datetime is greedy and has a String fallback, so it must come late
  */
-private def tomlValue: Parser[ParseError, TomlValue] =
+private lazy val tomlValue: Parser[ParseError, TomlValue] =
   tomlString |
     tomlBoolean | // Before datetime/numbers
     tomlFloat |   // Before integer (3.14 should match float, not fail on integer)

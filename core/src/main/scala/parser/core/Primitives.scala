@@ -232,13 +232,22 @@ def symbol(s: String): Parser[ParseError, String] =
  * }}}
  */
 def eof: Parser[ParseError, Unit] =
-  Parser.Custom { state =>
-    if (state.atEnd) {
-      Result.Success((), 0)
-    } else {
-      Result.Failure(
-        List(ParseError.Custom("Expected end of input", state.location)),
-        state.location
-      )
-    }
-  }
+  Parser.Eof
+
+/**
+ * Defers parser construction until needed.
+ *
+ * Essential for defining recursive parsers without stack overflow.
+ * The thunk is evaluated lazily each time the parser is used.
+ *
+ * Example:
+ * {{{
+ * lazy val expr: Parser[ParseError, Expr] =
+ *   number | defer(expr).between(char('('), char(')'))
+ * }}}
+ *
+ * @param p The parser to defer (by-name parameter)
+ * @return A parser that lazily evaluates p
+ */
+def defer[E, A](p: => Parser[E, A]): Parser[E, A] =
+  Parser.Defer(() => p)

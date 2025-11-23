@@ -59,17 +59,11 @@ class PerformanceBenchmarks extends FunSuite {
     val depth = 50
     val input = "[" * depth + "1" + "]" * depth
 
-    lazy val value: Parser[ParseError, String] =
-      Parser.Custom { state =>
-        val num = digit.many1.map(_.mkString)
-        val arr = Parser.Custom { s =>
-          parser.runtime.interpret(
-            char('[') *> value <* char(']'),
-            s
-          )
-        }
-        parser.runtime.interpret(num | arr, state)
-      }
+    lazy val value: Parser[ParseError, String] = {
+      val num = digit.many1.map(_.mkString)
+      val arr = char('[') *> defer(value) <* char(']')
+      num | arr
+    }
 
     val elapsed = time(s"Parse JSON array nested $depth deep") {
       (0 until 10).foreach { _ =>
@@ -84,32 +78,20 @@ class PerformanceBenchmarks extends FunSuite {
     val input = "1+2*3+4*5+6*7+8*9+10"
 
     lazy val expr: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          term.chainl1(
-            (char('+').as((a: Int, b: Int) => a + b)) |
-              (char('-').as((a: Int, b: Int) => a - b))
-          ),
-          state
-        )
-      }
+      defer(term).chainl1(
+        (char('+').as((a: Int, b: Int) => a + b)) |
+          (char('-').as((a: Int, b: Int) => a - b))
+      )
 
     lazy val term: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          factor.chainl1(
-            (char('*').as((a: Int, b: Int) => a * b)) |
-              (char('/').as((a: Int, b: Int) => a / b))
-          ),
-          state
-        )
-      }
+      defer(factor).chainl1(
+        (char('*').as((a: Int, b: Int) => a * b)) |
+          (char('/').as((a: Int, b: Int) => a / b))
+      )
 
     lazy val factor: Parser[ParseError, Int] = {
       val number = digit.many1.map(_.mkString.toInt)
-      number | Parser.Custom { state =>
-        parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-      }
+      number | (char('(') *> defer(expr) <* char(')'))
     }
 
     val elapsed = time("Parse arithmetic expression") {

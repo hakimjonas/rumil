@@ -127,54 +127,40 @@ object Parser {
       Expr.ofList(fieldParsers)
 
     '{
-      // Use parser.core.Parser.Custom to access the runtime interpreter
-      parser.core.Parser.Custom[ParseError, A] { state =>
-        import parser.syntax.*
+      import parser.syntax.*
 
-        val parsers = ${ parsersExpr }
+      val parsers = ${ parsersExpr }
 
-        // Build the parser: ClassName(field1,field2,field3)
-        val classNameParser = string(${ Expr(className) })
-        val openParen       = char('(')
-        val closeParen      = char(')')
-        val comma           = char(',')
+      // Build the parser: ClassName(field1,field2,field3)
+      val classNameParser = string(${ Expr(className) })
+      val openParen       = char('(')
+      val closeParen      = char(')')
+      val comma           = char(',')
 
-        // Parse the class name and opening paren
-        val prefixParser = classNameParser ~ openParen
+      // Parse the class name and opening paren
+      val prefixParser = classNameParser ~ openParen
 
-        // Parse fields separated by commas
-        def parseFields(remaining: List[parser.core.Parser[ParseError, Any]])
-          : parser.core.Parser[ParseError, List[Any]] =
-          remaining match {
-            case Nil => parser.core.Parser.Succeed(Nil)
-            case head :: Nil =>
-              head.map(v => List(v))
-            case head :: tail =>
-              (head <* comma).flatMap { firstValue =>
-                parseFields(tail).map(restValues => firstValue :: restValues)
-              }
-          }
-
-        val fieldsParser = parseFields(parsers)
-
-        // Complete parser: prefix ~ fields ~ closeParen
-        val completeParser = prefixParser *> fieldsParser <* closeParen
-
-        // Run the parser and reconstruct the case class
-        val result = parser.runtime.interpret(completeParser, state)
-
-        result match {
-          case Result.Success(fieldValues, consumed) =>
-            // Reconstruct the case class from field values
-            val product = ${ mirror }.fromProduct(Tuple.fromArray(fieldValues.toArray))
-            Result.Success(product, consumed)
-          case Result.Partial(fieldValues, errors, consumed) =>
-            // Reconstruct the case class from field values even with errors
-            val product = ${ mirror }.fromProduct(Tuple.fromArray(fieldValues.toArray))
-            Result.Partial(product, errors, consumed)
-          case Result.Failure(errors, furthest) =>
-            Result.Failure(errors, furthest)
+      // Parse fields separated by commas
+      def parseFields(remaining: List[parser.core.Parser[ParseError, Any]])
+        : parser.core.Parser[ParseError, List[Any]] =
+        remaining match {
+          case Nil => parser.core.Parser.Succeed(Nil)
+          case head :: Nil =>
+            head.map(v => List(v))
+          case head :: tail =>
+            (head <* comma).flatMap { firstValue =>
+              parseFields(tail).map(restValues => firstValue :: restValues)
+            }
         }
+
+      val fieldsParser = parseFields(parsers)
+
+      // Complete parser: prefix ~ fields ~ closeParen
+      val completeParser = prefixParser *> fieldsParser <* closeParen
+
+      // Map the result to reconstruct the case class
+      completeParser.map { fieldValues =>
+        ${ mirror }.fromProduct(Tuple.fromArray(fieldValues.toArray))
       }
     }
   }

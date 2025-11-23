@@ -42,34 +42,22 @@ class ArithmeticParserTests extends FunSuite {
     //          term = factor (('*' | '/') factor)*
     //          factor = number | '(' expr ')'
 
-    // Using Parser.Custom to break recursion cycles
+    // Using defer to break recursion cycles
     lazy val expr: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          term.chainl1(
-            (char('+').as((a: Int, b: Int) => a + b)) |
-              (char('-').as((a: Int, b: Int) => a - b))
-          ),
-          state
-        )
-      }
+      defer(term).chainl1(
+        (char('+').as((a: Int, b: Int) => a + b)) |
+          (char('-').as((a: Int, b: Int) => a - b))
+      )
 
     lazy val term: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          factor.chainl1(
-            (char('*').as((a: Int, b: Int) => a * b)) |
-              (char('/').as((a: Int, b: Int) => a / b))
-          ),
-          state
-        )
-      }
+      defer(factor).chainl1(
+        (char('*').as((a: Int, b: Int) => a * b)) |
+          (char('/').as((a: Int, b: Int) => a / b))
+      )
 
     lazy val factor: Parser[ParseError, Int] = {
       val number = digit.many1.map(_.mkString.toInt)
-      number | Parser.Custom { state =>
-        parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-      }
+      number | (char('(') *> defer(expr) <* char(')'))
     }
 
     val result = expr.run("2+3*4")
@@ -78,32 +66,20 @@ class ArithmeticParserTests extends FunSuite {
 
   test("parse parentheses") {
     lazy val expr: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          term.chainl1(
-            (char('+').as((a: Int, b: Int) => a + b)) |
-              (char('-').as((a: Int, b: Int) => a - b))
-          ),
-          state
-        )
-      }
+      defer(term).chainl1(
+        (char('+').as((a: Int, b: Int) => a + b)) |
+          (char('-').as((a: Int, b: Int) => a - b))
+      )
 
     lazy val term: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          factor.chainl1(
-            (char('*').as((a: Int, b: Int) => a * b)) |
-              (char('/').as((a: Int, b: Int) => a / b))
-          ),
-          state
-        )
-      }
+      defer(factor).chainl1(
+        (char('*').as((a: Int, b: Int) => a * b)) |
+          (char('/').as((a: Int, b: Int) => a / b))
+      )
 
     lazy val factor: Parser[ParseError, Int] = {
       val number = digit.many1.map(_.mkString.toInt)
-      number | Parser.Custom { state =>
-        parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-      }
+      number | (char('(') *> defer(expr) <* char(')'))
     }
 
     val result = expr.run("(2+3)*4")
@@ -112,32 +88,20 @@ class ArithmeticParserTests extends FunSuite {
 
   test("parse nested expression") {
     lazy val expr: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          term.chainl1(
-            (char('+').as((a: Int, b: Int) => a + b)) |
-              (char('-').as((a: Int, b: Int) => a - b))
-          ),
-          state
-        )
-      }
+      defer(term).chainl1(
+        (char('+').as((a: Int, b: Int) => a + b)) |
+          (char('-').as((a: Int, b: Int) => a - b))
+      )
 
     lazy val term: Parser[ParseError, Int] =
-      Parser.Custom { state =>
-        parser.runtime.interpret(
-          factor.chainl1(
-            (char('*').as((a: Int, b: Int) => a * b)) |
-              (char('/').as((a: Int, b: Int) => a / b))
-          ),
-          state
-        )
-      }
+      defer(factor).chainl1(
+        (char('*').as((a: Int, b: Int) => a * b)) |
+          (char('/').as((a: Int, b: Int) => a / b))
+      )
 
     lazy val factor: Parser[ParseError, Int] = {
       val number = digit.many1.map(_.mkString.toInt)
-      number | Parser.Custom { state =>
-        parser.runtime.interpret(char('(') *> expr <* char(')'), state)
-      }
+      number | (char('(') *> defer(expr) <* char(')'))
     }
 
     val result = expr.run("((2+3)*4)+5")
