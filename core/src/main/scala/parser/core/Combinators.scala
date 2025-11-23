@@ -127,6 +127,27 @@ def zipLeft[E, A, B](p1: Parser[E, A], p2: Parser[E, B]): Parser[E, A] =
 def zipRight[E, A, B](p1: Parser[E, A], p2: Parser[E, B]): Parser[E, B] =
   flatMap(p1, (_: A) => p2)
 
+/**
+ * Parses a value between two delimiters.
+ *
+ * Runs left, then p, then right, returning only the middle result.
+ * Essential for parsing parenthesized expressions, bracketed lists, etc.
+ *
+ * @param p The parser for the content between delimiters
+ * @param left Parser for the opening delimiter
+ * @param right Parser for the closing delimiter
+ * @return A parser that parses left-p-right and returns p's result
+ *
+ * Example:
+ * {{{
+ * between(digit, char('('), char(')')).run("(5)")  // Success('5', 3)
+ * between(letter.many, string("<<"), string(">>")).run("<<abc>>")
+ *   // Success(List('a', 'b', 'c'), 7)
+ * }}}
+ */
+def between[E, A, L, R](p: Parser[E, A], left: Parser[E, L], right: Parser[E, R]): Parser[E, A] =
+  zipRight(left, zipLeft(p, right))
+
 // Choice
 
 /**

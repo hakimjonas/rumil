@@ -180,7 +180,7 @@ final private[runtime] case class LR(
 )
 
 // ============================================================================
-// ParserState - Contrfolled Mutation via Refs
+// ParserState - Controlled Mutation via Refs
 // ============================================================================
 
 /**
@@ -232,7 +232,7 @@ final class ParserState private[runtime] (
 
   def peek(n: Int): Option[Char] = {
     val idx = offsetRef.get + n
-    if (idx >= input.length) {
+    if (idx < 0 || idx >= input.length) {
       None
     } else {
       Some(input(idx))
@@ -250,8 +250,13 @@ final class ParserState private[runtime] (
       offsetRef.update(_ + 1)
     }
 
-  def advanceN(n: Int): Unit =
-    (0 until n).foreach(_ => advance())
+  def advanceN(n: Int): Unit = {
+    var i = 0
+    while (i < n) {
+      advance()
+      i += 1
+    }
+  }
 
   def save: StateSnapshot =
     (offset = offsetRef.get, line = lineRef.get, column = columnRef.get)

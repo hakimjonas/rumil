@@ -67,7 +67,8 @@ lazy val core = (project in file("core"))
     name := "rumil-core",
     libraryDependencies ++= Seq(
       "org.scalacheck" %% "scalacheck" % "1.19.0" % Test,
-      "org.scalameta"  %% "munit"      % "1.2.1"  % Test
+      "org.scalameta"  %% "munit"      % "1.2.1"  % Test,
+      "org.typelevel"  %% "cats-parse" % "1.1.0"  % Test // For comparative benchmarks
     ),
     scalacOptions ++= Seq(
       "-deprecation",

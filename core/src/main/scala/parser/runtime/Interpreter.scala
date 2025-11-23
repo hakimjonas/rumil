@@ -79,6 +79,37 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           )
       }
 
+    case Parser.StringMatch(target) =>
+      val startLoc = state.location
+      val len      = target.length
+      // Check if we have enough input remaining
+      if (state.offset + len > state.input.length) {
+        Result.Failure(
+          List(ParseError.EndOfInput(s"\"$target\"", startLoc)),
+          startLoc
+        )
+      } else {
+        // Compare substring directly (O(n) but no allocations in tight loop)
+        var i       = 0
+        var matched = true
+        while (i < len && matched) {
+          if (state.input.charAt(state.offset + i) != target.charAt(i)) {
+            matched = false
+          }
+          i += 1
+        }
+        if (matched) {
+          state.advanceN(len)
+          Result.Success(target, len)
+        } else {
+          val found = state.input.substring(state.offset, math.min(state.offset + len, state.input.length))
+          Result.Failure(
+            List(ParseError.Unexpected(found, Set(s"\"$target\""), startLoc)),
+            startLoc
+          )
+        }
+      }
+
     case Parser.Map(source, f) =>
       interpret(source, state) match {
         case Result.Success(value, consumed) =>

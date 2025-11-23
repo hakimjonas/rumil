@@ -42,6 +42,9 @@ extension [E, A](p: Parser[E, A]) {
   inline def <*[B](that: Parser[E, B]): Parser[E, A] =
     parser.core.zipLeft(p, that)
 
+  inline def between[L, R](left: Parser[E, L], right: Parser[E, R]): Parser[E, A] =
+    parser.core.between(p, left, right)
+
   // Repetition
   inline def many: Parser[E, List[A]] =
     parser.core.many(p)

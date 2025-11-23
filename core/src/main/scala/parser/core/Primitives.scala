@@ -95,15 +95,7 @@ def noneOf(chars: String): Parser[ParseError, Char] =
  * }}}
  */
 def string(s: String): Parser[ParseError, String] =
-  if (s.isEmpty) {
-    succeed("")
-  } else {
-    s.toList match {
-      case head :: tail =>
-        flatMap(char(head), (h: Char) => map(string(tail.mkString), (t: String) => s"$h$t"))
-      case Nil => succeed("")
-    }
-  }
+  if (s.isEmpty) succeed("") else Parser.StringMatch(s)
 
 // Common character classes
 
