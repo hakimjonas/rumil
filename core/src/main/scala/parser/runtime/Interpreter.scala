@@ -139,7 +139,7 @@ private def interpretI[E, A](parser: Parser[E, A], state: ParserState): IResult[
       } else {
         // Use regionMatches for optimized string comparison (JVM intrinsic)
         if (state.input.regionMatches(state.offset, target, 0, len)) {
-          state.advanceN(len)
+          state.advanceByString(target)
           Result.Success(target, len)
         } else {
           val loc = state.location // Only compute location on failure
@@ -881,7 +881,7 @@ private def interpretStringChoice(
 
     // Check if we have enough input and it matches
     if (offset + len <= inputLen && input.regionMatches(offset, target, 0, len)) {
-      state.advanceN(len)
+      state.advanceByString(target)
       return Result.Success(target, len)
     }
     i += 1
