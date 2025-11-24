@@ -26,6 +26,7 @@ package parser.core
  */
 final class RadixNode private (
     val matched: String,
+    private val isTerminal: Boolean,  // True if this node represents a complete word
     private val bitMask: Int,
     private val prefixes: Array[String | Null],
     private val children: Array[RadixNode | Null]
@@ -40,7 +41,7 @@ final class RadixNode private (
    */
   def matchAt(input: String, offset: Int): Int = {
     val result = matchAtOrNull(input, offset)
-    if (result == null) -1 else offset + result.length
+    if (result eq null) -1 else offset + result.length
   }
 
   /**
@@ -50,8 +51,8 @@ final class RadixNode private (
    * @param offset The position in input to start matching
    * @return The matched string, or null if no match
    */
-  def matchAtOrNull(input: String, offset: Int): String =
-    matchLoop(input, offset, matched)
+  def matchAtOrNull(input: String, offset: Int): String | Null =
+    matchLoop(input, offset, null)
 
   /**
    * Core matching loop - tail recursive traversal of the radix tree.
@@ -62,10 +63,13 @@ final class RadixNode private (
    * @return The longest matching string, or null if none
    */
   @annotation.tailrec
-  private def matchLoop(input: String, offset: Int, currentMatch: String): String = {
+  private def matchLoop(input: String, offset: Int, currentMatch: String | Null): String | Null = {
+    // The match to return if we can't go further - only valid if we're at a terminal node
+    val validMatch = if (isTerminal) matched else currentMatch
+
     // If we've reached end of input, return current match
     if (offset >= input.length) {
-      currentMatch
+      validMatch
     } else {
       // Get next character and compute hash index
       val c = input.charAt(offset)
@@ -73,28 +77,28 @@ final class RadixNode private (
 
       // Check if we have a prefix at this index
       if (idx >= prefixes.length) {
-        currentMatch
+        validMatch
       } else {
         val prefix = prefixes(idx)
         if (prefix eq null) {
-          currentMatch
+          validMatch
         } else {
           // Verify the full prefix matches (not just the hashed character)
           val prefixLen = prefix.length
           if (offset + prefixLen > input.length) {
-            currentMatch
+            validMatch
           } else if (!input.regionMatches(offset, prefix, 0, prefixLen)) {
-            currentMatch
+            validMatch
           } else {
             // Prefix matched - get child and continue
             val child = children(idx)
             if (child eq null) {
-              // Leaf node - return the match
-              // Optimization: avoid concatenation when currentMatch is empty (root level)
-              if (currentMatch.isEmpty) prefix else currentMatch + prefix
+              // Leaf node (always terminal) - return the match
+              // Optimization: avoid concatenation when matched is empty (root level)
+              if (matched.isEmpty) prefix else matched + prefix
             } else {
-              // Continue matching in child
-              child.matchLoop(input, offset + prefixLen, child.matched)
+              // Continue matching in child, passing our valid match as fallback
+              child.matchLoop(input, offset + prefixLen, validMatch)
             }
           }
         }
@@ -115,7 +119,7 @@ object RadixNode {
     val list = strings.toList.distinct.filter(_.nonEmpty)
     if (list.isEmpty) {
       // Empty tree that matches nothing
-      new RadixNode("", 0, Array.empty, Array.empty)
+      new RadixNode("", false, 0, Array.empty, Array.empty)
     } else {
       buildNode("", list)
     }
@@ -129,12 +133,13 @@ object RadixNode {
    * @return A RadixNode for the given strings
    */
   private def buildNode(matched: String, strings: List[String]): RadixNode = {
-    // Separate empty strings (which are matches at this node) from non-empty
-    val (_, nonEmpty) = strings.partition(_.isEmpty)
+    // Separate empty strings (which indicate this node is a terminal) from non-empty
+    val (empty, nonEmpty) = strings.partition(_.isEmpty)
+    val isTerminal = empty.nonEmpty  // This node is terminal if any string ended here
 
     if (nonEmpty.isEmpty) {
-      // All strings matched - leaf node
-      new RadixNode(matched, 0, Array.empty, Array.empty)
+      // All strings matched - leaf node (always terminal)
+      new RadixNode(matched, true, 0, Array.empty, Array.empty)
     } else {
       // Group strings by their first character
       val grouped = nonEmpty.groupBy(_.charAt(0))
@@ -168,7 +173,7 @@ object RadixNode {
         }
       }
 
-      new RadixNode(matched, bitMask, prefixes, children)
+      new RadixNode(matched, isTerminal, bitMask, prefixes, children)
     }
   }
 

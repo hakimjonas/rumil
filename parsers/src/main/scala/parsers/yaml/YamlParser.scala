@@ -48,11 +48,17 @@ private def indent(n: Int): Parser[ParseError, Unit] =
 // ============================================================================
 
 private def yamlNull: Parser[ParseError, YamlValue] =
-  (string("null") | string("~")).as(YamlValue.Null)
+  stringIn("null", "~").as(YamlValue.Null)
 
 private def yamlBoolean: Parser[ParseError, YamlValue] =
-  (string("true") | string("yes") | string("on")).as(YamlValue.Boolean(true)) |
-    (string("false") | string("no") | string("off")).as(YamlValue.Boolean(false))
+  keywords(Map(
+    "true"  -> YamlValue.Boolean(true),
+    "yes"   -> YamlValue.Boolean(true),
+    "on"    -> YamlValue.Boolean(true),
+    "false" -> YamlValue.Boolean(false),
+    "no"    -> YamlValue.Boolean(false),
+    "off"   -> YamlValue.Boolean(false)
+  ))
 
 private def yamlNumber: Parser[ParseError, YamlValue] = {
   // Float must have '.' or 'e'/'E', otherwise it's an integer

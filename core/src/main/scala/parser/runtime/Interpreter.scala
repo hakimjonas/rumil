@@ -876,7 +876,7 @@ private def interpretStringChoice(
   // Use radix tree for O(m) matching where m = length of matched string
   val matched = radix.matchAtOrNull(input, offset)
 
-  if (matched != null && matched.nonEmpty) {
+  if (matched ne null) {
     state.advanceByString(matched)
     Result.Success(matched, matched.length)
   } else {

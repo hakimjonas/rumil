@@ -97,6 +97,56 @@ def noneOf(chars: String): Parser[ParseError, Char] =
 def string(s: String): Parser[ParseError, String] =
   if (s.isEmpty) succeed("") else Parser.StringMatch(s)
 
+/**
+ * Parses one of several strings using radix tree for O(m) matching.
+ *
+ * This is more efficient than chaining multiple `string()` parsers with `|`
+ * when there are 3+ alternatives, as it uses a radix tree internally.
+ *
+ * @param strings The strings to match (at least one required)
+ * @return A parser that matches any of the input strings
+ *
+ * Example:
+ * {{{
+ * stringIn("true", "false", "null").run("true")  // Success("true", 4)
+ * stringIn("yes", "no").run("no")                // Success("no", 2)
+ * }}}
+ */
+def stringIn(strings: String*): Parser[ParseError, String] =
+  if (strings.isEmpty) {
+    throw new IllegalArgumentException("stringIn requires at least one string")
+  } else if (strings.size == 1) {
+    Parser.StringMatch(strings.head)
+  } else {
+    val targets = strings.toArray
+    val radix = RadixNode.fromStrings(targets)
+    Parser.StringChoice(radix, targets)
+  }
+
+/**
+ * Parses one of several keyword-value pairs using radix tree for O(m) matching.
+ *
+ * Maps each matched keyword to its corresponding value. Uses radix tree
+ * internally for efficient matching regardless of the number of keywords.
+ *
+ * @param mappings Map of keyword strings to their corresponding values
+ * @return A parser that matches any keyword and returns its mapped value
+ *
+ * Example:
+ * {{{
+ * keywords(Map("true" -> true, "false" -> false)).run("true")  // Success(true, 4)
+ * keywords(Map("yes" -> 1, "no" -> 0)).run("no")               // Success(0, 2)
+ * }}}
+ */
+def keywords[A](mappings: Map[String, A]): Parser[ParseError, A] =
+  if (mappings.isEmpty) {
+    throw new IllegalArgumentException("keywords requires at least one mapping")
+  } else {
+    val targets = mappings.keys.toArray
+    val radix = RadixNode.fromStrings(targets)
+    Parser.Map(Parser.StringChoice(radix, targets), mappings)
+  }
+
 // Common character classes
 
 /**
