@@ -394,7 +394,8 @@ private def interpretI[E, A](parser: Parser[E, A], state: ParserState): IResult[
       if (enableLR) {
         // Full left-recursion support using seed-growth algorithm
         if (DEBUG_LR)
-          System.err.println(s"[LR] Parser.Memo: key=$key, lrStack size before=${state.lrStack.size}")
+          System.err.println(
+            s"[LR] Parser.Memo: key=$key, lrStack size before=${state.lrStack.size}")
         val result = interpretMemoI(inner, key, state)
         if (DEBUG_LR)
           System.err.println(

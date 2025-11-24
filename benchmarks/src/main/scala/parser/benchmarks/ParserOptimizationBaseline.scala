@@ -1,9 +1,10 @@
 package parser.benchmarks
 
-import parsers.xml.parseXml
+import scala.collection.mutable.ArrayBuffer
+
 import parsers.json.parseJson
 import parsers.toml.parseToml
-import scala.collection.mutable.ArrayBuffer
+import parsers.xml.parseXml
 
 /**
  * Baseline benchmarks for parser implementations BEFORE adding .memoize optimizations.
@@ -26,22 +27,21 @@ object ParserOptimizationBaseline {
     def mean: Double = measurements.sum.toDouble / measurements.size
     def median: Double = {
       val sorted = measurements.sorted
-      val n = sorted.size
-      if (n % 2 == 0) (sorted(n/2 - 1) + sorted(n/2)) / 2.0
-      else sorted(n/2).toDouble
+      val n      = sorted.size
+      if (n % 2 == 0) (sorted(n / 2 - 1) + sorted(n / 2)) / 2.0
+      else sorted(n / 2).toDouble
     }
     def stdDev: Double = {
-      val m = mean
+      val m        = mean
       val variance = measurements.map(x => math.pow(x - m, 2)).sum / measurements.size
       math.sqrt(variance)
     }
     def min: Long = measurements.min
     def max: Long = measurements.max
 
-    def summary: String = {
+    def summary: String =
       f"$name%-50s: mean=${mean}%7.2f$unit ± ${stdDev}%5.2f$unit " +
-      f"[median=${median}%6.2f$unit, min=$min%5d$unit, max=$max%5d$unit]"
-    }
+        f"[median=${median}%6.2f$unit, min=$min%5d$unit, max=$max%5d$unit]"
   }
 
   def runBenchmark(
@@ -74,9 +74,8 @@ object ParserOptimizationBaseline {
     for (run <- 0 until measureIterations) {
       val start = System.nanoTime()
       // Run the operation innerLoopCount times to get measurable numbers
-      for (_ <- 0 until innerLoopCount) {
+      for (_ <- 0 until innerLoopCount)
         fn()
-      }
       val elapsed = (System.nanoTime() - start) / 1_000_000
       measurements += elapsed
 
@@ -95,10 +94,10 @@ object ParserOptimizationBaseline {
   // ============================================================================
 
   def xmlParserBaseline(): Unit = {
-    println("\n" + "="*80)
+    println("\n" + "=" * 80)
     println("XML PARSER BASELINE")
     println("Testing: xmlName calls (elements + attributes)")
-    println("="*80)
+    println("=" * 80)
 
     // Small document: 10 elements, 20 attributes
     val smallXml = """<?xml version="1.0"?>
@@ -152,13 +151,15 @@ object ParserOptimizationBaseline {
 
     // Large document: Many repeated element names (high cache hit potential)
     val largeXml = "<root>" +
-      (1 to 100).map { i =>
-        s"""<item id="$i" name="Item$i" category="cat${i % 10}" status="active">
+      (1 to 100)
+        .map { i =>
+          s"""<item id="$i" name="Item$i" category="cat${i % 10}" status="active">
   <property key="weight" value="$i" unit="kg"/>
   <property key="price" value="${i * 10}" unit="USD"/>
   <property key="stock" value="${i * 5}" unit="items"/>
 </item>"""
-      }.mkString("\n") +
+        }
+        .mkString("\n") +
       "</root>"
 
     val smallResult = runBenchmark(
@@ -185,7 +186,7 @@ object ParserOptimizationBaseline {
       () => { parseXml(largeXml); () }
     )
 
-    println("\n" + "-"*80)
+    println("\n" + "-" * 80)
     println("BASELINE RESULTS:")
     println(smallResult.summary)
     println(mediumResult.summary)
@@ -193,9 +194,10 @@ object ParserOptimizationBaseline {
     println()
     println("Key metrics for xmlName optimization:")
     println(f"  Small XML: ${smallResult.mean}%.2fms (${1000.0 / smallResult.mean}%.0f parses/sec)")
-    println(f"  Medium XML: ${mediumResult.mean}%.2fms (${1000.0 / mediumResult.mean}%.0f parses/sec)")
+    println(
+      f"  Medium XML: ${mediumResult.mean}%.2fms (${1000.0 / mediumResult.mean}%.0f parses/sec)")
     println(f"  Large XML: ${largeResult.mean}%.2fms (${1000.0 / largeResult.mean}%.0f parses/sec)")
-    println("-"*80)
+    println("-" * 80)
   }
 
   // ============================================================================
@@ -203,18 +205,20 @@ object ParserOptimizationBaseline {
   // ============================================================================
 
   def jsonParserBaseline(): Unit = {
-    println("\n" + "="*80)
+    println("\n" + "=" * 80)
     println("JSON PARSER BASELINE")
     println("Testing: Number/string parsing, whitespace handling")
-    println("="*80)
+    println("=" * 80)
 
     // Array of numbers (tests number parsing)
     val numbersJson = "[" + (1 to 100).mkString(", ") + "]"
 
     // Array of objects (tests string + number parsing)
-    val objectsJson = "[" + (1 to 50).map { i =>
-      s"""{"id": $i, "name": "Item$i", "price": ${i * 10.5}, "active": true}"""
-    }.mkString(", ") + "]"
+    val objectsJson = "[" + (1 to 50)
+      .map { i =>
+        s"""{"id": $i, "name": "Item$i", "price": ${i * 10.5}, "active": true}"""
+      }
+      .mkString(", ") + "]"
 
     // Nested structure (tests recursive parsing)
     val nestedJson = """
@@ -260,17 +264,19 @@ object ParserOptimizationBaseline {
       () => { parseJson(nestedJson); () }
     )
 
-    println("\n" + "-"*80)
+    println("\n" + "-" * 80)
     println("BASELINE RESULTS:")
     println(numbersResult.summary)
     println(objectsResult.summary)
     println(nestedResult.summary)
     println()
     println("Key metrics for number/string optimization:")
-    println(f"  Numbers: ${numbersResult.mean}%.2fms (${1000.0 / numbersResult.mean}%.0f parses/sec)")
-    println(f"  Objects: ${objectsResult.mean}%.2fms (${1000.0 / objectsResult.mean}%.0f parses/sec)")
+    println(
+      f"  Numbers: ${numbersResult.mean}%.2fms (${1000.0 / numbersResult.mean}%.0f parses/sec)")
+    println(
+      f"  Objects: ${objectsResult.mean}%.2fms (${1000.0 / objectsResult.mean}%.0f parses/sec)")
     println(f"  Nested: ${nestedResult.mean}%.2fms (${1000.0 / nestedResult.mean}%.0f parses/sec)")
-    println("-"*80)
+    println("-" * 80)
   }
 
   // ============================================================================
@@ -278,10 +284,10 @@ object ParserOptimizationBaseline {
   // ============================================================================
 
   def tomlParserBaseline(): Unit = {
-    println("\n" + "="*80)
+    println("\n" + "=" * 80)
     println("TOML PARSER BASELINE")
     println("Testing: Whitespace handling, string/number parsing")
-    println("="*80)
+    println("=" * 80)
 
     // Simple config (tests basic parsing)
     val simpleToml = """
@@ -306,13 +312,15 @@ timeout = 30
 
     // Large config (tests whitespace + repeated patterns)
     val largeToml = "[settings]\n" +
-      (1 to 50).map { i =>
-        s"""setting_$i = "$i"
+      (1 to 50)
+        .map { i =>
+          s"""setting_$i = "$i"
 value_$i = $i
 enabled_$i = true
 weight_$i = ${i * 1.5}
 """
-      }.mkString("\n")
+        }
+        .mkString("\n")
 
     val simpleResult = runBenchmark(
       "TOML Simple config",
@@ -338,7 +346,7 @@ weight_$i = ${i * 1.5}
       () => { parseToml(largeToml); () }
     )
 
-    println("\n" + "-"*80)
+    println("\n" + "-" * 80)
     println("BASELINE RESULTS:")
     println(simpleResult.summary)
     println(arrayResult.summary)
@@ -348,7 +356,7 @@ weight_$i = ${i * 1.5}
     println(f"  Simple: ${simpleResult.mean}%.2fms (${1000.0 / simpleResult.mean}%.0f parses/sec)")
     println(f"  Arrays: ${arrayResult.mean}%.2fms (${1000.0 / arrayResult.mean}%.0f parses/sec)")
     println(f"  Large: ${largeResult.mean}%.2fms (${1000.0 / largeResult.mean}%.0f parses/sec)")
-    println("-"*80)
+    println("-" * 80)
   }
 
   // ============================================================================
@@ -356,10 +364,10 @@ weight_$i = ${i * 1.5}
   // ============================================================================
 
   def main(args: Array[String]): Unit = {
-    println("\n" + "="*80)
+    println("\n" + "=" * 80)
     println("  PARSER OPTIMIZATION BASELINE BENCHMARKS")
     println("  Measuring BEFORE adding .memoize optimizations")
-    println("="*80)
+    println("=" * 80)
     println()
     println("This establishes baseline performance for:")
     println("  1. XML: xmlName parsing (elements + attributes)")
@@ -373,9 +381,9 @@ weight_$i = ${i * 1.5}
     jsonParserBaseline()
     tomlParserBaseline()
 
-    println("\n" + "="*80)
+    println("\n" + "=" * 80)
     println("BASELINE BENCHMARKS COMPLETE")
-    println("="*80)
+    println("=" * 80)
     println()
     println("Next steps:")
     println("  1. Add .memoize to xmlName in XML parser")
@@ -387,6 +395,6 @@ weight_$i = ${i * 1.5}
     println("  - XML: 20-40% faster (xmlName is called for every element/attribute)")
     println("  - JSON: 10-20% faster (number/string parsing with backtracking)")
     println("  - TOML: 15-30% faster (whitespace parser called frequently)")
-    println("="*80)
+    println("=" * 80)
   }
 }

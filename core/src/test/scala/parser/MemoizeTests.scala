@@ -98,13 +98,13 @@ class MemoizeTests extends FunSuite {
   // ============================================================================
 
   test(".memoize produces same results as non-memoized parser") {
-    val normalParser = (digit.many1.map(_.mkString.toInt))
+    val normalParser   = digit.many1.map(_.mkString.toInt)
     val memoizedParser = normalParser.memoize
 
     val inputs = List("123", "456", "0", "999", "42")
 
     inputs.foreach { input =>
-      val normalResult = normalParser.run(input)
+      val normalResult   = normalParser.run(input)
       val memoizedResult = memoizedParser.run(input)
 
       assertEquals(memoizedResult, normalResult, s"Results differ for input: $input")
@@ -156,10 +156,13 @@ class MemoizeTests extends FunSuite {
   test(".memoize benefits parsers used in multiple branches") {
     var count = 0
 
-    val whitespace = (char(' ') | char('\t') | char('\n')).many.as(()).map { _ =>
-      count += 1
-      ()
-    }.memoize
+    val whitespace = (char(' ') | char('\t') | char('\n')).many
+      .as(())
+      .map { _ =>
+        count += 1
+        ()
+      }
+      .memoize
 
     // Use whitespace in multiple places
     val parser = whitespace *> char('x') <* whitespace
@@ -262,7 +265,7 @@ class MemoizeTests extends FunSuite {
 
   test(".memoize can be used on named parsers") {
     // Named usage - define parser first, then memoize
-    val identifier = letter ~ alphaNum.many
+    val identifier         = letter ~ alphaNum.many
     val memoizedIdentifier = identifier.memoize
 
     val parser = memoizedIdentifier ~ char(':') ~ memoizedIdentifier

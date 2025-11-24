@@ -44,16 +44,16 @@ object MemoizationBenchmarks {
     // Version 1: Using .memoize (fast path)
     val memoizedParser = expensiveWork.memoize
     val memoizeTest = (memoizedParser ~ char('x')) |
-                      (memoizedParser ~ char('y')) |
-                      (memoizedParser ~ char('z'))
+      (memoizedParser ~ char('y')) |
+      (memoizedParser ~ char('z'))
 
     // Version 2: Using rule (LR path)
-    lazy val ruledParser: Parser[ParseError, String] = rule { expensiveWork }
+    lazy val ruledParser: Parser[ParseError, String] = rule(expensiveWork)
     val ruleTest = (ruledParser ~ char('x')) |
-                   (ruledParser ~ char('y')) |
-                   (ruledParser ~ char('z'))
+      (ruledParser ~ char('y')) |
+      (ruledParser ~ char('z'))
 
-    val input = "abcz"
+    val input      = "abcz"
     val iterations = 10000
 
     // Warmup
@@ -64,16 +64,14 @@ object MemoizationBenchmarks {
 
     // Benchmark .memoize
     val memoizeStart = System.nanoTime()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       memoizeTest.run(input)
-    }
     val memoizeTime = (System.nanoTime() - memoizeStart) / 1_000_000
 
     // Benchmark rule
     val ruleStart = System.nanoTime()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       ruleTest.run(input)
-    }
     val ruleTime = (System.nanoTime() - ruleStart) / 1_000_000
 
     println(s"  Input: '$input' (forces backtracking, tests cache hits)")
@@ -81,7 +79,8 @@ object MemoizationBenchmarks {
     println(s"  .memoize: ${memoizeTime}ms")
     println(s"  rule:     ${ruleTime}ms")
     println(s"  Speedup:  ${ruleTime.toDouble / memoizeTime.toDouble}x")
-    println(s"  Improvement: ${((ruleTime - memoizeTime).toDouble / ruleTime.toDouble * 100).toInt}%")
+    println(
+      s"  Improvement: ${((ruleTime - memoizeTime).toDouble / ruleTime.toDouble * 100).toInt}%")
   }
 
   // ============================================================================
@@ -101,20 +100,20 @@ object MemoizationBenchmarks {
     println("\n=== Benchmark 2: Backtracking Without Cache Collisions ===")
 
     val letter = satisfy(_.isLetter, "letter")
-    val digit = satisfy(_.isDigit, "digit")
+    val digit  = satisfy(_.isDigit, "digit")
 
     // Parser that tries letters or digits with backtracking
     val memoizedLetter = letter.memoize
-    val memoizedDigit = digit.memoize
+    val memoizedDigit  = digit.memoize
     val memoizeParser = (memoizedLetter.many1 ~ char('-') ~ memoizedDigit.many1)
       .map { case ((letters, _), digits) => (letters.mkString, digits.mkString) }
 
-    lazy val ruledLetter: Parser[ParseError, Char] = rule { letter }
-    lazy val ruledDigit: Parser[ParseError, Char] = rule { digit }
+    lazy val ruledLetter: Parser[ParseError, Char] = rule(letter)
+    lazy val ruledDigit: Parser[ParseError, Char]  = rule(digit)
     val ruleParser = (ruledLetter.many1 ~ char('-') ~ ruledDigit.many1)
       .map { case ((letters, _), digits) => (letters.mkString, digits.mkString) }
 
-    val input = "hello-123"
+    val input      = "hello-123"
     val iterations = 10000
 
     // Warmup
@@ -125,16 +124,14 @@ object MemoizationBenchmarks {
 
     // Benchmark .memoize
     val memoizeStart = System.nanoTime()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       memoizeParser.run(input)
-    }
     val memoizeTime = (System.nanoTime() - memoizeStart) / 1_000_000
 
     // Benchmark rule
     val ruleStart = System.nanoTime()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       ruleParser.run(input)
-    }
     val ruleTime = (System.nanoTime() - ruleStart) / 1_000_000
 
     println(s"  Input: '$input'")
@@ -160,7 +157,7 @@ object MemoizationBenchmarks {
   def complexExpressionPerformance(): Unit = {
     println("\n=== Benchmark 3: Complex Expression Parsing ===")
 
-    val digit = satisfy(_.isDigit, "digit")
+    val digit      = satisfy(_.isDigit, "digit")
     val whitespace = char(' ').many.void
 
     // Non-memoized version (baseline)
@@ -180,7 +177,7 @@ object MemoizationBenchmarks {
     val parserRuled = (numberRuled ~ whitespace ~ char('+') ~ whitespace ~ numberRuled)
       .map { case ((((a, _), _), _), b) => a + b }
 
-    val input = "123 + 456"
+    val input      = "123 + 456"
     val iterations = 10000
 
     // Warmup
@@ -192,23 +189,20 @@ object MemoizationBenchmarks {
 
     // Benchmark baseline
     val baselineStart = System.nanoTime()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       parserBaseline.run(input)
-    }
     val baselineTime = (System.nanoTime() - baselineStart) / 1_000_000
 
     // Benchmark .memoize
     val memoizeStart = System.nanoTime()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       parserMemoized.run(input)
-    }
     val memoizeTime = (System.nanoTime() - memoizeStart) / 1_000_000
 
     // Benchmark rule
     val ruleStart = System.nanoTime()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       parserRuled.run(input)
-    }
     val ruleTime = (System.nanoTime() - ruleStart) / 1_000_000
 
     println(s"  Input: '$input'")
@@ -234,12 +228,12 @@ object MemoizationBenchmarks {
   def memoryAllocationTest(): Unit = {
     println("\n=== Benchmark 4: Memory Allocation Characteristics ===")
 
-    val parser = (char('a') ~ char('b') ~ char('c'))
+    val parser = char('a') ~ char('b') ~ char('c')
 
     val memoizedParser = parser.memoize
-    val ruleParser = rule { parser }
+    val ruleParser     = rule(parser)
 
-    val input = "abc"
+    val input      = "abc"
     val iterations = 1000
 
     // Force GC before measurement
@@ -250,9 +244,8 @@ object MemoizationBenchmarks {
 
     // Measure .memoize allocations
     val memoizeBefore = runtime.totalMemory() - runtime.freeMemory()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       memoizedParser.run(input)
-    }
     val memoizeAfter = runtime.totalMemory() - runtime.freeMemory()
     val memoizeAlloc = memoizeAfter - memoizeBefore
 
@@ -262,9 +255,8 @@ object MemoizationBenchmarks {
 
     // Measure rule allocations
     val ruleBefore = runtime.totalMemory() - runtime.freeMemory()
-    for (_ <- 0 until iterations) {
+    for (_ <- 0 until iterations)
       ruleParser.run(input)
-    }
     val ruleAfter = runtime.totalMemory() - runtime.freeMemory()
     val ruleAlloc = ruleAfter - ruleBefore
 
