@@ -210,14 +210,15 @@ private def tomlInteger: Parser[ParseError, TomlValue] = {
  * MUST have either a decimal point OR an exponent to be a float (not plain integer).
  */
 private def tomlFloat: Parser[ParseError, TomlValue] = {
-  val special = keywords(Map(
-    "+inf" -> Double.PositiveInfinity,
-    "-inf" -> Double.NegativeInfinity,
-    "inf"  -> Double.PositiveInfinity,
-    "+nan" -> Double.NaN,
-    "-nan" -> Double.NaN,
-    "nan"  -> Double.NaN
-  ))
+  val special = keywords(
+    Map(
+      "+inf" -> Double.PositiveInfinity,
+      "-inf" -> Double.NegativeInfinity,
+      "inf"  -> Double.PositiveInfinity,
+      "+nan" -> Double.NaN,
+      "-nan" -> Double.NaN,
+      "nan"  -> Double.NaN
+    ))
 
   // Float with decimal point (and optional exponent): 3.14, 3.14e10
   val withFraction = for {
@@ -269,10 +270,11 @@ private def tomlFloat: Parser[ParseError, TomlValue] = {
  * Boolean: true or false.
  */
 private def tomlBoolean: Parser[ParseError, TomlValue] =
-  keywords(Map(
-    "true"  -> TomlValue.Boolean(true),
-    "false" -> TomlValue.Boolean(false)
-  ))
+  keywords(
+    Map(
+      "true"  -> TomlValue.Boolean(true),
+      "false" -> TomlValue.Boolean(false)
+    ))
 
 // ============================================================================
 // Datetimes

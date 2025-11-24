@@ -246,15 +246,14 @@ final class RedTree private (
    * @param reparsableKinds The set of syntax kinds that are reparsable boundaries
    * @return The nearest reparsable ancestor, or None if none found
    */
-  def findReparseAncestor(reparsableKinds: Set[SyntaxKind]): Option[RedTree] = {
+  def findReparseAncestor(reparsableKinds: Set[SyntaxKind]): Option[RedTree] =
     // Check if this node is reparsable
     syntaxKind match {
       case Some(k) if reparsableKinds.contains(k) => Some(this)
-      case _ =>
+      case _                                      =>
         // Check parent
         parent.flatMap(_.findReparseAncestor(reparsableKinds))
     }
-  }
 
   /**
    * Find the smallest ancestor containing a given offset range that is reparsable.
@@ -280,7 +279,7 @@ final class RedTree private (
       def search(current: RedTree): Option[RedTree] = {
         val containsEdit =
           current.span.start.offset <= editStart &&
-          current.span.end.offset >= editEnd
+            current.span.end.offset >= editEnd
 
         if (!containsEdit) {
           // Go up - parent might contain the edit
@@ -289,7 +288,7 @@ final class RedTree private (
           // This node contains the edit - check if reparsable
           current.syntaxKind match {
             case Some(k) if reparsableKinds.contains(k) => Some(current)
-            case _ => current.parent.flatMap(search)
+            case _                                      => current.parent.flatMap(search)
           }
         }
       }

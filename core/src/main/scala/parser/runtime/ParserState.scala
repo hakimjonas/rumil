@@ -209,9 +209,9 @@ final class ParserState private[runtime] (
   private var _column: Int
 ) {
   // Left recursion support - lazily initialized (saves ~320 bytes for non-LR parsers)
-  private[runtime] lazy val memo: MemoTable = MemoTable()
+  private[runtime] lazy val memo: MemoTable                  = MemoTable()
   private[runtime] lazy val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty
-  private[runtime] lazy val heads: mutable.Map[Int, LRHead] = mutable.Map.empty
+  private[runtime] lazy val heads: mutable.Map[Int, LRHead]  = mutable.Map.empty
 
   def offset: Int = _offset
   def line: Int   = _line

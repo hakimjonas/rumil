@@ -25,11 +25,11 @@ package parser.core
  * @param children Array of child nodes (null if leaf or no branch)
  */
 final class RadixNode private (
-    val matched: String,
-    private val isTerminal: Boolean,  // True if this node represents a complete word
-    private val bitMask: Int,
-    private val prefixes: Array[String | Null],
-    private val children: Array[RadixNode | Null]
+  val matched: String,
+  private val isTerminal: Boolean, // True if this node represents a complete word
+  private val bitMask: Int,
+  private val prefixes: Array[String | Null],
+  private val children: Array[RadixNode | Null]
 ) {
 
   /**
@@ -72,7 +72,7 @@ final class RadixNode private (
       validMatch
     } else {
       // Get next character and compute hash index
-      val c = input.charAt(offset)
+      val c   = input.charAt(offset)
       val idx = c.toInt & bitMask
 
       // Check if we have a prefix at this index
@@ -135,7 +135,7 @@ object RadixNode {
   private def buildNode(matched: String, strings: List[String]): RadixNode = {
     // Separate empty strings (which indicate this node is a terminal) from non-empty
     val (empty, nonEmpty) = strings.partition(_.isEmpty)
-    val isTerminal = empty.nonEmpty  // This node is terminal if any string ended here
+    val isTerminal        = empty.nonEmpty // This node is terminal if any string ended here
 
     if (nonEmpty.isEmpty) {
       // All strings matched - leaf node (always terminal)
@@ -145,8 +145,8 @@ object RadixNode {
       val grouped = nonEmpty.groupBy(_.charAt(0))
 
       // Calculate bit mask - minimum bits needed to distinguish first chars
-      val chars = grouped.keys.map(_.toInt).toSet
-      val bitMask = computeBitMask(chars)
+      val chars     = grouped.keys.map(_.toInt).toSet
+      val bitMask   = computeBitMask(chars)
       val arraySize = bitMask + 1
 
       // Build prefix and children arrays
@@ -206,10 +206,9 @@ object RadixNode {
    */
   private def commonPrefixOf(a: String, b: String): String = {
     val len = math.min(a.length, b.length)
-    var i = 0
-    while (i < len && a.charAt(i) == b.charAt(i)) {
+    var i   = 0
+    while (i < len && a.charAt(i) == b.charAt(i))
       i += 1
-    }
     a.substring(0, i)
   }
 }

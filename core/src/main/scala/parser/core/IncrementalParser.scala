@@ -1,6 +1,7 @@
 package parser.core
 
 import scala.collection.immutable.Vector
+
 import parser.runtime.run
 
 /**
@@ -90,7 +91,7 @@ object IncrementalParser {
     // Strategy 1: Try token-level update first (fastest)
     tryTokenLevelUpdate(previousTree, previousSource, edit, newSource) match {
       case Some(result) => result
-      case None =>
+      case None         =>
         // Strategy 2: Try block-level incremental reparsing
         blockLevelReparse(previousTree, edit, newSource, parser, config)
     }
@@ -117,13 +118,13 @@ object IncrementalParser {
       node.green match {
         case GreenNode.Token(kind, oldText, oldSpan) =>
           val tokenStart = node.span.start.offset
-          val tokenEnd = node.span.end.offset
+          val tokenEnd   = node.span.end.offset
 
           // Check if edit is entirely within this token
           if (edit.startOffset >= tokenStart && edit.endOffset <= tokenEnd) {
             // Calculate the new token text
             val editStartInToken = edit.startOffset - tokenStart
-            val editEndInToken = edit.endOffset - tokenStart
+            val editEndInToken   = edit.endOffset - tokenStart
             val newText = oldText.substring(0, editStartInToken) +
               edit.newText +
               oldText.substring(editEndInToken)
@@ -132,8 +133,9 @@ object IncrementalParser {
             // (identifiers, numbers, strings, whitespace, comments)
             // Operators and delimiters might change the parse structure
             val isSimpleToken = kind match {
-              case TokenKind.Identifier | TokenKind.Number | TokenKind.String |
-                   TokenKind.Whitespace | TokenKind.Comment => true
+              case TokenKind.Identifier | TokenKind.Number |
+                  TokenKind.String | TokenKind.Whitespace | TokenKind.Comment =>
+                true
               case _ => false
             }
 
@@ -145,7 +147,7 @@ object IncrementalParser {
                 offset = tokenStart + newText.length
               )
               val newSpan: Span = (start = oldSpan.start, end = newEnd)
-              val newToken = GreenNode.Token(kind, newText, newSpan)
+              val newToken      = GreenNode.Token(kind, newText, newSpan)
 
               // Splice it in
               val path = node.pathFromRoot
@@ -183,12 +185,12 @@ object IncrementalParser {
     newSource: String,
     parser: Parser[E, GreenNode],
     config: Config
-  ): IncrementalResult = {
+  ): IncrementalResult =
     findReparseRegion(previousTree, edit, config) match {
       case Some((reparseNode, path)) =>
         // Calculate the text region to reparse
         val regionStart = reparseNode.span.start.offset
-        val regionEnd = reparseNode.span.end.offset
+        val regionEnd   = reparseNode.span.end.offset
 
         // Adjust for the edit's effect on the region boundaries
         val adjustedEnd = if (edit.endOffset <= regionEnd) {
@@ -247,7 +249,6 @@ object IncrementalParser {
         // No suitable reparse region found - full reparse
         fullReparse(newSource, parser)
     }
-  }
 
   /**
    * Find the minimal region to reparse for an edit.
@@ -263,13 +264,15 @@ object IncrementalParser {
     val redTree = RedTree(tree)
 
     // Find the reparse region
-    redTree.findReparseRegion(
-      edit.startOffset,
-      edit.endOffset,
-      config.reparsableKinds
-    ).map { node =>
-      (node, node.pathFromRoot)
-    }
+    redTree
+      .findReparseRegion(
+        edit.startOffset,
+        edit.endOffset,
+        config.reparsableKinds
+      )
+      .map { node =>
+        (node, node.pathFromRoot)
+      }
   }
 
   /**
@@ -278,7 +281,7 @@ object IncrementalParser {
   private def fullReparse[E](
     source: String,
     parser: Parser[E, GreenNode]
-  ): IncrementalResult = {
+  ): IncrementalResult =
     run(parser, source) match {
       case Result.Success(tree, _) =>
         IncrementalResult(tree, None, fullReparse = true)
@@ -293,7 +296,6 @@ object IncrementalParser {
         val errorTree = GreenNode.Token(TokenKind.Error, source, errorSpan)
         IncrementalResult(errorTree, None, fullReparse = true)
     }
-  }
 
   /**
    * Batch multiple edits and apply them incrementally.
@@ -315,7 +317,7 @@ object IncrementalParser {
     edits: List[TextEdit],
     parser: Parser[E, GreenNode],
     config: Config = defaultConfig
-  ): IncrementalResult = {
+  ): IncrementalResult =
     if (edits.isEmpty) {
       IncrementalResult(previousTree, None, fullReparse = false)
     } else if (edits.length == 1) {
@@ -329,7 +331,7 @@ object IncrementalParser {
 
       // Find the overall affected region
       val minStart = edits.map(_.startOffset).min
-      val maxEnd = edits.map(e => e.endOffset + e.lengthDelta).max
+      val maxEnd   = edits.map(e => e.endOffset + e.lengthDelta).max
 
       // Check if we should just do full reparse
       if (maxEnd - minStart > newSource.length / 2) {
@@ -344,13 +346,13 @@ object IncrementalParser {
         incrementalParse(previousTree, previousSource, combinedEdit, parser, config)
       }
     }
-  }
 }
 
 /**
  * Extension methods for convenient incremental parsing.
  */
 extension (tree: GreenNode) {
+
   /**
    * Apply an edit and reparse incrementally.
    */

@@ -84,23 +84,22 @@ object TreeSplicing {
     startChildIdx: Int,
     endChildIdx: Int,
     replacements: Vector[GreenNode]
-  ): Option[GreenNode] = {
+  ): Option[GreenNode] =
     findNode(root, path).flatMap {
       case GreenNode.Tree(kind, children) =>
         if (startChildIdx < 0 || endChildIdx > children.length || startChildIdx > endChildIdx) {
           None
         } else {
-          val before = children.take(startChildIdx)
-          val after = children.drop(endChildIdx)
+          val before      = children.take(startChildIdx)
+          val after       = children.drop(endChildIdx)
           val newChildren = before ++ replacements ++ after
-          val newNode = GreenNode.Tree(kind, newChildren)
+          val newNode     = GreenNode.Tree(kind, newChildren)
           if (path.isEmpty) Some(newNode)
           else replaceAt(root, path, newNode)
         }
       case GreenNode.Token(_, _, _) =>
         None
     }
-  }
 
   /**
    * Find a node at the given path.
@@ -139,11 +138,11 @@ object TreeSplicing {
   def pathFromRedTree(node: RedTree): TreePath = {
     def loop(current: RedTree, acc: Vector[Int]): Vector[Int] =
       current.parent match {
-        case None => acc
+        case None         => acc
         case Some(parent) =>
           // Find our index in parent's children
           val siblings = parent.children
-          val idx = siblings.indexWhere(_.offset == current.offset)
+          val idx      = siblings.indexWhere(_.offset == current.offset)
           loop(parent, idx +: acc)
       }
     loop(node, Vector.empty)
@@ -239,9 +238,9 @@ object TreeSplicing {
 
       case GreenNode.Tree(_, children) =>
         var childOffset = nodeOffset
-        var i = 0
+        var i           = 0
         while (i < children.length) {
-          val child = children(i)
+          val child    = children(i)
           val childLen = nodeLength(child)
           if (offset >= childOffset && offset < childOffset + childLen) {
             return loop(child, childOffset, acc :+ i)

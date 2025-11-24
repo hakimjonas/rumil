@@ -119,7 +119,7 @@ def stringIn(strings: String*): Parser[ParseError, String] =
     Parser.StringMatch(strings.head)
   } else {
     val targets = strings.toArray
-    val radix = RadixNode.fromStrings(targets)
+    val radix   = RadixNode.fromStrings(targets)
     Parser.StringChoice(radix, targets)
   }
 
@@ -143,7 +143,7 @@ def keywords[A](mappings: Map[String, A]): Parser[ParseError, A] =
     throw new IllegalArgumentException("keywords requires at least one mapping")
   } else {
     val targets = mappings.keys.toArray
-    val radix = RadixNode.fromStrings(targets)
+    val radix   = RadixNode.fromStrings(targets)
     Parser.Map(Parser.StringChoice(radix, targets), mappings)
   }
 

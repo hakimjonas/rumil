@@ -189,18 +189,18 @@ inline def or[E, A](left: Parser[E, A], right: Parser[E, A]): Parser[E, A] =
  */
 def choice[E, A](parsers: List[Parser[E, A]]): Parser[E, A] =
   parsers match {
-    case Nil        => throw new IllegalArgumentException("choice requires at least one parser")
-    case p :: Nil   => p
+    case Nil           => throw new IllegalArgumentException("choice requires at least one parser")
+    case p :: Nil      => p
     case _ :: _ :: Nil => or(parsers.head, parsers(1))
-    case _ =>
+    case _             =>
       // Optimization: if all alternatives are StringMatch, use StringChoice
       val allStrings = parsers.forall {
         case Parser.StringMatch(_) => true
-        case _ => false
+        case _                     => false
       }
       if (allStrings) {
         val targets = parsers.collect { case Parser.StringMatch(s) => s }.toArray
-        val radix = RadixNode.fromStrings(targets)
+        val radix   = RadixNode.fromStrings(targets)
         Parser.StringChoice(radix, targets).asInstanceOf[Parser[E, A]]
       } else {
         Parser.Choice(parsers)

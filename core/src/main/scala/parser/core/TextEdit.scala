@@ -61,7 +61,8 @@ final case class TextEdit(
    * @return The source text with this edit applied
    */
   def apply(source: String): String = {
-    require(endOffset <= source.length,
+    require(
+      endOffset <= source.length,
       s"endOffset ($endOffset) exceeds source length (${source.length})")
     source.substring(0, startOffset) + newText + source.substring(endOffset)
   }
@@ -98,6 +99,7 @@ final case class TextEdit(
 }
 
 object TextEdit {
+
   /**
    * Create an insertion edit (no deletion).
    *
@@ -139,20 +141,21 @@ object TextEdit {
     // Validate non-overlapping
     edits.sliding(2).foreach {
       case List(a, b) =>
-        require(a.endOffset <= b.startOffset,
-          s"Edits must not overlap: $a and $b")
+        require(a.endOffset <= b.startOffset, s"Edits must not overlap: $a and $b")
       case _ => ()
     }
 
     // Adjust each edit by the cumulative delta of previous edits
-    edits.foldLeft((List.empty[TextEdit], 0)) { case ((acc, delta), edit) =>
-      val adjusted = TextEdit(
-        edit.startOffset + delta,
-        edit.endOffset + delta,
-        edit.newText
-      )
-      (acc :+ adjusted, delta + edit.lengthDelta)
-    }._1
+    edits
+      .foldLeft((List.empty[TextEdit], 0)) { case ((acc, delta), edit) =>
+        val adjusted = TextEdit(
+          edit.startOffset + delta,
+          edit.endOffset + delta,
+          edit.newText
+        )
+        (acc :+ adjusted, delta + edit.lengthDelta)
+      }
+      ._1
   }
 }
 

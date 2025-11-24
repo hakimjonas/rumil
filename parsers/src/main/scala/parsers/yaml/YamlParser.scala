@@ -51,14 +51,15 @@ private def yamlNull: Parser[ParseError, YamlValue] =
   stringIn("null", "~").as(YamlValue.Null)
 
 private def yamlBoolean: Parser[ParseError, YamlValue] =
-  keywords(Map(
-    "true"  -> YamlValue.Boolean(true),
-    "yes"   -> YamlValue.Boolean(true),
-    "on"    -> YamlValue.Boolean(true),
-    "false" -> YamlValue.Boolean(false),
-    "no"    -> YamlValue.Boolean(false),
-    "off"   -> YamlValue.Boolean(false)
-  ))
+  keywords(
+    Map(
+      "true"  -> YamlValue.Boolean(true),
+      "yes"   -> YamlValue.Boolean(true),
+      "on"    -> YamlValue.Boolean(true),
+      "false" -> YamlValue.Boolean(false),
+      "no"    -> YamlValue.Boolean(false),
+      "off"   -> YamlValue.Boolean(false)
+    ))
 
 private def yamlNumber: Parser[ParseError, YamlValue] = {
   // Float must have '.' or 'e'/'E', otherwise it's an integer
