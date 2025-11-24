@@ -142,11 +142,30 @@ object Decoder {
     val className: String = TypeRepr.of[To].typeSymbol.name
 
     // Get field symbols from the case class
-    val aSymbol      = TypeRepr.of[To].typeSymbol
-    val fieldSymbols = aSymbol.caseFields
+    val toSymbol = TypeRepr.of[To].typeSymbol
 
-    // Extract field labels
-    val fieldLabels: List[String] = fieldSymbols.map(_.name)
+    // IMPORTANT: Use primaryConstructor.paramSymss instead of caseFields
+    // caseFields symbols have empty annotations in Scala 3 (known limitation)
+    val fieldSymbols = toSymbol.primaryConstructor.paramSymss.flatten
+
+    // Get annotation symbols for checking
+    val renameAnnotSymbol = TypeRepr.of[Rename].typeSymbol
+
+    // Extract field labels with @Rename support
+    val fieldLabels: List[String] = fieldSymbols.map { field =>
+      // Check if field has @Rename annotation
+      if (field.hasAnnotation(renameAnnotSymbol)) {
+        val annotTerm = field.getAnnotation(renameAnnotSymbol).get
+        // Extract the string argument from @Rename("name")
+        annotTerm match {
+          case Apply(_, List(Literal(StringConstant(name)))) => name
+          case Apply(_, NamedArg("name", Literal(StringConstant(name))) :: Nil) => name
+          case _ => field.name
+        }
+      } else {
+        field.name
+      }
+    }
 
     // Support multiple source types
     TypeRepr.of[From].typeSymbol.fullName match {
