@@ -98,7 +98,7 @@ def hspaces1: Parser[ParseError, List[Char]] =
  * Parses a newline (LF, CR, or CRLF).
  */
 def newline: Parser[ParseError, String] =
-  string("\r\n") | string("\n") | string("\r")
+  stringIn("\r\n", "\n", "\r")
 
 /**
  * Parses end of line or end of file.

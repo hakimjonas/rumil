@@ -204,33 +204,39 @@ final private[runtime] case class LR(
  */
 final class ParserState private[runtime] (
   val input: String,
-  private val offsetRef: Ref[Int],
-  private val lineRef: Ref[Int],
-  private val columnRef: Ref[Int],
-  // Left recursion support
-  private[runtime] val memo: MemoTable = MemoTable(),
-  private[runtime] val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty,
-  private[runtime] val heads: mutable.Map[Int, LRHead] = mutable.Map.empty
+  private var _offset: Int,
+  private var _line: Int,
+  private var _column: Int
 ) {
+  // Left recursion support - lazily initialized (saves ~320 bytes for non-LR parsers)
+  private[runtime] lazy val memo: MemoTable                  = MemoTable()
+  private[runtime] lazy val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty
+  private[runtime] lazy val heads: mutable.Map[Int, LRHead]  = mutable.Map.empty
 
-  def offset: Int = offsetRef.get
-  def line: Int   = lineRef.get
-  def column: Int = columnRef.get
+  def offset: Int = _offset
+  def line: Int   = _line
+  def column: Int = _column
 
   def location: Location =
-    (line = lineRef.get, column = columnRef.get, offset = offsetRef.get)
+    (line = _line, column = _column, offset = _offset)
 
-  def atEnd: Boolean = offsetRef.get >= input.length
+  def atEnd: Boolean = _offset >= input.length
 
   def current: Option[Char] =
     if (atEnd) {
       None
     } else {
-      Some(input(offsetRef.get))
+      Some(input(_offset))
     }
 
+  /** Inline check for character availability - avoids Option boxing */
+  inline def hasChar: Boolean = _offset < input.length
+
+  /** Inline character access - only call when hasChar is true */
+  inline def currentChar: Char = input.charAt(_offset)
+
   def peek(n: Int): Option[Char] = {
-    val idx = offsetRef.get + n
+    val idx = _offset + n
     if (idx < 0 || idx >= input.length) {
       None
     } else {
@@ -240,13 +246,13 @@ final class ParserState private[runtime] (
 
   def advance(): Unit =
     if (!atEnd) {
-      if (input(offsetRef.get) == '\n') {
-        lineRef.update(_ + 1)
-        columnRef.set(1)
+      if (input(_offset) == '\n') {
+        _line += 1
+        _column = 1
       } else {
-        columnRef.update(_ + 1)
+        _column += 1
       }
-      offsetRef.update(_ + 1)
+      _offset += 1
     }
 
   def advanceN(n: Int): Unit = {
@@ -257,16 +263,38 @@ final class ParserState private[runtime] (
     }
   }
 
-  def save: StateSnapshot =
-    (offset = offsetRef.get, line = lineRef.get, column = columnRef.get)
-
-  def restore(snapshot: StateSnapshot): Unit = {
-    offsetRef.set(snapshot.offset)
-    lineRef.set(snapshot.line)
-    columnRef.set(snapshot.column)
+  /**
+   * Advances position by a known string in O(1) for newline-free strings.
+   *
+   * Optimized for string matching where we know the exact content being consumed.
+   * Avoids per-character iteration when there are no newlines.
+   *
+   * @param s The string being consumed (must match input at current position)
+   */
+  def advanceByString(s: String): Unit = {
+    val len = s.length
+    _offset += len
+    // Fast path: check for newlines with indexOf (JVM intrinsic) before counting
+    val nlIdx = s.indexOf('\n')
+    if (nlIdx < 0) {
+      _column += len
+    } else {
+      val newlines = s.count(_ == '\n')
+      _line += newlines
+      _column = len - s.lastIndexOf('\n')
+    }
   }
 
-  def remaining: String = input.substring(offsetRef.get)
+  def save: StateSnapshot =
+    (offset = _offset, line = _line, column = _column)
+
+  def restore(snapshot: StateSnapshot): Unit = {
+    _offset = snapshot.offset
+    _line = snapshot.line
+    _column = snapshot.column
+  }
+
+  def remaining: String = input.substring(_offset)
 
   def slice(start: Int, end: Int): String = input.substring(start, end)
 }
@@ -301,4 +329,4 @@ type StateSnapshot = (offset: Int, line: Int, column: Int)
  * }}}
  */
 def parserState(input: String): ParserState =
-  new ParserState(input, Ref(0), Ref(1), Ref(1))
+  new ParserState(input, 0, 1, 1)

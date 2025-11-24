@@ -175,6 +175,9 @@ inline def or[E, A](left: Parser[E, A], right: Parser[E, A]): Parser[E, A] =
 /**
  * Tries a list of parsers in order, succeeding with the first success.
  *
+ * Automatically optimizes choice of string literals to use StringChoice,
+ * which avoids intermediate result allocation during backtracking.
+ *
  * @param parsers Non-empty list of parsers to try
  * @return A parser that tries each parser in order
  *
@@ -185,7 +188,24 @@ inline def or[E, A](left: Parser[E, A], right: Parser[E, A]): Parser[E, A] =
  * }}}
  */
 def choice[E, A](parsers: List[Parser[E, A]]): Parser[E, A] =
-  parsers.reduceLeft(or)
+  parsers match {
+    case Nil           => throw new IllegalArgumentException("choice requires at least one parser")
+    case p :: Nil      => p
+    case _ :: _ :: Nil => or(parsers.head, parsers(1))
+    case _             =>
+      // Optimization: if all alternatives are StringMatch, use StringChoice
+      val allStrings = parsers.forall {
+        case Parser.StringMatch(_) => true
+        case _                     => false
+      }
+      if (allStrings) {
+        val targets = parsers.collect { case Parser.StringMatch(s) => s }.toArray
+        val radix   = RadixNode.fromStrings(targets)
+        Parser.StringChoice(radix, targets).asInstanceOf[Parser[E, A]]
+      } else {
+        Parser.Choice(parsers)
+      }
+  }
 
 // Repetition
 

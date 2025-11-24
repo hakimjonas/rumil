@@ -3,6 +3,37 @@ package parser.runtime
 import parser.core._
 
 // ============================================================================
+// INTERNAL RESULT TYPE - Lazy Error Construction
+// ============================================================================
+
+/**
+ * Lazy failure wrapper - only this case differs from public Result.
+ *
+ * Holds a thunk `() => List[E]` instead of `List[E]`, allowing us to defer
+ * error construction until we know the error is actually needed.
+ *
+ * During backtracking (Or, Choice, Optional), if one branch succeeds, the
+ * failed branch's error thunk is never evaluated - saving significant allocation.
+ */
+final private case class LazyFailure[+E](mkErrors: () => List[E], furthest: Location)
+
+/**
+ * Internal result type used during interpretation.
+ *
+ * This is a union of the public Result success/partial types with LazyFailure.
+ * Success and Partial reuse Result types directly (no double allocation).
+ * Only Failure uses a separate lazy wrapper.
+ */
+private type IResult[+E, +A] = Result.Success[E, A] | Result.Partial[E, A] | LazyFailure[E]
+
+/** Convert IResult to public Result */
+private def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match {
+  case s: Result.Success[?, ?]  => s.asInstanceOf[Result[E, A]]
+  case p: Result.Partial[?, ?]  => p.asInstanceOf[Result[E, A]]
+  case LazyFailure(mkErrs, loc) => Result.Failure(mkErrs(), loc)
+}
+
+// ============================================================================
 // INTERPRETER - Executes Parser Descriptions
 // ============================================================================
 
@@ -23,8 +54,18 @@ import parser.core._
  */
 def run[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
   val state = parserState(input)
-  interpret(parser, state)
+  // Use internal interpreter with lazy errors, convert at boundary
+  toResult(interpretI(parser, state))
 }
+
+/**
+ * Public interpret function that returns Result directly.
+ *
+ * This is exposed for advanced use cases (e.g., pre-created state).
+ * Most users should use `run` instead.
+ */
+def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] =
+  toResult(interpretI(parser, state))
 
 /**
  * Formats a ParseError for debug output.
@@ -44,208 +85,229 @@ private def formatError(error: Any): String = error match {
 }
 
 /**
- * Interprets a parser against mutable state.
+ * Internal interpreter with lazy error construction.
  *
- * This is the core interpreter that executes parser descriptions.
- * Most users should use `run` instead.
+ * Returns IResult which defers error construction until needed.
+ * This significantly reduces allocation during backtracking.
  *
  * @param parser The parser description to interpret
  * @param state Mutable state tracking parse position
- * @return Result of parsing
+ * @return Internal result with lazy errors
  */
-def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
+private def interpretI[E, A](parser: Parser[E, A], state: ParserState): IResult[E, A] = {
   parser match {
 
     case Parser.Succeed(value) =>
       Result.Success(value, 0)
 
     case Parser.Fail(error) =>
-      Result.Failure(List(error), state.location)
+      val loc = state.location
+      LazyFailure(() => List(error), loc)
 
     case Parser.Satisfy(pred, expected) =>
-      state.current match {
-        case Some(c) if pred(c) =>
+      // Use inline methods to avoid Option boxing on hot path
+      if (state.hasChar) {
+        val c = state.currentChar
+        if (pred(c)) {
           state.advance()
           Result.Success(c, 1)
-        case Some(c) =>
-          Result.Failure(
-            List(ParseError.Unexpected(c.toString, Set(expected), state.location)),
-            state.location
+        } else {
+          val loc   = state.location
+          val found = c.toString // Capture for lazy thunk
+          LazyFailure(
+            () => List(ParseError.Unexpected(found, Set(expected), loc)),
+            loc
           )
-        case None =>
-          Result.Failure(
-            List(ParseError.EndOfInput(expected, state.location)),
-            state.location
-          )
+        }
+      } else {
+        val loc = state.location
+        LazyFailure(
+          () => List(ParseError.EndOfInput(expected, loc)),
+          loc
+        )
       }
 
     case Parser.StringMatch(target) =>
-      val startLoc = state.location
-      val len      = target.length
+      val len = target.length
       // Check if we have enough input remaining
       if (state.offset + len > state.input.length) {
-        Result.Failure(
-          List(ParseError.EndOfInput(s"\"$target\"", startLoc)),
-          startLoc
+        val loc = state.location // Only compute location on failure
+        LazyFailure(
+          () => List(ParseError.EndOfInput(s"\"$target\"", loc)),
+          loc
         )
       } else {
-        // Compare substring directly (O(n) but no allocations in tight loop)
-        var i       = 0
-        var matched = true
-        while (i < len && matched) {
-          if (state.input.charAt(state.offset + i) != target.charAt(i)) {
-            matched = false
-          }
-          i += 1
-        }
-        if (matched) {
-          state.advanceN(len)
+        // Use regionMatches for optimized string comparison (JVM intrinsic)
+        if (state.input.regionMatches(state.offset, target, 0, len)) {
+          state.advanceByString(target)
           Result.Success(target, len)
         } else {
+          val loc = state.location // Only compute location on failure
           val found =
             state.input.substring(state.offset, math.min(state.offset + len, state.input.length))
-          Result.Failure(
-            List(ParseError.Unexpected(found, Set(s"\"$target\""), startLoc)),
-            startLoc
+          LazyFailure(
+            () => List(ParseError.Unexpected(found, Set(s"\"$target\""), loc)),
+            loc
           )
         }
       }
 
+    case Parser.StringChoice(radix, targets) =>
+      // Optimized choice of strings using radix tree - O(m) matching
+      interpretStringChoice(radix, targets, state)
+
     case Parser.Map(source, f) =>
-      interpret(source, state) match {
+      interpretI(source, state) match {
         case Result.Success(value, consumed) =>
           Result.Success(f(value), consumed)
         case Result.Partial(value, errors, consumed) =>
           Result.Partial(f(value), errors, consumed)
-        case Result.Failure(errors, furthest) =>
-          Result.Failure(errors, furthest)
+        case LazyFailure(mkErrs, loc) =>
+          LazyFailure(mkErrs, loc)
       }
 
     case Parser.FlatMap(source, f) =>
-      interpret(source, state) match {
+      interpretI(source, state) match {
         case Result.Success(value, consumed1) =>
-          interpret(f(value), state) match {
+          interpretI(f(value), state) match {
             case Result.Success(value2, consumed2) =>
               Result.Success(value2, consumed1 + consumed2)
             case Result.Partial(value2, errors2, consumed2) =>
               Result.Partial(value2, errors2, consumed1 + consumed2)
-            case Result.Failure(errors, furthest) =>
-              Result.Failure(errors, furthest)
+            case LazyFailure(mkErrs, loc) =>
+              LazyFailure(mkErrs, loc)
           }
         case Result.Partial(value, errors1, consumed1) =>
-          interpret(f(value), state) match {
+          interpretI(f(value), state) match {
             case Result.Success(value2, consumed2) =>
               Result.Partial(value2, errors1, consumed1 + consumed2)
             case Result.Partial(value2, errors2, consumed2) =>
               Result.Partial(value2, errors1 ++ errors2, consumed1 + consumed2)
-            case Result.Failure(errors2, furthest) =>
-              Result.Failure(errors1 ++ errors2, furthest)
+            case LazyFailure(mkErrors2, furthest) =>
+              // Need to force errors here since we're combining with materialized errors1
+              LazyFailure(() => errors1 ++ mkErrors2(), furthest)
           }
-        case Result.Failure(errors, furthest) =>
-          Result.Failure(errors, furthest)
+        case LazyFailure(mkErrs, loc) =>
+          LazyFailure(mkErrs, loc)
       }
 
     case Parser.Or(left, right) =>
       val snapshot = state.save
-      interpret(left, state) match {
-        case success @ Result.Success(_, _)    => success
-        case partial @ Result.Partial(_, _, _) => partial
-        case Result.Failure(leftErrors, leftFurthest) =>
+      interpretI(left, state) match {
+        case success @ Result.Success(_, _)          => success
+        case partial @ Result.Partial(_, _, _)       => partial
+        case LazyFailure(leftMkErrors, leftFurthest) =>
+          // Left failed - try right. leftMkErrors NOT evaluated yet!
           state.restore(snapshot)
-          interpret(right, state) match {
-            case success @ Result.Success(_, _)    => success
-            case partial @ Result.Partial(_, _, _) => partial
-            case Result.Failure(rightErrors, rightFurthest) =>
+          interpretI(right, state) match {
+            case success @ Result.Success(_, _)            => success // leftMkErrors never called!
+            case partial @ Result.Partial(_, _, _)         => partial // leftMkErrors never called!
+            case LazyFailure(rightMkErrors, rightFurthest) =>
+              // Both failed - combine errors lazily
               if (leftFurthest.offset > rightFurthest.offset) {
-                Result.Failure(leftErrors, leftFurthest)
+                LazyFailure(leftMkErrors, leftFurthest) // rightMkErrors never called!
               } else if (rightFurthest.offset > leftFurthest.offset) {
-                Result.Failure(rightErrors, rightFurthest)
+                LazyFailure(rightMkErrors, rightFurthest) // leftMkErrors never called!
               } else {
-                Result.Failure(leftErrors ++ rightErrors, leftFurthest)
+                // Same position - combine both (still lazy)
+                LazyFailure(() => leftMkErrors() ++ rightMkErrors(), leftFurthest)
               }
           }
       }
 
+    case Parser.Choice(alternatives) =>
+      interpretChoiceI(alternatives, state, state.save, () => Nil, state.location)
+
     case Parser.Many(p) =>
-      interpretMany(p, state)
+      interpretManyI(p, state)
 
     case Parser.Many1(p) =>
-      interpretMany1(p, state)
+      interpretMany1I(p, state)
 
     case Parser.Optional(p) =>
       val snapshot = state.save
-      interpret(p, state) match {
+      interpretI(p, state) match {
         case Result.Success(value, consumed) =>
           Result.Success(Some(value), consumed)
         case Result.Partial(value, errors, consumed) =>
           Result.Partial(Some(value), errors, consumed)
-        case Result.Failure(_, _) =>
+        case LazyFailure(_, _) =>
+          // Failure discarded - error thunk never called!
           state.restore(snapshot)
           Result.Success(None, 0)
       }
 
     case Parser.Attempt(p) =>
       val snapshot = state.save
-      interpret(p, state) match {
-        case success @ Result.Success(_, _) =>
-          Result.Success(success, 0)
-        case partial @ Result.Partial(_, _, _) =>
-          Result.Success(partial, 0)
-        case failure @ Result.Failure(_, _) =>
+      // Attempt needs to return Result, so we convert here
+      interpretI(p, state) match {
+        case Result.Success(v, c) =>
+          Result.Success(Result.Success(v, c), 0)
+        case Result.Partial(v, e, c) =>
+          Result.Success(Result.Partial(v, e, c), 0)
+        case LazyFailure(mkErrs, loc) =>
           state.restore(snapshot)
-          Result.Success(failure, 0)
+          // Force errors here since we're wrapping in Success
+          Result.Success(Result.Failure(mkErrs(), loc), 0)
       }
 
     case Parser.LookAhead(p) =>
       val snapshot = state.save
-      interpret(p, state) match {
+      interpretI(p, state) match {
         case Result.Success(value, _) =>
           state.restore(snapshot)
           Result.Success(value, 0)
         case Result.Partial(value, errors, _) =>
           state.restore(snapshot)
           Result.Partial(value, errors, 0)
-        case failure @ Result.Failure(_, _) =>
+        case failure @ LazyFailure(_, _) =>
           state.restore(snapshot)
           failure
       }
 
     case Parser.NotFollowedBy(p) =>
       val snapshot = state.save
-      interpret(p, state) match {
+      interpretI(p, state) match {
         case Result.Success(_, _) =>
           state.restore(snapshot)
-          Result.Failure(
-            List(ParseError.Custom("Unexpected success", state.location)),
-            state.location
+          val loc = state.location
+          LazyFailure(
+            () => List(ParseError.Custom("Unexpected success", loc)),
+            loc
           )
         case Result.Partial(_, _, _) =>
           state.restore(snapshot)
-          Result.Failure(
-            List(ParseError.Custom("Unexpected partial success", state.location)),
-            state.location
+          val loc = state.location
+          LazyFailure(
+            () => List(ParseError.Custom("Unexpected partial success", loc)),
+            loc
           )
-        case Result.Failure(_, _) =>
+        case LazyFailure(_, _) =>
+          // Failure discarded - error thunk never called!
           state.restore(snapshot)
           Result.Success((), 0)
       }
 
     case Parser.Named(p, name) =>
-      interpret(p, state) match {
+      interpretI(p, state) match {
         case success @ Result.Success(_, _)    => success
         case partial @ Result.Partial(_, _, _) => partial
-        case Result.Failure(errors, furthest) =>
-          val enhanced = errors.map {
-            case ParseError.Unexpected(found, expected, loc) =>
-              ParseError.Unexpected(found, expected + name, loc)
-            case other => other
-          }
-          Result.Failure(enhanced, furthest)
+        case LazyFailure(mkErrors, furthest)   =>
+          // Defer enhancement until errors are needed
+          LazyFailure(
+            () =>
+              mkErrors().map {
+                case ParseError.Unexpected(found, expected, loc) =>
+                  ParseError.Unexpected(found, expected + name, loc)
+                case other => other
+              },
+            furthest
+          )
       }
 
     case Parser.Trace(p, label) =>
       System.err.println(s"[TRACE] $label: trying at offset ${state.offset}")
-      interpret(p, state) match {
+      interpretI(p, state) match {
         case success @ Result.Success(_, consumed) =>
           System.err.println(s"[TRACE] $label: success, consumed $consumed chars")
           success
@@ -253,14 +315,15 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           System.err.println(
             s"[TRACE] $label: partial success, consumed $consumed chars with ${errors.length} errors")
           partial
-        case failure @ Result.Failure(_, _) =>
+        case failure @ LazyFailure(_, _) =>
           System.err.println(s"[TRACE] $label: failed")
           failure
       }
 
     case Parser.Debug(p, label) =>
       System.err.println(s"[DEBUG] $label: trying at offset ${state.offset}")
-      interpret(p, state) match {
+      // Debug needs to force errors for printing
+      interpretI(p, state) match {
         case success @ Result.Success(value, _) =>
           System.err.println(s"[DEBUG] $label: success, parsed $value")
           success
@@ -269,57 +332,60 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
           System.err.println(
             s"[DEBUG] $label: partial success, parsed $value with errors: $errorList")
           partial
-        case failure @ Result.Failure(errors, _) =>
-          val error = errors.headOption.map(formatError).getOrElse("unknown error")
+        case LazyFailure(mkErrors, loc) =>
+          val errors = mkErrors() // Force for debug output
+          val error  = errors.headOption.map(formatError).getOrElse("unknown error")
           System.err.println(s"[DEBUG] $label: failed with $error")
-          failure
+          LazyFailure(() => errors, loc) // Re-wrap as lazy (already evaluated)
       }
 
     case Parser.Defer(thunk) =>
-      interpret(thunk(), state)
+      interpretI(thunk(), state)
 
     case Parser.Eof() =>
       if (state.atEnd) {
         Result.Success((), 0)
       } else {
-        Result.Failure(
-          List(ParseError.Custom("Expected end of input", state.location)),
-          state.location
+        val loc = state.location
+        LazyFailure(
+          () => List(ParseError.Custom("Expected end of input", loc)),
+          loc
         )
       }
 
     case Parser.RecoverWith(p, recovery) =>
       val snapshot = state.save
-      interpret(p, state) match {
+      interpretI(p, state) match {
         case success @ Result.Success(_, _)    => success
         case partial @ Result.Partial(_, _, _) => partial
-        case Result.Failure(errors, furthest) =>
+        case LazyFailure(mkErrors, furthest) =>
           state.restore(snapshot)
-          interpret(recovery, state) match {
+          // Force errors here since recovery produces Partial which needs List[E]
+          val errors = mkErrors()
+          interpretI(recovery, state) match {
             case Result.Success(value, consumed) =>
               // Recovered successfully, but note the original errors
               Result.Partial(value, errors, consumed)
             case Result.Partial(value, recoveryErrors, consumed) =>
               // Recovery was partial, combine all errors
               Result.Partial(value, errors ++ recoveryErrors, consumed)
-            case Result.Failure(recoveryErrors, recoveryFurthest) =>
-              // Both failed, combine errors and use furthest location
-              val combinedErrors = errors ++ recoveryErrors
+            case LazyFailure(mkRecoveryErrors, recoveryFurthest) =>
+              // Both failed, combine errors lazily
               val finalFurthest =
                 if (furthest.offset > recoveryFurthest.offset) furthest
                 else recoveryFurthest
-              Result.Failure(combinedErrors, finalFurthest)
+              LazyFailure(() => errors ++ mkRecoveryErrors(), finalFurthest)
           }
       }
 
     case Parser.Expect(p, message) =>
-      interpret(p, state) match {
+      interpretI(p, state) match {
         case success @ Result.Success(_, _)    => success
         case partial @ Result.Partial(_, _, _) => partial
-        case Result.Failure(_, furthest)       =>
-          // Replace the error with a custom message
-          Result.Failure(
-            List(ParseError.Custom(message, furthest)),
+        case LazyFailure(_, furthest)          =>
+          // Replace the error with a custom message (still lazy)
+          LazyFailure(
+            () => List(ParseError.Custom(message, furthest)),
             furthest
           )
       }
@@ -327,7 +393,7 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
     case Parser.Memo(inner, key) =>
       if (DEBUG_LR)
         System.err.println(s"[LR] Parser.Memo: key=$key, lrStack size before=${state.lrStack.size}")
-      val result = interpretMemo(inner, key, state)
+      val result = interpretMemoI(inner, key, state)
       if (DEBUG_LR)
         System.err.println(
           s"[LR] Parser.Memo: key=$key done, lrStack size after=${state.lrStack.size}")
@@ -336,7 +402,7 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
 }
 
 /**
- * Interprets a memoized parser with left recursion support.
+ * Interprets a memoized parser with left recursion support (returns IResult).
  *
  * Implements the seed-growth algorithm from Warth et al.:
  * 1. Check memo table for cached result
@@ -345,15 +411,35 @@ def interpret[E, A](parser: Parser[E, A], state: ParserState): Result[E, A] = {
  * 4. Otherwise, parse and cache result
  * 5. If this is the head of a left-recursive cycle, grow the seed
  *
+ * Note: The memo table stores Result (not IResult) because:
+ * - Seeds need to be materialized for the LR algorithm
+ * - Cached results are already computed
+ * We convert back to IResult at the boundary for consistency.
+ *
  * @param inner The inner parser to interpret
  * @param key Type-safe memo key for this parser rule
  * @param state Mutable parse state with memo tables
- * @return Parse result
+ * @return Internal result (lazy errors)
  */
 // Debug flag - set to true to trace indirect left recursion
 private val DEBUG_LR = false
 
-private def interpretMemo[E, A](
+private def interpretMemoI[E, A](
+  inner: Parser[E, A],
+  key: MemoKey[E, A],
+  state: ParserState): IResult[E, A] =
+  // Delegate to Result-based implementation and convert
+  resultToIResult(interpretMemoResult(inner, key, state))
+
+/** Convert Result to IResult (wrap errors in thunk that returns them) */
+private def resultToIResult[E, A](result: Result[E, A]): IResult[E, A] = result match {
+  case Result.Success(v, c)      => Result.Success(v, c)
+  case Result.Partial(v, e, c)   => Result.Partial(v, e, c)
+  case Result.Failure(errs, loc) => LazyFailure(() => errs, loc)
+}
+
+/** The actual memo implementation, works with Result for LR seed storage */
+private def interpretMemoResult[E, A](
   inner: Parser[E, A],
   key: MemoKey[E, A],
   state: ParserState): Result[E, A] = {
@@ -377,9 +463,8 @@ private def interpretMemo[E, A](
       // This rule needs re-evaluation during seed growth
       head.evalSet.remove(key)
       // Re-evaluate this rule FRESH - bypass memo entirely and parse inner directly
-      // This is necessary for indirect left recursion where the involved rule
-      // has a stale cached result from the initial parse
-      val result = interpret(inner, state)
+      // Force to Result for memo storage
+      val result = toResult(interpretI(inner, state))
       val endPos = state.offset
       // Update memo with fresh result
       state.memo.put(key, pos, result, endPos)
@@ -397,7 +482,7 @@ private def interpretMemo[E, A](
           state.memo.getResult(key, pos).get
         case None =>
           // Shouldn't happen but fall back to normal evaluation
-          evaluateMemo(inner, key, pos, startSnapshot, state)
+          evaluateMemoResult(inner, key, pos, startSnapshot, state)
       }
 
     case Some(head) if head.involvedSet.contains(key) =>
@@ -415,19 +500,20 @@ private def interpretMemo[E, A](
         case None =>
           if (DEBUG_LR) System.err.println(s"[LR]   -> no entry, evaluating normally")
           // No entry yet - evaluate normally
-          evaluateMemo(inner, key, pos, startSnapshot, state)
+          evaluateMemoResult(inner, key, pos, startSnapshot, state)
       }
 
     case _ =>
       // Normal case - not involved in current head's cycle
-      evaluateMemo(inner, key, pos, startSnapshot, state)
+      evaluateMemoResult(inner, key, pos, startSnapshot, state)
   }
 }
 
 /**
  * Core memoization logic, separated for RECALL handling.
+ * Works with Result for LR seed storage.
  */
-private def evaluateMemo[E, A](
+private def evaluateMemoResult[E, A](
   inner: Parser[E, A],
   key: MemoKey[E, A],
   pos: Int,
@@ -461,8 +547,8 @@ private def evaluateMemo[E, A](
       if (DEBUG_LR)
         System.err.println(s"[LR]   evaluateMemo: lrStack now has ${state.lrStack.size} items")
 
-      // Parse the inner parser
-      val result = interpret(inner, state)
+      // Parse the inner parser - force to Result for memo storage
+      val result = toResult(interpretI(inner, state))
       val endPos = state.offset
 
       if (DEBUG_LR)
@@ -492,7 +578,7 @@ private def evaluateMemo[E, A](
             case _ =>
               // Base case succeeded - now grow it
               lr.seed = eraseSeed(result)
-              growLR(inner, key, startSnapshot, lr, endPos, state)
+              growLRResult(inner, key, startSnapshot, lr, endPos, state)
           }
       }
   }
@@ -580,6 +666,7 @@ private def setupLR(key: AnyRef, lr: LR, state: ParserState): Unit = {
 
 /**
  * Grows the seed for a left-recursive rule until no more progress is made.
+ * Works with Result for LR seed storage.
  *
  * This is the core of the seed-growth algorithm. We repeatedly:
  * 1. Reset position to start
@@ -594,7 +681,7 @@ private def setupLR(key: AnyRef, lr: LR, state: ParserState): Unit = {
  * @param startSnapshot The saved state (offset, line, column) at rule start,
  *                      used to correctly restore position with accurate line/column
  */
-private def growLR[E, A](
+private def growLRResult[E, A](
   inner: Parser[E, A],
   key: MemoKey[E, A],
   startSnapshot: StateSnapshot,
@@ -622,7 +709,8 @@ private def growLR[E, A](
 
     lr.head.get.evalSet = lr.head.get.involvedSet.clone()
 
-    val result    = interpret(inner, state)
+    // Force to Result for memo storage
+    val result    = toResult(interpretI(inner, state))
     val resultPos = state.offset
 
     result match {
@@ -650,39 +738,47 @@ private def growLR[E, A](
 }
 
 /**
- * Interprets the Many combinator - zero or more repetitions.
+ * Interprets the Many combinator - zero or more repetitions (returns IResult).
  *
- * Uses tail recursion to avoid stack overflow on long inputs.
- * Accumulates results in reverse, then reverses at end for efficiency.
+ * Uses ArrayBuffer for O(1) append, converts to List at end.
+ * This is significantly faster than prepend-then-reverse for long sequences.
  *
  * @param p The parser to repeat
  * @param state Mutable parse state
  * @return Success with list of all parsed values
  */
-private def interpretMany[E, A](p: Parser[E, A], state: ParserState): Result[E, List[A]] = {
-  @scala.annotation.tailrec
-  def loop(acc: List[A], accErrors: List[E], totalConsumed: Int): Result[E, List[A]] = {
+private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E, List[A]] = {
+  val acc           = scala.collection.mutable.ArrayBuffer.empty[A]
+  var accErrors     = List.empty[E]
+  var totalConsumed = 0
+  var continue      = true
+
+  while (continue) {
     val snapshot = state.save
-    interpret(p, state) match {
+    interpretI(p, state) match {
       case Result.Success(value, consumed) =>
-        loop(value :: acc, accErrors, totalConsumed + consumed)
+        acc += value
+        totalConsumed += consumed
       case Result.Partial(value, errors, consumed) =>
-        loop(value :: acc, accErrors ++ errors, totalConsumed + consumed)
-      case Result.Failure(_, _) =>
+        acc += value
+        accErrors = accErrors ++ errors
+        totalConsumed += consumed
+      case LazyFailure(_, _) =>
+        // Failure discarded - error thunk never called!
         state.restore(snapshot)
-        if (accErrors.isEmpty) {
-          Result.Success(acc.reverse, totalConsumed)
-        } else {
-          Result.Partial(acc.reverse, accErrors, totalConsumed)
-        }
+        continue = false
     }
   }
 
-  loop(Nil, Nil, 0)
+  if (accErrors.isEmpty) {
+    Result.Success(acc.toList, totalConsumed)
+  } else {
+    Result.Partial(acc.toList, accErrors, totalConsumed)
+  }
 }
 
 /**
- * Interprets the Many1 combinator - one or more repetitions.
+ * Interprets the Many1 combinator - one or more repetitions (returns IResult).
  *
  * Requires at least one match. Implemented as one match followed
  * by Many (zero or more).
@@ -691,26 +787,107 @@ private def interpretMany[E, A](p: Parser[E, A], state: ParserState): Result[E, 
  * @param state Mutable parse state
  * @return Success with non-empty list, or Failure
  */
-private def interpretMany1[E, A](p: Parser[E, A], state: ParserState): Result[E, List[A]] =
-  interpret(p, state) match {
+private def interpretMany1I[E, A](p: Parser[E, A], state: ParserState): IResult[E, List[A]] =
+  interpretI(p, state) match {
     case Result.Success(head, consumed1) =>
-      interpretMany(p, state) match {
+      interpretManyI(p, state) match {
         case Result.Success(tail, consumed2) =>
           Result.Success(head :: tail, consumed1 + consumed2)
         case Result.Partial(tail, errors, consumed2) =>
           Result.Partial(head :: tail, errors, consumed1 + consumed2)
-        case Result.Failure(errors, furthest) =>
-          Result.Failure(errors, furthest)
+        case LazyFailure(mkErrs, loc) =>
+          LazyFailure(mkErrs, loc)
       }
     case Result.Partial(head, errors1, consumed1) =>
-      interpretMany(p, state) match {
+      interpretManyI(p, state) match {
         case Result.Success(tail, consumed2) =>
           Result.Partial(head :: tail, errors1, consumed1 + consumed2)
         case Result.Partial(tail, errors2, consumed2) =>
           Result.Partial(head :: tail, errors1 ++ errors2, consumed1 + consumed2)
-        case Result.Failure(errors2, furthest) =>
-          Result.Failure(errors1 ++ errors2, furthest)
+        case LazyFailure(mkErrors2, furthest) =>
+          LazyFailure(() => errors1 ++ mkErrors2(), furthest)
       }
-    case Result.Failure(errors, furthest) =>
-      Result.Failure(errors, furthest)
+    case LazyFailure(mkErrs, loc) =>
+      LazyFailure(mkErrs, loc)
   }
+
+/**
+ * Interprets the Choice combinator - try alternatives in sequence (returns IResult).
+ *
+ * Tail-recursive implementation that tries each alternative until one succeeds.
+ * Tracks the furthest error location for good error messages.
+ * Uses lazy error construction - errors from failed alternatives are only
+ * materialized if ALL alternatives fail.
+ *
+ * @param remaining Alternatives left to try
+ * @param state Mutable parse state
+ * @param snapshot Saved state for backtracking
+ * @param accMkErrors Accumulated error thunks from failed alternatives
+ * @param furthest Furthest location reached by any alternative
+ * @return First successful result, or failure with best error info
+ */
+@scala.annotation.tailrec
+private def interpretChoiceI[E, A](
+  remaining: List[Parser[E, A]],
+  state: ParserState,
+  snapshot: StateSnapshot,
+  accMkErrors: () => List[E],
+  furthest: Location
+): IResult[E, A] = remaining match {
+  case Nil =>
+    LazyFailure(accMkErrors, furthest)
+  case head :: tail =>
+    interpretI(head, state) match {
+      case success @ Result.Success(_, _)    => success // accMkErrors never called!
+      case partial @ Result.Partial(_, _, _) => partial // accMkErrors never called!
+      case LazyFailure(mkErrs, loc) =>
+        state.restore(snapshot)
+        val (newMkErrors, newFurthest) =
+          if (loc.offset > furthest.offset) (mkErrs, loc) // accMkErrors never called!
+          else if (loc.offset == furthest.offset) {
+            // Same position - need to combine thunks lazily
+            val prevMkErrors = accMkErrors
+            (() => prevMkErrors() ++ mkErrs(), furthest)
+          } else (accMkErrors, furthest) // mkErrs never called!
+        interpretChoiceI(tail, state, snapshot, newMkErrors, newFurthest)
+    }
+}
+
+/**
+ * Optimized interpreter for StringChoice - choice of string literals.
+ *
+ * This avoids allocating intermediate IResult objects during backtracking.
+ * Instead, we loop through the alternatives with simple string comparisons,
+ * only allocating a result at the very end.
+ *
+ * @param targets Array of string alternatives to try
+ * @param state Parser state
+ * @return Success with matched string, or Failure
+ */
+private def interpretStringChoice(
+  radix: RadixNode,
+  targets: Array[String],
+  state: ParserState
+): IResult[ParseError, String] = {
+  val input  = state.input
+  val offset = state.offset
+
+  // Use radix tree for O(m) matching where m = length of matched string
+  val matched = radix.matchAtOrNull(input, offset)
+
+  if (matched ne null) {
+    state.advanceByString(matched)
+    Result.Success(matched, matched.length)
+  } else {
+    // No match - construct error lazily
+    val loc      = state.location
+    val inputLen = input.length
+    val maxLen   = targets.map(_.length).max
+    val found    = input.substring(offset, math.min(offset + maxLen, inputLen))
+    val expected = targets.map(s => s"\"$s\"").toSet
+    LazyFailure(
+      () => List(ParseError.Unexpected(found, expected, loc)),
+      loc
+    )
+  }
+}

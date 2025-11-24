@@ -55,13 +55,16 @@ type Span = (start: Location, end: Location)
  * }}}
  */
 enum Parser[+E, +A] {
-  case Succeed[A](value: A)                                         extends Parser[Nothing, A]
-  case Fail[E](error: E)                                            extends Parser[E, Nothing]
-  case Satisfy(pred: Char => Boolean, expected: String)             extends Parser[ParseError, Char]
-  case StringMatch(target: String)                                  extends Parser[ParseError, String]
+  case Succeed[A](value: A)                             extends Parser[Nothing, A]
+  case Fail[E](error: E)                                extends Parser[E, Nothing]
+  case Satisfy(pred: Char => Boolean, expected: String) extends Parser[ParseError, Char]
+  case StringMatch(target: String)                      extends Parser[ParseError, String]
+  // Optimized choice of string literals using radix tree for O(m) matching
+  case StringChoice(radix: RadixNode, targets: Array[String])       extends Parser[ParseError, String]
   case Map[E, A, B](source: Parser[E, A], f: A => B)                extends Parser[E, B]
   case FlatMap[E, A, B](source: Parser[E, A], f: A => Parser[E, B]) extends Parser[E, B]
   case Or[E, A](left: Parser[E, A], right: Parser[E, A])            extends Parser[E, A]
+  case Choice[E, A](alternatives: List[Parser[E, A]])               extends Parser[E, A]
   case Many[E, A](parser: Parser[E, A])                             extends Parser[E, List[A]]
   case Many1[E, A](parser: Parser[E, A])                            extends Parser[E, List[A]]
   case Optional[E, A](parser: Parser[E, A])                         extends Parser[E, Option[A]]

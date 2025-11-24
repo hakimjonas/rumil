@@ -225,6 +225,107 @@ final class RedTree private (
    */
   def isTree: Boolean = !isToken
 
+  /**
+   * Get the syntax kind if this is a tree node.
+   */
+  def syntaxKind: Option[SyntaxKind] = green match {
+    case GreenNode.Tree(k, _) => Some(k)
+    case _                    => None
+  }
+
+  /**
+   * Find the nearest ancestor (including self) that is a reparsable boundary.
+   *
+   * Reparsable boundaries are syntax nodes that form natural units for
+   * incremental reparsing. Typically these are blocks, functions, statements,
+   * or other self-contained constructs.
+   *
+   * The search starts at this node and walks up to ancestors until finding
+   * one whose kind is in the reparsable set.
+   *
+   * @param reparsableKinds The set of syntax kinds that are reparsable boundaries
+   * @return The nearest reparsable ancestor, or None if none found
+   */
+  def findReparseAncestor(reparsableKinds: Set[SyntaxKind]): Option[RedTree] =
+    // Check if this node is reparsable
+    syntaxKind match {
+      case Some(k) if reparsableKinds.contains(k) => Some(this)
+      case _                                      =>
+        // Check parent
+        parent.flatMap(_.findReparseAncestor(reparsableKinds))
+    }
+
+  /**
+   * Find the smallest ancestor containing a given offset range that is reparsable.
+   *
+   * This is the key operation for incremental parsing - it finds the minimal
+   * subtree that needs to be reparsed after an edit at the given range.
+   *
+   * @param editStart Start offset of the edit (inclusive)
+   * @param editEnd End offset of the edit (exclusive)
+   * @param reparsableKinds The set of syntax kinds that are reparsable boundaries
+   * @return The smallest reparsable ancestor containing the edit range
+   */
+  def findReparseRegion(
+    editStart: Int,
+    editEnd: Int,
+    reparsableKinds: Set[SyntaxKind]
+  ): Option[RedTree] = {
+    // First find the deepest node containing the edit
+    val deepest = nodeAt(editStart)
+
+    // Walk up to find a reparsable ancestor that fully contains the edit
+    deepest.flatMap { node =>
+      def search(current: RedTree): Option[RedTree] = {
+        val containsEdit =
+          current.span.start.offset <= editStart &&
+            current.span.end.offset >= editEnd
+
+        if (!containsEdit) {
+          // Go up - parent might contain the edit
+          current.parent.flatMap(search)
+        } else {
+          // This node contains the edit - check if reparsable
+          current.syntaxKind match {
+            case Some(k) if reparsableKinds.contains(k) => Some(current)
+            case _                                      => current.parent.flatMap(search)
+          }
+        }
+      }
+      search(node)
+    }
+  }
+
+  /**
+   * Get all ancestor nodes from this node up to the root.
+   *
+   * Returns ancestors in order from immediate parent to root.
+   */
+  def ancestors: List[RedTree] = {
+    def loop(node: RedTree, acc: List[RedTree]): List[RedTree] =
+      node.parent match {
+        case None    => acc.reverse
+        case Some(p) => loop(p, p :: acc)
+      }
+    loop(this, Nil)
+  }
+
+  /**
+   * Build the path from root to this node.
+   *
+   * Returns a vector of child indices, suitable for use with TreeSplicing.
+   */
+  def pathFromRoot: Vector[Int] = {
+    def loop(current: RedTree, acc: Vector[Int]): Vector[Int] =
+      current.parent match {
+        case None => acc
+        case Some(p) =>
+          val idx = p.children.indexWhere(_.offset == current.offset)
+          loop(p, idx +: acc)
+      }
+    loop(this, Vector.empty)
+  }
+
   override def toString: String = {
     val kindStr = kind.fold(k => s"Token($k)", k => s"Tree($k)")
     s"RedTree($kindStr, offset=$offset, length=$length)"
