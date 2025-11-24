@@ -158,6 +158,7 @@ class ParserBenchmarks {
   // Benchmarks: Choice (Alternative)
   // ============================================================================
 
+  // Test worst case (last alternative - linear scan for Rumil)
   @Benchmark
   def rumil_choice10(bh: Blackhole): Unit = {
     val result = run(rumilChoice10, "jjj")
@@ -167,6 +168,19 @@ class ParserBenchmarks {
   @Benchmark
   def cats_choice10(bh: Blackhole): Unit = {
     val result = catsChoice10.parseAll("jjj")
+    bh.consume(result)
+  }
+
+  // Test best case (first alternative)
+  @Benchmark
+  def rumil_choice10_first(bh: Blackhole): Unit = {
+    val result = run(rumilChoice10, "aaa")
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def cats_choice10_first(bh: Blackhole): Unit = {
+    val result = catsChoice10.parseAll("aaa")
     bh.consume(result)
   }
 }
