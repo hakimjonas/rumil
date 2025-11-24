@@ -1,6 +1,7 @@
 package parser.interop.examples
 
 import scala.quoted.{Expr, Quotes, Type}
+
 import parser.interop.FieldTransformer
 
 /**
@@ -66,7 +67,7 @@ object AnnotationFieldTransformer {
     import q.reflect.*
 
     val typeSymbol = TypeRepr.of[T].typeSymbol
-    val fields = typeSymbol.primaryConstructor.paramSymss.flatten
+    val fields     = typeSymbol.primaryConstructor.paramSymss.flatten
 
     // Get annotation type symbols for checking
     val renameSymbol = TypeRepr.of[Rename].typeSymbol
@@ -88,7 +89,7 @@ object AnnotationFieldTransformer {
           case _ =>
             report.warning(
               s"Could not extract @Rename value for field '$originalName'. " +
-              "Ensure annotation is used as @Rename(\"name\") with a string literal."
+                "Ensure annotation is used as @Rename(\"name\") with a string literal."
             )
             None
         }
@@ -103,21 +104,19 @@ object AnnotationFieldTransformer {
 
     // Convert compile-time data to runtime expressions
     val renameMappingsExpr = Expr(renameMappings)
-    val ignoredFieldsExpr = Expr(ignoredFields)
+    val ignoredFieldsExpr  = Expr(ignoredFields)
 
     // Generate the runtime FieldTransformer instance
     '{
-      val renameMap = $renameMappingsExpr
+      val renameMap  = $renameMappingsExpr
       val ignoredSet = $ignoredFieldsExpr
 
       new FieldTransformer {
-        def transformFieldName(fieldName: String): String = {
+        def transformFieldName(fieldName: String): String =
           renameMap.getOrElse(fieldName, fieldName)
-        }
 
-        def shouldIncludeField(fieldName: String): Boolean = {
+        def shouldIncludeField(fieldName: String): Boolean =
           !ignoredSet.contains(fieldName)
-        }
       }
     }
   }

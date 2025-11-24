@@ -79,8 +79,10 @@ enum Parser[+E, +A] {
   // Error recovery combinators
   case RecoverWith[E, A](parser: Parser[E, A], recovery: Parser[E, A]) extends Parser[E, A]
   case Expect[A](parser: Parser[ParseError, A], message: String)       extends Parser[ParseError, A]
-  // Left recursion support - memoized parser with typed key for cycle detection
-  case Memo[E, A](inner: Parser[E, A], key: MemoKey[E, A]) extends Parser[E, A]
+  // Memoization support - caches parse results to avoid redundant work
+  // - enableLR=true: Full left-recursion support using seed-growth algorithm (Warth et al.)
+  // - enableLR=false: Simple caching without LR overhead (faster for non-recursive parsers)
+  case Memo[E, A](inner: Parser[E, A], key: MemoKey[E, A], enableLR: Boolean) extends Parser[E, A]
 }
 
 /**

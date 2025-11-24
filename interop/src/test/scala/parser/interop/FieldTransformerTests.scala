@@ -55,7 +55,7 @@ class FieldTransformerTests extends FunSuite {
 
   test("Custom transformer can add prefix to all fields") {
     val transformer = new FieldTransformer {
-      def transformFieldName(fieldName: String): String = s"api_$fieldName"
+      def transformFieldName(fieldName: String): String  = s"api_$fieldName"
       def shouldIncludeField(fieldName: String): Boolean = true
     }
 

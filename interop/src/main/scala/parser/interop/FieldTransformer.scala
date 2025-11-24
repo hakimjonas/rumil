@@ -31,6 +31,7 @@ package parser.interop
  * @since 0.2.0
  */
 trait FieldTransformer {
+
   /**
    * Transform a field name during decoder derivation.
    *
@@ -58,7 +59,7 @@ trait FieldTransformer {
  * Default field transformer that uses field names as-is with no transformations.
  */
 object IdentityFieldTransformer extends FieldTransformer {
-  def transformFieldName(fieldName: String): String = fieldName
+  def transformFieldName(fieldName: String): String  = fieldName
   def shouldIncludeField(fieldName: String): Boolean = true
 }
 
@@ -66,6 +67,7 @@ object IdentityFieldTransformer extends FieldTransformer {
  * Commonly used field transformers for standard naming conventions.
  */
 object FieldTransformers {
+
   /**
    * Convert camelCase to snake_case.
    *
