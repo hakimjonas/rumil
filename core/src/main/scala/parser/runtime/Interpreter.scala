@@ -152,9 +152,9 @@ private def interpretI[E, A](parser: Parser[E, A], state: ParserState): IResult[
         }
       }
 
-    case Parser.StringChoice(targets) =>
-      // Optimized choice of strings - no intermediate IResult allocation
-      interpretStringChoice(targets, state)
+    case Parser.StringChoice(radix, targets) =>
+      // Optimized choice of strings using radix tree - O(m) matching
+      interpretStringChoice(radix, targets, state)
 
     case Parser.Map(source, f) =>
       interpretI(source, state) match {
@@ -866,34 +866,29 @@ private def interpretChoiceI[E, A](
  * @return Success with matched string, or Failure
  */
 private def interpretStringChoice(
+  radix: RadixNode,
   targets: Array[String],
   state: ParserState
 ): IResult[ParseError, String] = {
   val input = state.input
   val offset = state.offset
-  val inputLen = input.length
 
-  // Try each target string - no intermediate allocation
-  var i = 0
-  while (i < targets.length) {
-    val target = targets(i)
-    val len = target.length
+  // Use radix tree for O(m) matching where m = length of matched string
+  val matched = radix.matchAtOrNull(input, offset)
 
-    // Check if we have enough input and it matches
-    if (offset + len <= inputLen && input.regionMatches(offset, target, 0, len)) {
-      state.advanceByString(target)
-      return Result.Success(target, len)
-    }
-    i += 1
+  if (matched != null && matched.nonEmpty) {
+    state.advanceByString(matched)
+    Result.Success(matched, matched.length)
+  } else {
+    // No match - construct error lazily
+    val loc = state.location
+    val inputLen = input.length
+    val maxLen = targets.map(_.length).max
+    val found = input.substring(offset, math.min(offset + maxLen, inputLen))
+    val expected = targets.map(s => s"\"$s\"").toSet
+    LazyFailure(
+      () => List(ParseError.Unexpected(found, expected, loc)),
+      loc
+    )
   }
-
-  // All alternatives failed - construct error lazily
-  val loc = state.location
-  val maxLen = targets.map(_.length).max
-  val found = input.substring(offset, math.min(offset + maxLen, inputLen))
-  val expected = targets.map(s => s"\"$s\"").toSet
-  LazyFailure(
-    () => List(ParseError.Unexpected(found, expected, loc)),
-    loc
-  )
 }

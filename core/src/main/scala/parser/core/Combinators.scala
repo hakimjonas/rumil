@@ -200,7 +200,8 @@ def choice[E, A](parsers: List[Parser[E, A]]): Parser[E, A] =
       }
       if (allStrings) {
         val targets = parsers.collect { case Parser.StringMatch(s) => s }.toArray
-        Parser.StringChoice(targets).asInstanceOf[Parser[E, A]]
+        val radix = RadixNode.fromStrings(targets)
+        Parser.StringChoice(radix, targets).asInstanceOf[Parser[E, A]]
       } else {
         Parser.Choice(parsers)
       }
