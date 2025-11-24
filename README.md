@@ -229,23 +229,6 @@ val nestedJsonResult = JsonParser.parseValue.run(nestedInput)
 val userResult = nestedJsonResult.flatMap(json =>
   Decoder[JsonValue, User].decode(json)
 )
-
-// With field annotations for custom naming
-import parser.interop.Rename
-
-case class ApiResponse(
-  @Rename("user_name") userName: String,
-  @Rename("user_age") userAge: Int,
-  @Rename("is_admin") isAdmin: Boolean
-)
-
-given Decoder[JsonValue, ApiResponse] = Decoder.derived
-
-val apiInput = """{"user_name": "Alice", "user_age": 30, "is_admin": true}"""
-val apiJsonResult = JsonParser.parseValue.run(apiInput)
-val apiResult = apiJsonResult.flatMap(json =>
-  Decoder[JsonValue, ApiResponse].decode(json)
-)
 ```
 
 **When to use:** REST APIs, configuration parsing, standard CRUD
@@ -364,52 +347,41 @@ val result = csv.run(input).map { rows =>
 
 **When to use:** Standard CSV files, database imports, data analysis
 
-### Field Annotations
+### Customizing Field Mapping
 
-Customize how case class fields are decoded from structured data formats using field annotations:
+The `FieldTransformer` trait provides an extension point for customizing how case class fields map to source data fields. Rumil includes several built-in transformers for common naming conventions:
 
 ```scala
-import parser.core._
-import parser.interop.{Decoder, Rename}
-import parser.interop.JsonDecoders.given
-import parsers.json.{JsonParser, JsonValue}
+import parser.interop.{FieldTransformer, FieldTransformers}
 
-// @Rename: Map field names to different keys in the source format
-case class User(
-  @Rename("user_name") name: String,
-  @Rename("user_age") age: Int
-)
+// Built-in transformers for naming conventions
+FieldTransformers.SnakeCase         // camelCase → snake_case
+FieldTransformers.KebabCase         // camelCase → kebab-case
+FieldTransformers.ScreamingSnakeCase  // camelCase → SCREAMING_SNAKE_CASE
 
-given Decoder[JsonValue, User] = Decoder.derived
+// Custom transformer example
+val customTransformer = new FieldTransformer {
+  def transformFieldName(fieldName: String): String =
+    s"api_$fieldName"  // Add prefix to all fields
 
-val input = """{"user_name": "Alice", "user_age": 30}"""
-val jsonResult = JsonParser.parseValue.run(input)
-val userResult = jsonResult.flatMap(json =>
-  Decoder[JsonValue, User].decode(json)
-)
-// Success(User("Alice", 30), ...)
+  def shouldIncludeField(fieldName: String): Boolean =
+    !fieldName.startsWith("internal")  // Skip internal fields
+}
 
-// Multiple annotations on different fields
-case class Config(
-  @Rename("server_host") host: String,
-  @Rename("server_port") port: Int,
-  debugMode: Boolean  // uses default field name
-)
-
-// Works with special characters in field names
-case class ApiData(
-  @Rename("field-name") fieldName: String,
-  @Rename("field.value") fieldValue: Int
-)
+// Example: Converting names
+FieldTransformers.SnakeCase.transformFieldName("userName")  // "user_name"
+FieldTransformers.KebabCase.transformFieldName("isAdmin")   // "is-admin"
 ```
 
-**Available annotations:**
-- `@Rename(name)` - Map field to different name in source format (implemented)
-- `@Ignore` - Skip field during decoding (requires default value) (planned)
-- `@Default(value)` - Use default value if field is missing (planned)
-- `@Aliases(names*)` - Accept multiple alternative names (planned)
-- `@Required` - Fail fast if field is missing (planned)
-- `@Flatten` - Inline nested object fields into parent (planned)
+**Why FieldTransformer instead of baked-in annotations?**
+
+Rumil is a parser combinator library, not a serialization framework. FieldTransformer provides:
+- ✅ Clean extension point for customization
+- ✅ Simple to implement (just two methods)
+- ✅ No commitment to specific annotation APIs
+- ✅ Users control their own field mapping logic
+
+Example annotations (`@Rename`, `@Ignore`, `@Aliases`) are available in `parser.interop.examples` as templates showing how to implement annotation-based transformers using Scala 3 inline metaprogramming. Similar to the `parsers` module: we provide examples, not prescriptive APIs.
 
 ## Choosing an Approach
 
