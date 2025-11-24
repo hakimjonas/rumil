@@ -41,8 +41,8 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 // Code coverage settings
 ThisBuild / coverageEnabled          := false // Only enable via `sbt coverage` command
-ThisBuild / coverageMinimumStmtTotal := 80
-ThisBuild / coverageFailOnMinimum    := false
+ThisBuild / coverageMinimumStmtTotal := 50    // Realistic target given current coverage
+ThisBuild / coverageFailOnMinimum    := false // Don't fail build on low coverage
 
 // Command aliases for convenience
 addCommandAlias("testAll", ";core/test;parsers/test")

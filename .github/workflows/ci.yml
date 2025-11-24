@@ -56,7 +56,7 @@ jobs:
         uses: sbt/setup-sbt@v1
 
       - name: Generate coverage report
-        run: sbt clean coverage test coverageReport
+        run: sbt clean coverage test coverageAggregate
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
