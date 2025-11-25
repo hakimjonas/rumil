@@ -25,14 +25,13 @@ class StackSafetyTests extends munit.FunSuite {
    */
   test("stack safety: 20,000 sequential parsers using ~") {
     // Create a deeply left-associated sequence: char('a') ~ char('a') ~ ... (20,000 times)
-    val n = 20000
+    val n                               = 20000
     var parser: Parser[ParseError, Any] = char('a')
 
-    for (_ <- 1 until n) {
+    for (_ <- 1 until n)
       parser = parser ~ char('a')
-    }
 
-    val input = "a" * n
+    val input  = "a" * n
     val result = parser.run(input)
 
     // If we get here without StackOverflowError, we're stack-safe for practical purposes
@@ -41,14 +40,13 @@ class StackSafetyTests extends munit.FunSuite {
 
   test("stack safety: 10,000 sequential parsers using flatMap") {
     // Even more direct test: explicit flatMap chain
-    val n = 10000
+    val n                                      = 10000
     var parser: Parser[ParseError, List[Char]] = char('a').map(List(_))
 
-    for (_ <- 1 until n) {
+    for (_ <- 1 until n)
       parser = parser.flatMap(acc => char('a').map(c => c :: acc))
-    }
 
-    val input = "a" * n
+    val input  = "a" * n
     val result = parser.run(input)
 
     assert(result.isSuccess, s"Should successfully parse $n 'a' characters via flatMap")
@@ -71,11 +69,11 @@ class StackSafetyTests extends munit.FunSuite {
     // Test left recursion doesn't cause stack overflow
     lazy val expr: Parser[ParseError, Int] = rule {
       (expr ~ char('+') ~ digit.map(_.asDigit)).map { case ((e, _), d) => e + d } |
-      digit.map(_.asDigit)
+        digit.map(_.asDigit)
     }
 
     // Deep left-recursive parse: 1+1+1+1+... (2000 times)
-    val input = "1" + ("+1" * 2000)
+    val input  = "1" + ("+1" * 2000)
     val result = expr.run(input)
 
     assert(result.isSuccess, "Left-recursive parser should handle deep recursion")

@@ -201,7 +201,7 @@ class LeftRecursionTests extends FunSuite {
       digit.map(_ - '0') | (char('(') *> expr <* char(')'))
 
     // Verify complex expressions with nested rules work correctly
-    assertEquals(expr.run("2*3+4*5").toOption, Some(26)) // (2*3) + (4*5) = 6 + 20
+    assertEquals(expr.run("2*3+4*5").toOption, Some(26))     // (2*3) + (4*5) = 6 + 20
     assertEquals(expr.run("(1+2)*(3+4)").toOption, Some(21)) // 3 * 7
   }
 

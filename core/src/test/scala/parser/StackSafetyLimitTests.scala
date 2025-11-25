@@ -32,28 +32,26 @@ class StackSafetyLimitTests extends munit.FunSuite {
 
   // Mid-range tests - these run quickly
   test("LIMIT: 200k sequential parsers using ~") {
-    val n = 200000
+    val n                               = 200000
     var parser: Parser[ParseError, Any] = char('a')
 
-    for (_ <- 1 until n) {
+    for (_ <- 1 until n)
       parser = parser ~ char('a')
-    }
 
-    val input = "a" * n
+    val input  = "a" * n
     val result = parser.run(input)
 
     assert(result.isSuccess, s"Should successfully parse $n 'a' characters")
   }
 
   test("LIMIT: 100k sequential parsers using flatMap") {
-    val n = 100000
+    val n                                      = 100000
     var parser: Parser[ParseError, List[Char]] = char('a').map(List(_))
 
-    for (_ <- 1 until n) {
+    for (_ <- 1 until n)
       parser = parser.flatMap(acc => char('a').map(c => c :: acc))
-    }
 
-    val input = "a" * n
+    val input  = "a" * n
     val result = parser.run(input)
 
     assert(result.isSuccess, s"Should successfully parse $n 'a' characters via flatMap")
@@ -74,10 +72,10 @@ class StackSafetyLimitTests extends munit.FunSuite {
   test("LIMIT: 20k levels of left-recursive parsing") {
     lazy val expr: Parser[ParseError, Int] = rule {
       (expr ~ char('+') ~ digit.map(_.asDigit)).map { case ((e, _), d) => e + d } |
-      digit.map(_.asDigit)
+        digit.map(_.asDigit)
     }
 
-    val input = "1" + ("+1" * 20000)
+    val input  = "1" + ("+1" * 20000)
     val result = expr.run(input)
 
     assert(result.isSuccess, "Left-recursive parser should handle 20k depth")
@@ -89,14 +87,13 @@ class StackSafetyLimitTests extends munit.FunSuite {
   // Million-scale tests - verify extreme capacity
   // These are slow, run manually: sbt "core/testOnly parser.StackSafetyLimitTests"
   test("LIMIT: 1M sequential parsers using ~".ignore) {
-    val n = 1000000
+    val n                               = 1000000
     var parser: Parser[ParseError, Any] = char('a')
 
-    for (_ <- 1 until n) {
+    for (_ <- 1 until n)
       parser = parser ~ char('a')
-    }
 
-    val input = "a" * n
+    val input  = "a" * n
     val result = parser.run(input)
 
     assert(result.isSuccess, s"Should successfully parse $n 'a' characters")

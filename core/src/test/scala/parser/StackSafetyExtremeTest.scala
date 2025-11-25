@@ -22,16 +22,15 @@ class StackSafetyExtremeTest extends munit.FunSuite {
   // This test proves the practical ceiling - 5M works comfortably
   // Run manually: sbt "core/testOnly parser.StackSafetyExtremeTest"
   test("EXTREME: 5M sequential parsers using ~ (verified ceiling)".ignore) {
-    val n = 5000000
+    val n                               = 5000000
     var parser: Parser[ParseError, Any] = char('a')
 
     println(s"Building parser chain of $n parsers...")
-    for (_ <- 1 until n) {
+    for (_ <- 1 until n)
       parser = parser ~ char('a')
-    }
 
     println(s"Running parser on input of $n characters...")
-    val input = "a" * n
+    val input  = "a" * n
     val result = parser.run(input)
 
     assert(result.isSuccess, s"Should successfully parse $n 'a' characters")
