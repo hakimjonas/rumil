@@ -29,7 +29,20 @@ jobs:
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
 
+      - name: Print JVM stack configuration
+        run: |
+          echo "=== JVM Version ==="
+          java -version
+          echo ""
+          echo "=== Thread Stack Size ==="
+          java -XX:+PrintFlagsFinal -version 2>&1 | grep -i threadstack
+          echo ""
+          echo "=== All Stack-related flags ==="
+          java -XX:+PrintFlagsFinal -version 2>&1 | grep -i stack
+
       - name: Run tests
+        env:
+          JAVA_OPTS: "-Xss4m"
         run: sbt ++${{ matrix.scala }} test
 
       - name: Check formatting
@@ -56,6 +69,8 @@ jobs:
         uses: sbt/setup-sbt@v1
 
       - name: Generate coverage report
+        env:
+          JAVA_OPTS: "-Xss4m"
         run: sbt clean coverage test coverageAggregate
 
       - name: Upload coverage to Codecov
