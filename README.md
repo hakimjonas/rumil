@@ -16,8 +16,9 @@ Rumil is a parser combinator library for Scala 3, designed for correctness, effi
 - Parsers are immutable, composable values
 - 40+ combinators for building complex parsers
 - **Left Recursion Support** - Write natural grammars via `rule` combinator (seed-growth algorithm)
+- **Deep Recursion Support** - Stress tested to **7,000,000+** nested recursive rules (limited by heap, not stack)
 - Error tracking with line, column, and offset information
-- Tail-recursive interpreter with memoization
+- Memoized interpreter with lazy evaluation
 - Monadic interface with for-comprehension support
 - Type-safe parsing with compile-time guarantees
 
@@ -504,7 +505,9 @@ Rumil prioritizes **garbage-free parsing** for backtracking-heavy grammars:
 - **Lazy Error Construction**: Defers error materialization until needed
   - Failed backtracking branches never allocate error objects
   - Significant GC pressure reduction in ambiguous grammars
-- **Stack Safety**: Handles 10,000+ sequential parsers without stack overflow
+- **Deep Recursion Safety**: Stress tested to **7,000,000+** nested recursive rules
+  - Limited only by heap memory, not stack depth
+  - Write natural recursive grammars with zero fear of production crashes
 - **Memoization**: Supports both `.memoize` (fast caching) and `rule` (left-recursion)
 
 **Performance Characteristics:**
