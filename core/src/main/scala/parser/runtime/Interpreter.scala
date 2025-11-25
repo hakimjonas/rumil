@@ -93,38 +93,9 @@ def runRecursive[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
  */
 def runZeroCast[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
   val state = parserState(input)
-  toResult(TrampolineZeroCast.run(parser, state))
+  toResult(experimental.TrampolineZeroCast.run(parser, state))
 }
 
-/**
- * Runs a parser using the basic (unoptimized) stack-safe trampolined interpreter.
- *
- * @note This uses the original unoptimized trampoline implementation.
- *       Use `run()` instead for the optimized version which is now the default.
- *
- * @param parser The parser to execute
- * @param input The input string to parse
- * @return Result containing either success value or error list
- */
-@deprecated("Use run() instead - uses optimized stack-safe implementation", "1.0.0")
-def runStackSafe[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
-  val state = parserState(input)
-  toResult(Trampoline.runStackSafe(parser, state))
-}
-
-/**
- * Runs a parser using the optimized stack-safe trampolined interpreter.
- *
- * @note This is now an alias for `run`, which uses the same implementation.
- *       Kept for backwards compatibility.
- *
- * @param parser The parser to execute
- * @param input The input string to parse
- * @return Result containing either success value or error list
- */
-@deprecated("Use run() instead - stack safety is now the default", "1.0.0")
-def runStackSafeOpt[E, A](parser: Parser[E, A], input: String): Result[E, A] =
-  run(parser, input)
 
 /**
  * Public interpret function that returns Result directly.

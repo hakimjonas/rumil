@@ -7,7 +7,7 @@ import scala.compiletime.uninitialized
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 import parser.core._
-import parser.runtime.{run, runStackSafe, runStackSafeOpt}
+import parser.runtime.run
 import parser.syntax.{map, ~}
 
 /**
@@ -118,7 +118,7 @@ class ParserBenchmarks {
 
   @Benchmark
   def rumil_opt_parseDigits1000(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilDigits, digits1000)
+    val result = run(rumilDigits, digits1000)
     bh.consume(result)
   }
 
@@ -140,7 +140,7 @@ class ParserBenchmarks {
 
   @Benchmark
   def rumil_opt_parseCommaSep100(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilCommaSep, commaNumbers100)
+    val result = run(rumilCommaSep, commaNumbers100)
     bh.consume(result)
   }
 
@@ -162,7 +162,7 @@ class ParserBenchmarks {
 
   @Benchmark
   def rumil_opt_stringMatch(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilStringMatch, "hello world")
+    val result = run(rumilStringMatch, "hello world")
     bh.consume(result)
   }
 
@@ -185,7 +185,7 @@ class ParserBenchmarks {
 
   @Benchmark
   def rumil_opt_choice10(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilChoice10, "jjj")
+    val result = run(rumilChoice10, "jjj")
     bh.consume(result)
   }
 
@@ -204,7 +204,7 @@ class ParserBenchmarks {
 
   @Benchmark
   def rumil_opt_choice10_first(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilChoice10, "aaa")
+    val result = run(rumilChoice10, "aaa")
     bh.consume(result)
   }
 
@@ -310,19 +310,19 @@ class ParserBenchmarks {
 
   @Benchmark
   def rumil_stacksafe_seq10(bh: Blackhole): Unit = {
-    val result = runStackSafe(rumilSeq10, digits10)
+    val result = run(rumilSeq10, digits10)
     bh.consume(result)
   }
 
   @Benchmark
   def rumil_stacksafe_seq50(bh: Blackhole): Unit = {
-    val result = runStackSafe(rumilSeq50, digits50)
+    val result = run(rumilSeq50, digits50)
     bh.consume(result)
   }
 
   @Benchmark
   def rumil_stacksafe_seq100(bh: Blackhole): Unit = {
-    val result = runStackSafe(rumilSeq100, digits100)
+    val result = run(rumilSeq100, digits100)
     bh.consume(result)
   }
 
@@ -332,19 +332,19 @@ class ParserBenchmarks {
 
   @Benchmark
   def rumil_stacksafe_opt_seq10(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilSeq10, digits10)
+    val result = run(rumilSeq10, digits10)
     bh.consume(result)
   }
 
   @Benchmark
   def rumil_stacksafe_opt_seq50(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilSeq50, digits50)
+    val result = run(rumilSeq50, digits50)
     bh.consume(result)
   }
 
   @Benchmark
   def rumil_stacksafe_opt_seq100(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(rumilSeq100, digits100)
+    val result = run(rumilSeq100, digits100)
     bh.consume(result)
   }
 

@@ -7,13 +7,13 @@ import scala.compiletime.uninitialized
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 import parser.core._
-import parser.runtime.{run, runStackSafeOpt}
+import parser.runtime.run
 import parser.syntax._
 import parsers.common._
 import parsers.json.{jsonParser, JsonValue}
 
 /**
- * JMH benchmarks for real-world parser patterns comparing run() vs runStackSafeOpt().
+ * JMH benchmarks for real-world parser patterns.
  *
  * Instead of using the full JSON/CSV parsers which have complex recursive structure,
  * we test realistic parser patterns that represent common use cases.
@@ -110,7 +110,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def keyvalue_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(keyValueParser, keyValuePairs)
+    val result = run(keyValueParser, keyValuePairs)
     bh.consume(result)
   }
 
@@ -126,7 +126,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def nested_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(nestedBracketsParser, nestedBrackets)
+    val result = run(nestedBracketsParser, nestedBrackets)
     bh.consume(result)
   }
 
@@ -142,7 +142,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def csv_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(csvRowParser, csvData)
+    val result = run(csvRowParser, csvData)
     bh.consume(result)
   }
 
@@ -158,7 +158,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def numbers_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(numberListParser, numberList)
+    val result = run(numberListParser, numberList)
     bh.consume(result)
   }
 
@@ -174,7 +174,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def mixed_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(mixedTokenParser, mixedTokens)
+    val result = run(mixedTokenParser, mixedTokens)
     bh.consume(result)
   }
 
@@ -215,7 +215,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def json_small_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(jsonParser, jsonSmall)
+    val result = run(jsonParser, jsonSmall)
     bh.consume(result)
   }
 
@@ -227,7 +227,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def json_medium_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(jsonParser, jsonMedium)
+    val result = run(jsonParser, jsonMedium)
     bh.consume(result)
   }
 
@@ -239,7 +239,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def json_large_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(jsonParser, jsonLarge)
+    val result = run(jsonParser, jsonLarge)
     bh.consume(result)
   }
 
@@ -251,7 +251,7 @@ class RealParserBenchmarks {
 
   @Benchmark
   def json_deep_opt(bh: Blackhole): Unit = {
-    val result = runStackSafeOpt(jsonParser, jsonDeep)
+    val result = run(jsonParser, jsonDeep)
     bh.consume(result)
   }
 }

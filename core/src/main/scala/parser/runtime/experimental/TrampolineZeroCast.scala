@@ -1,7 +1,8 @@
-package parser.runtime
+package parser.runtime.experimental
 
 import scala.util.control.TailCalls.{TailRec, done, tailcall}
 import parser.core._
+import parser.runtime.{ParserState, interpretI, IResult, LazyFailure}
 
 /**
  * Minimal-cast stack-safe interpreter inspired by Eru's design.
