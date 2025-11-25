@@ -1,11 +1,11 @@
 package parser.interop
 
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime}
+import java.util.UUID
+
 import munit.FunSuite
 import parser.core._
 import parsers.json.JsonValue
-
-import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime}
-import java.util.UUID
 
 /**
  * Comprehensive test suite for the Decoder typeclass.

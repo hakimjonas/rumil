@@ -1,11 +1,11 @@
 package parser.interop
 
+import java.time.format.DateTimeParseException
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime}
+import java.util.UUID
+
 import parser.core._
 import parsers.json.{JsonValue, given_CanEqual_JsonValue_JsonValue}
-
-import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime}
-import java.time.format.DateTimeParseException
-import java.util.UUID
 
 /**
  * Primitive decoder instances for JSON values.
@@ -308,19 +308,18 @@ object JsonDecoders {
         catch {
           case _: DateTimeParseException =>
             Result.Failure(
-              List(DecodeError.TypeMismatch(
-                "Instant (ISO-8601)",
-                s"String($s) - invalid format",
-                (line = 1, column = 1, offset = 0))),
+              List(
+                DecodeError.TypeMismatch(
+                  "Instant (ISO-8601)",
+                  s"String($s) - invalid format",
+                  (line = 1, column = 1, offset = 0))),
               (line = 1, column = 1, offset = 0)
             )
         }
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch(
-            "Instant",
-            jsonValueTypeName(other),
-            (line = 1, column = 1, offset = 0))),
+          List(DecodeError
+            .TypeMismatch("Instant", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -338,19 +337,21 @@ object JsonDecoders {
         catch {
           case _: DateTimeParseException =>
             Result.Failure(
-              List(DecodeError.TypeMismatch(
-                "LocalDate (ISO-8601)",
-                s"String($s) - invalid format",
-                (line = 1, column = 1, offset = 0))),
+              List(
+                DecodeError.TypeMismatch(
+                  "LocalDate (ISO-8601)",
+                  s"String($s) - invalid format",
+                  (line = 1, column = 1, offset = 0))),
               (line = 1, column = 1, offset = 0)
             )
         }
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch(
-            "LocalDate",
-            jsonValueTypeName(other),
-            (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "LocalDate",
+              jsonValueTypeName(other),
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -368,19 +369,21 @@ object JsonDecoders {
         catch {
           case _: DateTimeParseException =>
             Result.Failure(
-              List(DecodeError.TypeMismatch(
-                "LocalDateTime (ISO-8601)",
-                s"String($s) - invalid format",
-                (line = 1, column = 1, offset = 0))),
+              List(
+                DecodeError.TypeMismatch(
+                  "LocalDateTime (ISO-8601)",
+                  s"String($s) - invalid format",
+                  (line = 1, column = 1, offset = 0))),
               (line = 1, column = 1, offset = 0)
             )
         }
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch(
-            "LocalDateTime",
-            jsonValueTypeName(other),
-            (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "LocalDateTime",
+              jsonValueTypeName(other),
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -398,19 +401,21 @@ object JsonDecoders {
         catch {
           case _: DateTimeParseException =>
             Result.Failure(
-              List(DecodeError.TypeMismatch(
-                "LocalTime (ISO-8601)",
-                s"String($s) - invalid format",
-                (line = 1, column = 1, offset = 0))),
+              List(
+                DecodeError.TypeMismatch(
+                  "LocalTime (ISO-8601)",
+                  s"String($s) - invalid format",
+                  (line = 1, column = 1, offset = 0))),
               (line = 1, column = 1, offset = 0)
             )
         }
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch(
-            "LocalTime",
-            jsonValueTypeName(other),
-            (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "LocalTime",
+              jsonValueTypeName(other),
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -428,19 +433,21 @@ object JsonDecoders {
         catch {
           case _: DateTimeParseException =>
             Result.Failure(
-              List(DecodeError.TypeMismatch(
-                "OffsetDateTime (ISO-8601)",
-                s"String($s) - invalid format",
-                (line = 1, column = 1, offset = 0))),
+              List(
+                DecodeError.TypeMismatch(
+                  "OffsetDateTime (ISO-8601)",
+                  s"String($s) - invalid format",
+                  (line = 1, column = 1, offset = 0))),
               (line = 1, column = 1, offset = 0)
             )
         }
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch(
-            "OffsetDateTime",
-            jsonValueTypeName(other),
-            (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "OffsetDateTime",
+              jsonValueTypeName(other),
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -458,19 +465,21 @@ object JsonDecoders {
         catch {
           case _: DateTimeParseException =>
             Result.Failure(
-              List(DecodeError.TypeMismatch(
-                "ZonedDateTime (ISO-8601)",
-                s"String($s) - invalid format",
-                (line = 1, column = 1, offset = 0))),
+              List(
+                DecodeError.TypeMismatch(
+                  "ZonedDateTime (ISO-8601)",
+                  s"String($s) - invalid format",
+                  (line = 1, column = 1, offset = 0))),
               (line = 1, column = 1, offset = 0)
             )
         }
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch(
-            "ZonedDateTime",
-            jsonValueTypeName(other),
-            (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError.TypeMismatch(
+              "ZonedDateTime",
+              jsonValueTypeName(other),
+              (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
@@ -492,19 +501,19 @@ object JsonDecoders {
         catch {
           case _: IllegalArgumentException =>
             Result.Failure(
-              List(DecodeError.TypeMismatch(
-                "UUID",
-                s"String($s) - invalid format",
-                (line = 1, column = 1, offset = 0))),
+              List(
+                DecodeError.TypeMismatch(
+                  "UUID",
+                  s"String($s) - invalid format",
+                  (line = 1, column = 1, offset = 0))),
               (line = 1, column = 1, offset = 0)
             )
         }
       case other =>
         Result.Failure(
-          List(DecodeError.TypeMismatch(
-            "UUID",
-            jsonValueTypeName(other),
-            (line = 1, column = 1, offset = 0))),
+          List(
+            DecodeError
+              .TypeMismatch("UUID", jsonValueTypeName(other), (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }
