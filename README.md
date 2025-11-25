@@ -552,7 +552,7 @@ sbt test
 ## Requirements
 
 - Scala 3.7.4 or later
-- Java 11 or later (Java 25 recommended)
+- Java 11 or later (tested with Java 21 and 25)
 
 ## License
 
