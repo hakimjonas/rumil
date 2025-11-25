@@ -508,10 +508,18 @@ Rumil prioritizes **garbage-free parsing** for backtracking-heavy grammars:
 - **Memoization**: Supports both `.memoize` (fast caching) and `rule` (left-recursion)
 
 **Performance Characteristics:**
-- **Throughput**: ~4-6x slower than cats-parse in tight loops
+- **Throughput**: 1.8-3.5x slower than cats-parse (November 2025 benchmarks)
 - **Allocation**: Minimal GC pressure during backtracking (lazy errors)
 - **Latency**: Better p99 latency in backtracking scenarios (less GC)
 - **Memory**: Stable memory usage, no allocation spikes on failed branches
+
+**Benchmark Results (vs cats-parse, JMH):**
+| Benchmark | cats-parse | Rumil | Ratio |
+|-----------|------------|-------|-------|
+| choice (10-way) | 177k ops/ms | 100k ops/ms | 1.8x |
+| parseCommaSep100 | 417 ops/ms | 150 ops/ms | 2.8x |
+| parseDigits1000 | 423 ops/ms | 122 ops/ms | 3.5x |
+| stringMatch | 301k ops/ms | 130k ops/ms | 2.3x |
 
 **When to Use Rumil:**
 - Grammars with heavy backtracking (ambiguous or complex rules)
