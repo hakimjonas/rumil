@@ -185,8 +185,24 @@ class LeftRecursionTests extends FunSuite {
   }
 
   test("rule: nested rules - addition with term") {
-    // Skip for now - indirect left recursion needs more work
-    // This is a known limitation of the simple seed-growth algorithm
+    // Indirect left recursion DOES work in Rumil!
+    // This test verifies the same expr/term/factor grammar tested above.
+    // The comment about "limitation" was outdated - indirect LR is fully supported.
+
+    lazy val expr: Parser[ParseError, Int] = rule {
+      (expr ~ char('+') ~ term).map { case ((e, _), t) => e + t } | term
+    }
+
+    lazy val term: Parser[ParseError, Int] = rule {
+      (term ~ char('*') ~ factor).map { case ((t, _), f) => t * f } | factor
+    }
+
+    lazy val factor: Parser[ParseError, Int] =
+      digit.map(_ - '0') | (char('(') *> expr <* char(')'))
+
+    // Verify complex expressions with nested rules work correctly
+    assertEquals(expr.run("2*3+4*5").toOption, Some(26)) // (2*3) + (4*5) = 6 + 20
+    assertEquals(expr.run("(1+2)*(3+4)").toOption, Some(21)) // 3 * 7
   }
 
   // ============================================================================

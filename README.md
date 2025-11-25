@@ -496,18 +496,35 @@ Note: Debug output goes to stderr, keeping it separate from normal program outpu
 
 ## Performance
 
-Implementation characteristics:
+### Philosophy: Allocation Efficiency Over Raw Speed
 
-- Tail-recursive to prevent stack overflow
-- Memoization for left-recursive grammars (via `rule` combinator)
-- State snapshots for backtracking
-- String slicing for substring operations
+Rumil prioritizes **garbage-free parsing** for backtracking-heavy grammars:
 
-Benchmark results (100 iterations):
-- Parse 1000 digits: ~20ms
-- Parse 100 separated numbers: ~25ms
-- Arithmetic expression: ~15ms
-- Deeply nested structures: ~5ms
+**Key Optimizations:**
+- **Lazy Error Construction**: Defers error materialization until needed
+  - Failed backtracking branches never allocate error objects
+  - Significant GC pressure reduction in ambiguous grammars
+- **Stack Safety**: Handles 10,000+ sequential parsers without stack overflow
+- **Memoization**: Supports both `.memoize` (fast caching) and `rule` (left-recursion)
+
+**Performance Characteristics:**
+- **Throughput**: ~4-6x slower than cats-parse in tight loops
+- **Allocation**: Minimal GC pressure during backtracking (lazy errors)
+- **Latency**: Better p99 latency in backtracking scenarios (less GC)
+- **Memory**: Stable memory usage, no allocation spikes on failed branches
+
+**When to Use Rumil:**
+- Grammars with heavy backtracking (ambiguous or complex rules)
+- Long-running parsers where GC pauses matter
+- Left-recursive grammars (natural expression syntax)
+- Debuggability and error quality are priorities
+
+**When to Use Alternatives:**
+- Pure throughput on simple grammars → cats-parse
+- Maximum speed with macro compilation → fastparse
+- Standard parsing without special requirements → any parser combinator
+
+See `docs/memoization-performance-analysis.md` for detailed benchmarks.
 
 ## Testing
 

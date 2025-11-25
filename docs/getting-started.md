@@ -238,7 +238,9 @@ val notEndOfLine = anyChar.notFollowedBy(char('\n'))
 
 ## Left Recursion (Advanced, 2 minutes)
 
-Rumil supports left-recursive grammars using the `rule` combinator:
+Rumil supports left-recursive grammars using the `rule` combinator.
+
+⚠️ **Performance Note:** `rule` has significant overhead (~479% slower for cache misses). Only use it for left-recursive grammars. For other cases, use `lazy val` or `.memoize`.
 
 ```scala
 case class BinOp(left: Expr, op: String, right: Expr)

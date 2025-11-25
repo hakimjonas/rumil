@@ -143,7 +143,7 @@ This proves: **fix the allocation overhead, and performance becomes competitive.
 **Approach:** Replace Ref[Int] with primitive `var` fields.
 
 **Considerations:**
-- Loses the "controlled mutation" abstraction (Eru pattern)
+- Loses the "controlled mutation" abstraction pattern
 - ParserState is already our mutation boundary - Refs may be over-engineering
 - Could keep Ref for external API but use primitives internally
 

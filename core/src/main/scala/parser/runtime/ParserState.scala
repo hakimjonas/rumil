@@ -5,7 +5,7 @@ import scala.collection.mutable
 import parser.core.{MemoKey, _}
 
 // ============================================================================
-// Ref - Controlled Mutation (Eru Pattern)
+// Ref - Controlled Mutation Pattern (Encapsulated Mutable State)
 // ============================================================================
 
 /**

@@ -302,16 +302,33 @@ def defer[E, A](p: => Parser[E, A]): Parser[E, A] =
  * - Automatic left recursion handling via seed-growth algorithm
  * - Direct left-recursive grammars that "just work"
  *
- * == When to use `rule` vs `defer` ==
+ * ⚠️ **PERFORMANCE WARNING** ⚠️
+ *
+ * `rule` has significant overhead (~479% slower than unmemoized for cache misses).
+ * ONLY use it when you need:
+ * 1. Left-recursive grammars (e.g., `expr -> expr '+' term`)
+ * 2. Named recursive definitions with memoization
+ *
+ * For non-recursive parsers or simple right-recursion, use:
+ * - `lazy val` for simple recursive definitions
+ * - `.memoize` for caching WITHOUT left-recursion support (2-3x less overhead)
+ * - `defer` when you only need to break initialization cycles
+ *
+ * See docs/memoization-performance-analysis.md for detailed benchmarks.
+ *
+ * == When to use `rule` vs alternatives ==
  *
  * Use `defer` when:
  * - Parser is right-recursive or non-recursive
  * - You just need to break the initialization cycle
  *
+ * Use `.memoize` when:
+ * - Parser is expensive with backtracking
+ * - NOT left-recursive
+ *
  * Use `rule` when:
- * - Parser is directly left-recursive (e.g., `expr -> expr '+' term`)
- * - You want memoization for performance
- * - You're unsure if left recursion exists
+ * - Parser is left-recursive (e.g., `expr -> expr '+' term`)
+ * - You're implementing expression grammars with precedence
  *
  * == How it works ==
  *
