@@ -15,7 +15,7 @@ import parser.core._
  * During backtracking (Or, Choice, Optional), if one branch succeeds, the
  * failed branch's error thunk is never evaluated - saving significant allocation.
  */
-final private case class LazyFailure[+E](mkErrors: () => List[E], furthest: Location)
+final private[runtime] case class LazyFailure[+E](mkErrors: () => List[E], furthest: Location)
 
 /**
  * Internal result type used during interpretation.
@@ -24,10 +24,10 @@ final private case class LazyFailure[+E](mkErrors: () => List[E], furthest: Loca
  * Success and Partial reuse Result types directly (no double allocation).
  * Only Failure uses a separate lazy wrapper.
  */
-private type IResult[+E, +A] = Result.Success[E, A] | Result.Partial[E, A] | LazyFailure[E]
+private[runtime] type IResult[+E, +A] = Result.Success[E, A] | Result.Partial[E, A] | LazyFailure[E]
 
 /** Convert IResult to public Result */
-private def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match {
+private[runtime] def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match {
   case s: Result.Success[?, ?]  => s.asInstanceOf[Result[E, A]]
   case p: Result.Partial[?, ?]  => p.asInstanceOf[Result[E, A]]
   case LazyFailure(mkErrs, loc) => Result.Failure(mkErrs(), loc)
@@ -40,7 +40,9 @@ private def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match {
 /**
  * Runs a parser on input, producing a result.
  *
- * This is the main entry point for executing parsers.
+ * This is the main entry point for executing parsers. Uses a stack-safe
+ * trampolined interpreter that can handle arbitrarily deep FlatMap chains
+ * without risk of stack overflow.
  *
  * @param parser The parser to execute
  * @param input The input string to parse
@@ -54,9 +56,75 @@ private def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match {
  */
 def run[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
   val state = parserState(input)
-  // Use internal interpreter with lazy errors, convert at boundary
+  // Use optimized trampolined interpreter for stack safety
+  toResult(TrampolineOpt.run(parser, state))
+}
+
+/**
+ * Runs a parser using the recursive (non-stack-safe) interpreter.
+ *
+ * This version uses direct recursion and may stack overflow on deeply
+ * nested FlatMap chains. Use this only for debugging or when you are
+ * certain your parsers have bounded depth.
+ *
+ * @param parser The parser to execute
+ * @param input The input string to parse
+ * @return Result containing either success value or error list
+ */
+def runRecursive[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
+  val state = parserState(input)
   toResult(interpretI(parser, state))
 }
+
+/**
+ * Runs a parser using the zero-cast experimental interpreter.
+ *
+ * This version achieves full type safety without runtime casts by using
+ * GADT Continuations and Scala's TailCalls trampoline. It's approximately
+ * 2-3x slower than the optimized TrampolineOpt due to TailRec allocations.
+ *
+ * This implementation serves as a proof-of-concept and blueprint for
+ * Fungal's parser, which will avoid the performance penalty through
+ * proper TCO in the Cranelift backend.
+ *
+ * @param parser The parser to execute
+ * @param input The input string to parse
+ * @return Result containing either success value or error list
+ */
+def runZeroCast[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
+  val state = parserState(input)
+  toResult(TrampolineZeroCast.run(parser, state))
+}
+
+/**
+ * Runs a parser using the basic (unoptimized) stack-safe trampolined interpreter.
+ *
+ * @note This uses the original unoptimized trampoline implementation.
+ *       Use `run()` instead for the optimized version which is now the default.
+ *
+ * @param parser The parser to execute
+ * @param input The input string to parse
+ * @return Result containing either success value or error list
+ */
+@deprecated("Use run() instead - uses optimized stack-safe implementation", "1.0.0")
+def runStackSafe[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
+  val state = parserState(input)
+  toResult(Trampoline.runStackSafe(parser, state))
+}
+
+/**
+ * Runs a parser using the optimized stack-safe trampolined interpreter.
+ *
+ * @note This is now an alias for `run`, which uses the same implementation.
+ *       Kept for backwards compatibility.
+ *
+ * @param parser The parser to execute
+ * @param input The input string to parse
+ * @return Result containing either success value or error list
+ */
+@deprecated("Use run() instead - stack safety is now the default", "1.0.0")
+def runStackSafeOpt[E, A](parser: Parser[E, A], input: String): Result[E, A] =
+  run(parser, input)
 
 /**
  * Public interpret function that returns Result directly.
@@ -94,7 +162,7 @@ private def formatError(error: Any): String = error match {
  * @param state Mutable state tracking parse position
  * @return Internal result with lazy errors
  */
-private def interpretI[E, A](parser: Parser[E, A], state: ParserState): IResult[E, A] = {
+private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState): IResult[E, A] = {
   parser match {
 
     case Parser.Succeed(value) =>

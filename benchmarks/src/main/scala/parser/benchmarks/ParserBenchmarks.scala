@@ -7,8 +7,8 @@ import scala.compiletime.uninitialized
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 import parser.core._
-import parser.runtime.run
-import parser.syntax.map
+import parser.runtime.{run, runStackSafe, runStackSafeOpt}
+import parser.syntax.{map, ~}
 
 /**
  * JMH benchmarks for Rumil parser combinators.
@@ -117,6 +117,12 @@ class ParserBenchmarks {
   }
 
   @Benchmark
+  def rumil_opt_parseDigits1000(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilDigits, digits1000)
+    bh.consume(result)
+  }
+
+  @Benchmark
   def cats_parseDigits1000(bh: Blackhole): Unit = {
     val result = catsDigits.parseAll(digits1000)
     bh.consume(result)
@@ -133,6 +139,12 @@ class ParserBenchmarks {
   }
 
   @Benchmark
+  def rumil_opt_parseCommaSep100(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilCommaSep, commaNumbers100)
+    bh.consume(result)
+  }
+
+  @Benchmark
   def cats_parseCommaSep100(bh: Blackhole): Unit = {
     val result = catsCommaSep.parseAll(commaNumbers100)
     bh.consume(result)
@@ -145,6 +157,12 @@ class ParserBenchmarks {
   @Benchmark
   def rumil_stringMatch(bh: Blackhole): Unit = {
     val result = run(rumilStringMatch, "hello world")
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def rumil_opt_stringMatch(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilStringMatch, "hello world")
     bh.consume(result)
   }
 
@@ -166,6 +184,12 @@ class ParserBenchmarks {
   }
 
   @Benchmark
+  def rumil_opt_choice10(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilChoice10, "jjj")
+    bh.consume(result)
+  }
+
+  @Benchmark
   def cats_choice10(bh: Blackhole): Unit = {
     val result = catsChoice10.parseAll("jjj")
     bh.consume(result)
@@ -179,8 +203,149 @@ class ParserBenchmarks {
   }
 
   @Benchmark
+  def rumil_opt_choice10_first(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilChoice10, "aaa")
+    bh.consume(result)
+  }
+
+  @Benchmark
   def cats_choice10_first(bh: Blackhole): Unit = {
     val result = catsChoice10.parseAll("aaa")
     bh.consume(result)
   }
+
+  // ============================================================================
+  // Benchmarks: Sequential Chains (FlatMap depth)
+  // ============================================================================
+
+  // Build sequential parser chains of various depths
+  // These measure FlatMap interpretation overhead
+
+  val rumilSeq10: Parser[ParseError, Any] = {
+    var p: Parser[ParseError, Any] = satisfy(_.isDigit, "digit")
+    for (_ <- 1 until 10) p = p ~ satisfy(_.isDigit, "digit")
+    p
+  }
+
+  val rumilSeq50: Parser[ParseError, Any] = {
+    var p: Parser[ParseError, Any] = satisfy(_.isDigit, "digit")
+    for (_ <- 1 until 50) p = p ~ satisfy(_.isDigit, "digit")
+    p
+  }
+
+  val rumilSeq100: Parser[ParseError, Any] = {
+    var p: Parser[ParseError, Any] = satisfy(_.isDigit, "digit")
+    for (_ <- 1 until 100) p = p ~ satisfy(_.isDigit, "digit")
+    p
+  }
+
+  val catsSeq10: cats.parse.Parser[Any] = {
+    var p: cats.parse.Parser[Any] = cats.parse.Parser.charWhere(_.isDigit)
+    for (_ <- 1 until 10) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) => (a, b) }
+    p
+  }
+
+  val catsSeq50: cats.parse.Parser[Any] = {
+    var p: cats.parse.Parser[Any] = cats.parse.Parser.charWhere(_.isDigit)
+    for (_ <- 1 until 50) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) => (a, b) }
+    p
+  }
+
+  val catsSeq100: cats.parse.Parser[Any] = {
+    var p: cats.parse.Parser[Any] = cats.parse.Parser.charWhere(_.isDigit)
+    for (_ <- 1 until 100) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) => (a, b) }
+    p
+  }
+
+  var digits10: String  = uninitialized
+  var digits50: String  = uninitialized
+  var digits100: String = uninitialized
+
+  @Setup(Level.Trial)
+  def setupSeq(): Unit = {
+    digits10 = "1" * 10
+    digits50 = "1" * 50
+    digits100 = "1" * 100
+  }
+
+  @Benchmark
+  def rumil_seq10(bh: Blackhole): Unit = {
+    val result = run(rumilSeq10, digits10)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def cats_seq10(bh: Blackhole): Unit = {
+    val result = catsSeq10.parseAll(digits10)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def rumil_seq50(bh: Blackhole): Unit = {
+    val result = run(rumilSeq50, digits50)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def cats_seq50(bh: Blackhole): Unit = {
+    val result = catsSeq50.parseAll(digits50)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def rumil_seq100(bh: Blackhole): Unit = {
+    val result = run(rumilSeq100, digits100)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def cats_seq100(bh: Blackhole): Unit = {
+    val result = catsSeq100.parseAll(digits100)
+    bh.consume(result)
+  }
+
+  // ============================================================================
+  // Benchmarks: Stack-Safe (Trampolined) Sequential Chains
+  // ============================================================================
+
+  @Benchmark
+  def rumil_stacksafe_seq10(bh: Blackhole): Unit = {
+    val result = runStackSafe(rumilSeq10, digits10)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def rumil_stacksafe_seq50(bh: Blackhole): Unit = {
+    val result = runStackSafe(rumilSeq50, digits50)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def rumil_stacksafe_seq100(bh: Blackhole): Unit = {
+    val result = runStackSafe(rumilSeq100, digits100)
+    bh.consume(result)
+  }
+
+  // ============================================================================
+  // Benchmarks: Optimized Stack-Safe Sequential Chains
+  // ============================================================================
+
+  @Benchmark
+  def rumil_stacksafe_opt_seq10(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilSeq10, digits10)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def rumil_stacksafe_opt_seq50(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilSeq50, digits50)
+    bh.consume(result)
+  }
+
+  @Benchmark
+  def rumil_stacksafe_opt_seq100(bh: Blackhole): Unit = {
+    val result = runStackSafeOpt(rumilSeq100, digits100)
+    bh.consume(result)
+  }
+
 }

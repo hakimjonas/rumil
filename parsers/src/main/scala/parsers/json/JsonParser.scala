@@ -24,6 +24,9 @@ import parsers.common._
 def parseJson(input: String): Result[ParseError, JsonValue] =
   (ws *> jsonValue <* ws <* eof).run(input)
 
+/** Exposed for benchmarking - the full JSON parser */
+val jsonParser: Parser[ParseError, JsonValue] = ws *> jsonValue <* ws <* eof
+
 // ============================================================================
 // Whitespace handling (RFC 8259 Section 2)
 // ============================================================================
