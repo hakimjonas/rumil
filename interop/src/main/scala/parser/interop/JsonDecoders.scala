@@ -3,6 +3,10 @@ package parser.interop
 import parser.core._
 import parsers.json.{JsonValue, given_CanEqual_JsonValue_JsonValue}
 
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime}
+import java.time.format.DateTimeParseException
+import java.util.UUID
+
 /**
  * Primitive decoder instances for JSON values.
  *
@@ -283,6 +287,224 @@ object JsonDecoders {
               "BigDecimal",
               jsonValueTypeName(other),
               (line = 1, column = 1, offset = 0))),
+          (line = 1, column = 1, offset = 0)
+        )
+    }
+  }
+
+  // ============================================================================
+  // Java Time Decoders (ISO-8601 format)
+  // ============================================================================
+
+  /**
+   * Decoder for java.time.Instant from JsonValue.
+   *
+   * Expects a JsonValue.Str in ISO-8601 format (e.g., "2024-01-15T10:30:00Z").
+   */
+  given Decoder[JsonValue, Instant] = new Decoder[JsonValue, Instant] {
+    def decode(value: JsonValue): Result[DecodeError, Instant] = value match {
+      case JsonValue.Str(s) =>
+        try Result.Success(Instant.parse(s), 0)
+        catch {
+          case _: DateTimeParseException =>
+            Result.Failure(
+              List(DecodeError.TypeMismatch(
+                "Instant (ISO-8601)",
+                s"String($s) - invalid format",
+                (line = 1, column = 1, offset = 0))),
+              (line = 1, column = 1, offset = 0)
+            )
+        }
+      case other =>
+        Result.Failure(
+          List(DecodeError.TypeMismatch(
+            "Instant",
+            jsonValueTypeName(other),
+            (line = 1, column = 1, offset = 0))),
+          (line = 1, column = 1, offset = 0)
+        )
+    }
+  }
+
+  /**
+   * Decoder for java.time.LocalDate from JsonValue.
+   *
+   * Expects a JsonValue.Str in ISO-8601 format (e.g., "2024-01-15").
+   */
+  given Decoder[JsonValue, LocalDate] = new Decoder[JsonValue, LocalDate] {
+    def decode(value: JsonValue): Result[DecodeError, LocalDate] = value match {
+      case JsonValue.Str(s) =>
+        try Result.Success(LocalDate.parse(s), 0)
+        catch {
+          case _: DateTimeParseException =>
+            Result.Failure(
+              List(DecodeError.TypeMismatch(
+                "LocalDate (ISO-8601)",
+                s"String($s) - invalid format",
+                (line = 1, column = 1, offset = 0))),
+              (line = 1, column = 1, offset = 0)
+            )
+        }
+      case other =>
+        Result.Failure(
+          List(DecodeError.TypeMismatch(
+            "LocalDate",
+            jsonValueTypeName(other),
+            (line = 1, column = 1, offset = 0))),
+          (line = 1, column = 1, offset = 0)
+        )
+    }
+  }
+
+  /**
+   * Decoder for java.time.LocalDateTime from JsonValue.
+   *
+   * Expects a JsonValue.Str in ISO-8601 format (e.g., "2024-01-15T10:30:00").
+   */
+  given Decoder[JsonValue, LocalDateTime] = new Decoder[JsonValue, LocalDateTime] {
+    def decode(value: JsonValue): Result[DecodeError, LocalDateTime] = value match {
+      case JsonValue.Str(s) =>
+        try Result.Success(LocalDateTime.parse(s), 0)
+        catch {
+          case _: DateTimeParseException =>
+            Result.Failure(
+              List(DecodeError.TypeMismatch(
+                "LocalDateTime (ISO-8601)",
+                s"String($s) - invalid format",
+                (line = 1, column = 1, offset = 0))),
+              (line = 1, column = 1, offset = 0)
+            )
+        }
+      case other =>
+        Result.Failure(
+          List(DecodeError.TypeMismatch(
+            "LocalDateTime",
+            jsonValueTypeName(other),
+            (line = 1, column = 1, offset = 0))),
+          (line = 1, column = 1, offset = 0)
+        )
+    }
+  }
+
+  /**
+   * Decoder for java.time.LocalTime from JsonValue.
+   *
+   * Expects a JsonValue.Str in ISO-8601 format (e.g., "10:30:00").
+   */
+  given Decoder[JsonValue, LocalTime] = new Decoder[JsonValue, LocalTime] {
+    def decode(value: JsonValue): Result[DecodeError, LocalTime] = value match {
+      case JsonValue.Str(s) =>
+        try Result.Success(LocalTime.parse(s), 0)
+        catch {
+          case _: DateTimeParseException =>
+            Result.Failure(
+              List(DecodeError.TypeMismatch(
+                "LocalTime (ISO-8601)",
+                s"String($s) - invalid format",
+                (line = 1, column = 1, offset = 0))),
+              (line = 1, column = 1, offset = 0)
+            )
+        }
+      case other =>
+        Result.Failure(
+          List(DecodeError.TypeMismatch(
+            "LocalTime",
+            jsonValueTypeName(other),
+            (line = 1, column = 1, offset = 0))),
+          (line = 1, column = 1, offset = 0)
+        )
+    }
+  }
+
+  /**
+   * Decoder for java.time.OffsetDateTime from JsonValue.
+   *
+   * Expects a JsonValue.Str in ISO-8601 format (e.g., "2024-01-15T10:30:00+01:00").
+   */
+  given Decoder[JsonValue, OffsetDateTime] = new Decoder[JsonValue, OffsetDateTime] {
+    def decode(value: JsonValue): Result[DecodeError, OffsetDateTime] = value match {
+      case JsonValue.Str(s) =>
+        try Result.Success(OffsetDateTime.parse(s), 0)
+        catch {
+          case _: DateTimeParseException =>
+            Result.Failure(
+              List(DecodeError.TypeMismatch(
+                "OffsetDateTime (ISO-8601)",
+                s"String($s) - invalid format",
+                (line = 1, column = 1, offset = 0))),
+              (line = 1, column = 1, offset = 0)
+            )
+        }
+      case other =>
+        Result.Failure(
+          List(DecodeError.TypeMismatch(
+            "OffsetDateTime",
+            jsonValueTypeName(other),
+            (line = 1, column = 1, offset = 0))),
+          (line = 1, column = 1, offset = 0)
+        )
+    }
+  }
+
+  /**
+   * Decoder for java.time.ZonedDateTime from JsonValue.
+   *
+   * Expects a JsonValue.Str in ISO-8601 format (e.g., "2024-01-15T10:30:00+01:00[Europe/Paris]").
+   */
+  given Decoder[JsonValue, ZonedDateTime] = new Decoder[JsonValue, ZonedDateTime] {
+    def decode(value: JsonValue): Result[DecodeError, ZonedDateTime] = value match {
+      case JsonValue.Str(s) =>
+        try Result.Success(ZonedDateTime.parse(s), 0)
+        catch {
+          case _: DateTimeParseException =>
+            Result.Failure(
+              List(DecodeError.TypeMismatch(
+                "ZonedDateTime (ISO-8601)",
+                s"String($s) - invalid format",
+                (line = 1, column = 1, offset = 0))),
+              (line = 1, column = 1, offset = 0)
+            )
+        }
+      case other =>
+        Result.Failure(
+          List(DecodeError.TypeMismatch(
+            "ZonedDateTime",
+            jsonValueTypeName(other),
+            (line = 1, column = 1, offset = 0))),
+          (line = 1, column = 1, offset = 0)
+        )
+    }
+  }
+
+  // ============================================================================
+  // UUID Decoder
+  // ============================================================================
+
+  /**
+   * Decoder for java.util.UUID from JsonValue.
+   *
+   * Expects a JsonValue.Str in standard UUID format (e.g., "550e8400-e29b-41d4-a716-446655440000").
+   */
+  given Decoder[JsonValue, UUID] = new Decoder[JsonValue, UUID] {
+    def decode(value: JsonValue): Result[DecodeError, UUID] = value match {
+      case JsonValue.Str(s) =>
+        try Result.Success(UUID.fromString(s), 0)
+        catch {
+          case _: IllegalArgumentException =>
+            Result.Failure(
+              List(DecodeError.TypeMismatch(
+                "UUID",
+                s"String($s) - invalid format",
+                (line = 1, column = 1, offset = 0))),
+              (line = 1, column = 1, offset = 0)
+            )
+        }
+      case other =>
+        Result.Failure(
+          List(DecodeError.TypeMismatch(
+            "UUID",
+            jsonValueTypeName(other),
+            (line = 1, column = 1, offset = 0))),
           (line = 1, column = 1, offset = 0)
         )
     }

@@ -4,6 +4,9 @@ import munit.FunSuite
 import parser.core._
 import parsers.json.JsonValue
 
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime}
+import java.util.UUID
+
 /**
  * Comprehensive test suite for the Decoder typeclass.
  *
@@ -524,5 +527,215 @@ class DecoderTests extends FunSuite {
 
     val result = Decoder[JsonValue, BigNumbers].decode(json)
     assertEquals(result, Result.Success(BigNumbers(BigInt(123456789), BigDecimal(123.456)), 0))
+  }
+
+  // ============================================================================
+  // Java Time Decoders Tests
+  // ============================================================================
+
+  test("decode Instant from ISO-8601 string") {
+    val json = JsonValue.Str("2024-01-15T10:30:00Z")
+    val result = Decoder[JsonValue, Instant].decode(json)
+    assertEquals(result, Result.Success(Instant.parse("2024-01-15T10:30:00Z"), 0))
+  }
+
+  test("decode Instant - invalid format") {
+    val json = JsonValue.Str("not-a-date")
+    val result = Decoder[JsonValue, Instant].decode(json)
+    result match {
+      case Result.Failure(errors, _) =>
+        assert(errors.exists {
+          case DecodeError.TypeMismatch(exp, _, _) => exp.contains("Instant")
+          case _ => false
+        })
+      case _ => fail("Expected Failure")
+    }
+  }
+
+  test("decode Instant - wrong type") {
+    val json = JsonValue.Number(12345.0)
+    val result = Decoder[JsonValue, Instant].decode(json)
+    result match {
+      case Result.Failure(errors, _) =>
+        assert(errors.exists {
+          case DecodeError.TypeMismatch("Instant", _, _) => true
+          case _ => false
+        })
+      case _ => fail("Expected Failure")
+    }
+  }
+
+  test("decode LocalDate from ISO-8601 string") {
+    val json = JsonValue.Str("2024-01-15")
+    val result = Decoder[JsonValue, LocalDate].decode(json)
+    assertEquals(result, Result.Success(LocalDate.of(2024, 1, 15), 0))
+  }
+
+  test("decode LocalDate - invalid format") {
+    val json = JsonValue.Str("01-15-2024") // wrong format
+    val result = Decoder[JsonValue, LocalDate].decode(json)
+    result match {
+      case Result.Failure(errors, _) =>
+        assert(errors.exists {
+          case DecodeError.TypeMismatch(exp, _, _) => exp.contains("LocalDate")
+          case _ => false
+        })
+      case _ => fail("Expected Failure")
+    }
+  }
+
+  test("decode LocalDateTime from ISO-8601 string") {
+    val json = JsonValue.Str("2024-01-15T10:30:00")
+    val result = Decoder[JsonValue, LocalDateTime].decode(json)
+    assertEquals(result, Result.Success(LocalDateTime.of(2024, 1, 15, 10, 30, 0), 0))
+  }
+
+  test("decode LocalTime from ISO-8601 string") {
+    val json = JsonValue.Str("10:30:00")
+    val result = Decoder[JsonValue, LocalTime].decode(json)
+    assertEquals(result, Result.Success(LocalTime.of(10, 30, 0), 0))
+  }
+
+  test("decode LocalTime - with nanoseconds") {
+    val json = JsonValue.Str("10:30:00.123456789")
+    val result = Decoder[JsonValue, LocalTime].decode(json)
+    assertEquals(result, Result.Success(LocalTime.of(10, 30, 0, 123456789), 0))
+  }
+
+  test("decode OffsetDateTime from ISO-8601 string") {
+    val json = JsonValue.Str("2024-01-15T10:30:00+01:00")
+    val result = Decoder[JsonValue, OffsetDateTime].decode(json)
+    assertEquals(result, Result.Success(OffsetDateTime.parse("2024-01-15T10:30:00+01:00"), 0))
+  }
+
+  test("decode ZonedDateTime from ISO-8601 string") {
+    val json = JsonValue.Str("2024-01-15T10:30:00+01:00[Europe/Paris]")
+    val result = Decoder[JsonValue, ZonedDateTime].decode(json)
+    assertEquals(result, Result.Success(ZonedDateTime.parse("2024-01-15T10:30:00+01:00[Europe/Paris]"), 0))
+  }
+
+  // ============================================================================
+  // UUID Decoder Tests
+  // ============================================================================
+
+  test("decode UUID from string") {
+    val uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+    val json = JsonValue.Str("550e8400-e29b-41d4-a716-446655440000")
+    val result = Decoder[JsonValue, UUID].decode(json)
+    assertEquals(result, Result.Success(uuid, 0))
+  }
+
+  test("decode UUID - invalid format") {
+    val json = JsonValue.Str("not-a-uuid")
+    val result = Decoder[JsonValue, UUID].decode(json)
+    result match {
+      case Result.Failure(errors, _) =>
+        assert(errors.exists {
+          case DecodeError.TypeMismatch("UUID", _, _) => true
+          case _ => false
+        })
+      case _ => fail("Expected Failure")
+    }
+  }
+
+  test("decode UUID - wrong type") {
+    val json = JsonValue.Number(12345.0)
+    val result = Decoder[JsonValue, UUID].decode(json)
+    result match {
+      case Result.Failure(errors, _) =>
+        assert(errors.exists {
+          case DecodeError.TypeMismatch("UUID", _, _) => true
+          case _ => false
+        })
+      case _ => fail("Expected Failure")
+    }
+  }
+
+  // ============================================================================
+  // Case Class with java.time Fields Tests
+  // ============================================================================
+
+  test("decode case class with Instant field") {
+    case class Event(name: String, timestamp: Instant)
+    given Decoder[JsonValue, Event] = Decoder.derived
+
+    val json = JsonValue.Object(Map(
+      "name" -> JsonValue.Str("Meeting"),
+      "timestamp" -> JsonValue.Str("2024-01-15T10:30:00Z")
+    ))
+
+    val result = Decoder[JsonValue, Event].decode(json)
+    val expected = Event("Meeting", Instant.parse("2024-01-15T10:30:00Z"))
+    assertEquals(result, Result.Success(expected, 0))
+  }
+
+  test("decode case class with LocalDate field") {
+    case class Birthday(name: String, date: LocalDate)
+    given Decoder[JsonValue, Birthday] = Decoder.derived
+
+    val json = JsonValue.Object(Map(
+      "name" -> JsonValue.Str("Alice"),
+      "date" -> JsonValue.Str("1990-05-20")
+    ))
+
+    val result = Decoder[JsonValue, Birthday].decode(json)
+    val expected = Birthday("Alice", LocalDate.of(1990, 5, 20))
+    assertEquals(result, Result.Success(expected, 0))
+  }
+
+  test("decode case class with UUID field") {
+    case class Entity(id: UUID, name: String)
+    given Decoder[JsonValue, Entity] = Decoder.derived
+
+    val uuid = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+    val json = JsonValue.Object(Map(
+      "id" -> JsonValue.Str("550e8400-e29b-41d4-a716-446655440000"),
+      "name" -> JsonValue.Str("Test Entity")
+    ))
+
+    val result = Decoder[JsonValue, Entity].decode(json)
+    val expected = Entity(uuid, "Test Entity")
+    assertEquals(result, Result.Success(expected, 0))
+  }
+
+  test("decode case class with optional Instant") {
+    case class Log(message: String, timestamp: Option[Instant])
+    given Decoder[JsonValue, Log] = Decoder.derived
+
+    val jsonWithTimestamp = JsonValue.Object(Map(
+      "message" -> JsonValue.Str("Hello"),
+      "timestamp" -> JsonValue.Str("2024-01-15T10:30:00Z")
+    ))
+
+    val jsonWithoutTimestamp = JsonValue.Object(Map(
+      "message" -> JsonValue.Str("Hello"),
+      "timestamp" -> JsonValue.Null
+    ))
+
+    val resultWith = Decoder[JsonValue, Log].decode(jsonWithTimestamp)
+    val resultWithout = Decoder[JsonValue, Log].decode(jsonWithoutTimestamp)
+
+    assertEquals(resultWith, Result.Success(Log("Hello", Some(Instant.parse("2024-01-15T10:30:00Z"))), 0))
+    assertEquals(resultWithout, Result.Success(Log("Hello", None), 0))
+  }
+
+  test("decode case class with List of UUIDs") {
+    case class Team(name: String, memberIds: List[UUID])
+    given Decoder[JsonValue, Team] = Decoder.derived
+
+    val uuid1 = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
+    val uuid2 = UUID.fromString("660e8400-e29b-41d4-a716-446655440001")
+
+    val json = JsonValue.Object(Map(
+      "name" -> JsonValue.Str("Alpha Team"),
+      "memberIds" -> JsonValue.Array(List(
+        JsonValue.Str("550e8400-e29b-41d4-a716-446655440000"),
+        JsonValue.Str("660e8400-e29b-41d4-a716-446655440001")
+      ))
+    ))
+
+    val result = Decoder[JsonValue, Team].decode(json)
+    val expected = Team("Alpha Team", List(uuid1, uuid2))
+    assertEquals(result, Result.Success(expected, 0))
   }
 }
