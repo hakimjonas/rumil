@@ -9,8 +9,7 @@ import org.openjdk.jmh.infra.Blackhole
 import parser.core._
 import parser.runtime.run
 import parser.syntax._
-import parsers.common._
-import parsers.json.{jsonParser, JsonValue}
+import parsers.json.jsonParser
 
 /**
  * JMH benchmarks for real-world parser patterns.
@@ -30,11 +29,11 @@ class RealParserBenchmarks {
   // Test Data
   // ============================================================================
 
-  var keyValuePairs: String = uninitialized
+  var keyValuePairs: String  = uninitialized
   var nestedBrackets: String = uninitialized
-  var csvData: String = uninitialized
-  var numberList: String = uninitialized
-  var mixedTokens: String = uninitialized
+  var csvData: String        = uninitialized
+  var numberList: String     = uninitialized
+  var mixedTokens: String    = uninitialized
 
   @Setup(Level.Trial)
   def setup(): Unit = {
@@ -47,7 +46,7 @@ class RealParserBenchmarks {
     // CSV-like data
     csvData = {
       val header = "id,name,age,city,score"
-      val rows = (1 to 100).map(i => s"$i,name$i,${20 + i % 50},city${i % 10},${i * 10}")
+      val rows   = (1 to 100).map(i => s"$i,name$i,${20 + i % 50},city${i % 10},${i * 10}")
       (header +: rows).mkString("\n")
     }
 
@@ -65,7 +64,7 @@ class RealParserBenchmarks {
   // Key-value parser: key=value pairs separated by commas
   val keyValueParser: Parser[ParseError, List[(String, String)]] = {
     val identifier = letter.many1.map(_.mkString)
-    val pair = (identifier <* char('=')) ~ identifier
+    val pair       = (identifier <* char('=')) ~ identifier
     pair.sepBy1(char(','))
   }
 
@@ -77,8 +76,8 @@ class RealParserBenchmarks {
 
   // CSV row parser
   val csvRowParser: Parser[ParseError, List[List[String]]] = {
-    val field = satisfy(c => c != ',' && c != '\n', "field char").many.map(_.mkString)
-    val row = field.sepBy1(char(','))
+    val field   = satisfy(c => c != ',' && c != '\n', "field char").many.map(_.mkString)
+    val row     = field.sepBy1(char(','))
     val newline = char('\n')
     row.sepBy1(newline)
   }
@@ -91,9 +90,9 @@ class RealParserBenchmarks {
 
   // Mixed token parser (words and numbers)
   val mixedTokenParser: Parser[ParseError, List[Either[String, Int]]] = {
-    val ws = char(' ').many
-    val word = letter.many1.map(cs => Left(cs.mkString))
-    val num = digit.many1.map(ds => Right(ds.mkString.toInt))
+    val ws    = char(' ').many
+    val word  = letter.many1.map(cs => Left(cs.mkString))
+    val num   = digit.many1.map(ds => Right(ds.mkString.toInt))
     val token = word | num
     ws *> token.sepBy1(char(' ').many1) <* ws
   }
@@ -182,21 +181,24 @@ class RealParserBenchmarks {
   // JSON Parser Benchmarks
   // ============================================================================
 
-  var jsonSmall: String = uninitialized
+  var jsonSmall: String  = uninitialized
   var jsonMedium: String = uninitialized
-  var jsonLarge: String = uninitialized
-  var jsonDeep: String = uninitialized
+  var jsonLarge: String  = uninitialized
+  var jsonDeep: String   = uninitialized
 
   @Setup(Level.Trial)
   def setupJson(): Unit = {
     jsonSmall = """{"name":"Alice","age":30,"active":true}"""
 
-    jsonMedium = """{"users":[{"name":"Alice","age":30},{"name":"Bob","age":25},{"name":"Charlie","age":35}],"count":3}"""
+    jsonMedium =
+      """{"users":[{"name":"Alice","age":30},{"name":"Bob","age":25},{"name":"Charlie","age":35}],"count":3}"""
 
     jsonLarge = {
-      val users = (1 to 50).map { i =>
-        s"""{"id":$i,"name":"User$i","age":${20 + i},"active":${i % 2 == 0},"score":${i * 10.5}}"""
-      }.mkString(",")
+      val users = (1 to 50)
+        .map { i =>
+          s"""{"id":$i,"name":"User$i","age":${20 + i},"active":${i % 2 == 0},"score":${i * 10.5}}"""
+        }
+        .mkString(",")
       s"""{"users":[$users],"total":50}"""
     }
 

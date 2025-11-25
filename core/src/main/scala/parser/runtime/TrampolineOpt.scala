@@ -17,9 +17,9 @@ import parser.core._
 object TrampolineOpt {
 
   // Sentinel values to avoid Option boxing
-  private val NoParser: Parser[Any, Any] = null.asInstanceOf[Parser[Any, Any]]
+  private val NoParser: Parser[Any, Any]  = null.asInstanceOf[Parser[Any, Any]]
   private val NoResult: IResult[Any, Any] = null.asInstanceOf[IResult[Any, Any]]
-  private val NoMapFn: Any => Any = null.asInstanceOf[Any => Any]
+  private val NoMapFn: Any => Any         = null.asInstanceOf[Any => Any]
 
   /**
    * Continuation frame for trampolined interpretation.
@@ -28,6 +28,7 @@ object TrampolineOpt {
    * No null placeholders, no manual tagging, cleaner pattern matching.
    */
   private enum Frame {
+
     /** FlatMap continuation: apply function to success value, track consumed chars */
     case FlatMap(fn: Any => Parser[Any, Any], consumed: Int)
 
@@ -40,7 +41,7 @@ object TrampolineOpt {
    */
   def run[E, A](parser: Parser[E, A], state: ParserState): IResult[E, A] = {
     // Pre-allocate stack with reasonable capacity
-    var stack = new Array[Frame](32)
+    var stack    = new Array[Frame](32)
     var stackTop = 0
 
     // Current parser - NoParser means we're in result-processing mode
@@ -58,7 +59,7 @@ object TrampolineOpt {
     // Main loop
     while (true) {
       // Phase 1: Expand FlatMap/Map chains into continuations
-      while (current ne NoParser) {
+      while (current ne NoParser)
         current match {
           case Parser.FlatMap(source, f) =>
             // Ensure stack capacity
@@ -104,7 +105,6 @@ object TrampolineOpt {
             result = interpretI(current, state).asInstanceOf[IResult[Any, Any]]
             current = NoParser
         }
-      }
 
       // Apply any pending map function to the result
       if (mapFn ne NoMapFn) {
@@ -144,7 +144,7 @@ object TrampolineOpt {
 
         frame match {
           case fm: Frame.FlatMap =>
-            val fn = fm.fn
+            val fn           = fm.fn
             val prevConsumed = fm.consumed
 
             result match {
@@ -173,11 +173,11 @@ object TrampolineOpt {
               case _: LazyFailure[?] =>
                 // Failure: add accumulated consumed back and propagate
                 consumedAcc += prevConsumed
-                // result stays the same, continue popping
+              // result stays the same, continue popping
             }
 
           case fmp: Frame.FlatMapPartial =>
-            val errors1 = fmp.errors
+            val errors1      = fmp.errors
             val prevConsumed = fmp.consumed
 
             result match {
@@ -186,7 +186,8 @@ object TrampolineOpt {
                 consumedAcc = 0
 
               case Result.Partial(value, errors2, consumed) =>
-                result = Result.Partial(value, errors1 ++ errors2, prevConsumed + consumed + consumedAcc)
+                result =
+                  Result.Partial(value, errors1 ++ errors2, prevConsumed + consumed + consumedAcc)
                 consumedAcc = 0
 
               case LazyFailure(mkErrors2, furthest) =>

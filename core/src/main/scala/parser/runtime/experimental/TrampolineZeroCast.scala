@@ -1,8 +1,9 @@
 package parser.runtime.experimental
 
 import scala.util.control.TailCalls.{TailRec, done, tailcall}
+
 import parser.core._
-import parser.runtime.{ParserState, interpretI, IResult, LazyFailure}
+import parser.runtime.{IResult, LazyFailure, ParserState, interpretI}
 
 /**
  * Minimal-cast stack-safe interpreter using GADT Continuations.
@@ -80,7 +81,7 @@ object TrampolineZeroCast {
     value: In,
     consumed: Int,
     state: ParserState
-  ): TailRec[IResult[E, Out]] = {
+  ): TailRec[IResult[E, Out]] =
     cont match {
       case Continuation.End() =>
         // Identity - value is already the right type
@@ -100,7 +101,8 @@ object TrampolineZeroCast {
 
           case Result.Partial(v2, errors, c2) =>
             // Convert to partial continuation
-            val partialCont = Continuation.FlatMapPartialCont(errors, prevConsumed + consumed + c2, next)
+            val partialCont =
+              Continuation.FlatMapPartialCont(errors, prevConsumed + consumed + c2, next)
             tailcall(applyContinuation(partialCont, v2, 0, state))
 
           case LazyFailure(mkErrors, furthest) =>
@@ -118,7 +120,6 @@ object TrampolineZeroCast {
             LazyFailure(() => errors1 ++ mkErrors2(), furthest)
         }
     }
-  }
 
   /**
    * Recursive interpreter using TailCalls for stack safety.
@@ -128,7 +129,7 @@ object TrampolineZeroCast {
   private def runRec[E, A](
     parser: Parser[E, A],
     state: ParserState
-  ): TailRec[IResult[E, A]] = {
+  ): TailRec[IResult[E, A]] =
     parser match {
       // For FlatMap, we build a continuation and recurse
       case Parser.FlatMap(source, f) =>
@@ -144,7 +145,6 @@ object TrampolineZeroCast {
       case _ =>
         done(interpretI(parser, state))
     }
-  }
 
   /**
    * Run a parser with an existing continuation chain.
@@ -160,7 +160,7 @@ object TrampolineZeroCast {
     parser: Parser[E, A],
     cont: Continuation[E, A, Out],
     state: ParserState
-  ): TailRec[IResult[E, Out]] = {
+  ): TailRec[IResult[E, Out]] =
     parser match {
       // Extend the continuation chain for FlatMap
       case Parser.FlatMap(source, f) =>
@@ -183,7 +183,11 @@ object TrampolineZeroCast {
           f.asInstanceOf[Any => Any],
           cont.asInstanceOf[Continuation[Nothing, Any, Out]]
         )
-        tailcall(runWithContinuation(source.asInstanceOf[Parser[E, Any]], extendedCont.asInstanceOf[Continuation[E, Any, Out]], state))
+        tailcall(
+          runWithContinuation(
+            source.asInstanceOf[Parser[E, Any]],
+            extendedCont.asInstanceOf[Continuation[E, Any, Out]],
+            state))
 
       // Base case - interpret and apply continuation
       case _ =>
@@ -201,7 +205,6 @@ object TrampolineZeroCast {
             done(failure)
         }
     }
-  }
 
   /**
    * Entry point - run a parser with zero-cast interpretation.
@@ -209,7 +212,6 @@ object TrampolineZeroCast {
    * Fully type-safe: Parser[E, A] => IResult[E, A]
    * No casts, no Any, no unsafe operations.
    */
-  def run[E, A](parser: Parser[E, A], state: ParserState): IResult[E, A] = {
+  def run[E, A](parser: Parser[E, A], state: ParserState): IResult[E, A] =
     runRec(parser, state).result
-  }
 }

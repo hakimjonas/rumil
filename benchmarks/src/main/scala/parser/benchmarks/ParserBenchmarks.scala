@@ -241,19 +241,25 @@ class ParserBenchmarks {
 
   val catsSeq10: cats.parse.Parser[Any] = {
     var p: cats.parse.Parser[Any] = cats.parse.Parser.charWhere(_.isDigit)
-    for (_ <- 1 until 10) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) => (a, b) }
+    for (_ <- 1 until 10) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) =>
+      (a, b)
+    }
     p
   }
 
   val catsSeq50: cats.parse.Parser[Any] = {
     var p: cats.parse.Parser[Any] = cats.parse.Parser.charWhere(_.isDigit)
-    for (_ <- 1 until 50) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) => (a, b) }
+    for (_ <- 1 until 50) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) =>
+      (a, b)
+    }
     p
   }
 
   val catsSeq100: cats.parse.Parser[Any] = {
     var p: cats.parse.Parser[Any] = cats.parse.Parser.charWhere(_.isDigit)
-    for (_ <- 1 until 100) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) => (a, b) }
+    for (_ <- 1 until 100) p = (p ~ cats.parse.Parser.charWhere(_.isDigit)).map { case (a, b) =>
+      (a, b)
+    }
     p
   }
 

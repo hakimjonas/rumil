@@ -97,7 +97,6 @@ def runZeroCast[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
   toResult(experimental.TrampolineZeroCast.run(parser, state))
 }
 
-
 /**
  * Public interpret function that returns Result directly.
  *

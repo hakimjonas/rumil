@@ -7,7 +7,7 @@ import scala.compiletime.uninitialized
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
 import parser.core._
-import parser.runtime.{run, runRecursive, runZeroCast}
+import parser.runtime.{run, runZeroCast}
 import parser.syntax._
 
 /**
@@ -28,8 +28,8 @@ class ZeroCastBenchmarks {
   // Test Data
   // ============================================================================
 
-  var digits10: String = uninitialized
-  var digits50: String = uninitialized
+  var digits10: String  = uninitialized
+  var digits50: String  = uninitialized
   var digits100: String = uninitialized
 
   @Setup(Level.Trial)
@@ -46,14 +46,13 @@ class ZeroCastBenchmarks {
   def digitParser: Parser[ParseError, Int] = satisfy(_.isDigit, "digit").map(_.asDigit)
 
   // Build a parser that's a sequence of N parsers using flatMap (stack stress test)
-  def seqParser(n: Int): Parser[ParseError, List[Int]] = {
+  def seqParser(n: Int): Parser[ParseError, List[Int]] =
     (1 to n).foldLeft(succeed(List.empty[Int])) { (acc, _) =>
       acc.flatMap(list => digitParser.map(d => list :+ d))
     }
-  }
 
-  lazy val seq10Parser: Parser[ParseError, List[Int]] = seqParser(10)
-  lazy val seq50Parser: Parser[ParseError, List[Int]] = seqParser(50)
+  lazy val seq10Parser: Parser[ParseError, List[Int]]  = seqParser(10)
+  lazy val seq50Parser: Parser[ParseError, List[Int]]  = seqParser(50)
   lazy val seq100Parser: Parser[ParseError, List[Int]] = seqParser(100)
 
   // ============================================================================

@@ -15,7 +15,7 @@ object StackProbe {
       for (_ <- 1 until n)
         parser = parser ~ char('a')
 
-      val input = "a" * n
+      val input  = "a" * n
       val result = parser.run(input)
 
       if (result.isSuccess) {
