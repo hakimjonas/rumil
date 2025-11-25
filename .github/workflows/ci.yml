@@ -42,8 +42,9 @@ jobs:
 
       - name: Run tests
         env:
-          JAVA_OPTS: "-Xss4m"
-        run: sbt ++${{ matrix.scala }} test
+          JAVA_OPTS: "-Xss4m -Xmx4g"
+          JVM_OPTS: "-Xss4m -Xmx4g"
+        run: sbt -v ++${{ matrix.scala }} test
 
       - name: Check formatting
         run: sbt ++${{ matrix.scala }} scalafmtCheckAll scalafmtSbtCheck
@@ -70,7 +71,8 @@ jobs:
 
       - name: Generate coverage report
         env:
-          JAVA_OPTS: "-Xss4m"
+          JAVA_OPTS: "-Xss4m -Xmx4g"
+          JVM_OPTS: "-Xss4m -Xmx4g"
         run: sbt clean coverage test coverageAggregate
 
       - name: Upload coverage to Codecov
