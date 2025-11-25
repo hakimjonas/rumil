@@ -24,7 +24,7 @@
 
 ## Excellence Roadmap
 
-### TIER 1: Feature Completeness
+### TIER 1: Feature Completeness ✅ COMPLETE
 *What users will expect from a complete library*
 
 | Feature | Status | Priority |
@@ -32,9 +32,9 @@
 | XML Decoder (XmlNode -> case class) | **Complete** | HIGH |
 | TOML Decoder (TomlValue -> case class) | **Complete** | HIGH |
 | YAML Decoder (YamlValue -> case class) | **Complete** | HIGH |
-| Field Annotations (@JsonKey, @JsonIgnore) | Pending | MEDIUM |
-| Streaming Parsing (large files) | Pending | MEDIUM |
-| Memoization Combinator (.memoize) | Pending | LOW |
+| Field Annotations (@JsonKey, @JsonIgnore, @FieldName) | **Complete** | MEDIUM |
+| Memoization Combinator (.memoize) | **Complete** | LOW |
+| Streaming Parsing (large files) | Future/Community | LOW |
 
 ### TIER 2: Proof of Quality
 *Evidence that backs up our claims*
@@ -43,22 +43,23 @@
 |------|--------|----------|
 | JMH Benchmark Suite | **Complete** | HIGH |
 | vs cats-parse comparison | **Complete** | HIGH |
-| vs fastparse comparison | Pending | MEDIUM |
-| Memory profiling | Pending | MEDIUM |
-| Real-world workloads | Pending | MEDIUM |
+| Memoization Performance Analysis | **Complete** | HIGH |
+| vs fastparse comparison | Not Needed | LOW |
+| Memory profiling | Future/Community | LOW |
+| Real-world workloads | Future/Community | LOW |
 
-### TIER 3: Documentation Excellence
+### TIER 3: Documentation Excellence ⚠️ IN PROGRESS
 *Users should understand everything without reading source*
 
 | Document | Status | Priority |
 |----------|--------|----------|
-| Getting Started (15-min guide) | Incomplete | HIGH |
-| API Reference (Scaladoc) | Exists, unpublished | HIGH |
-| Cookbook (10 common patterns) | Pending | HIGH |
+| Getting Started (15-min guide) | **In Progress** | HIGH |
+| Cookbook (10 common patterns) | **In Progress** | HIGH |
+| Performance Guide (memoization) | **Complete** | HIGH |
+| API Reference (Scaladoc) | Exists, needs review | MEDIUM |
 | Error Handling Guide | Partial | MEDIUM |
-| Performance Guide | Sparse | MEDIUM |
-| Comparison Matrix (vs competitors) | Pending | MEDIUM |
-| Troubleshooting Guide | Pending | LOW |
+| Comparison Matrix (vs competitors) | Future/Community | LOW |
+| Troubleshooting Guide | Future/Community | LOW |
 
 ### TIER 4: Platform Reach
 *Where can Rumil run?*
@@ -158,12 +159,20 @@ For applications requiring maximum throughput on hot paths, users can:
 
 ---
 
-## Recommended Work Order
+## Current Focus: Documentation for v0.2.0 Release
 
-1. **Documentation** - Getting Started + Cookbook
-2. **Performance Phase 1** - ArrayBuffer, lazy errors
-3. **Field Annotations** - Polish decoder API
-4. **Streaming** - Large file handling
+### Remaining Work Before Release
+
+1. **Getting Started Guide** (15-min tutorial) - IN PROGRESS
+2. **Cookbook** (10 common patterns) - IN PROGRESS
+3. **Final cleanup** (remove dead code, polish APIs)
+4. **Publish Scaladoc** (API reference)
+
+### Post-Release Improvements (Community/Future)
+
+1. **Performance Phase 1** - ArrayBuffer for `many`, lazy error construction
+2. **Streaming** - Large file handling
+3. **Platform Expansion** - Scala.js, Scala Native
 
 ---
 

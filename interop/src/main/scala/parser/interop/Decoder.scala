@@ -142,10 +142,13 @@ object Decoder {
     val className: String = TypeRepr.of[To].typeSymbol.name
 
     // Get field symbols from the case class
-    val aSymbol      = TypeRepr.of[To].typeSymbol
-    val fieldSymbols = aSymbol.caseFields
+    val toSymbol = TypeRepr.of[To].typeSymbol
 
-    // Extract field labels
+    // Use primaryConstructor.paramSymss to get constructor parameters
+    // Note: caseFields can also be used, but paramSymss is more direct
+    val fieldSymbols = toSymbol.primaryConstructor.paramSymss.flatten
+
+    // Extract field labels (just use field names directly)
     val fieldLabels: List[String] = fieldSymbols.map(_.name)
 
     // Support multiple source types

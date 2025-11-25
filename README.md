@@ -347,6 +347,42 @@ val result = csv.run(input).map { rows =>
 
 **When to use:** Standard CSV files, database imports, data analysis
 
+### Customizing Field Mapping
+
+The `FieldTransformer` trait provides an extension point for customizing how case class fields map to source data fields. Rumil includes several built-in transformers for common naming conventions:
+
+```scala
+import parser.interop.{FieldTransformer, FieldTransformers}
+
+// Built-in transformers for naming conventions
+FieldTransformers.SnakeCase         // camelCase → snake_case
+FieldTransformers.KebabCase         // camelCase → kebab-case
+FieldTransformers.ScreamingSnakeCase  // camelCase → SCREAMING_SNAKE_CASE
+
+// Custom transformer example
+val customTransformer = new FieldTransformer {
+  def transformFieldName(fieldName: String): String =
+    s"api_$fieldName"  // Add prefix to all fields
+
+  def shouldIncludeField(fieldName: String): Boolean =
+    !fieldName.startsWith("internal")  // Skip internal fields
+}
+
+// Example: Converting names
+FieldTransformers.SnakeCase.transformFieldName("userName")  // "user_name"
+FieldTransformers.KebabCase.transformFieldName("isAdmin")   // "is-admin"
+```
+
+**Why FieldTransformer instead of baked-in annotations?**
+
+Rumil is a parser combinator library, not a serialization framework. FieldTransformer provides:
+- ✅ Clean extension point for customization
+- ✅ Simple to implement (just two methods)
+- ✅ No commitment to specific annotation APIs
+- ✅ Users control their own field mapping logic
+
+Example annotations (`@Rename`, `@Ignore`, `@Aliases`) are available in `parser.interop.examples` as templates showing how to implement annotation-based transformers using Scala 3 inline metaprogramming. Similar to the `parsers` module: we provide examples, not prescriptive APIs.
+
 ## Choosing an Approach
 
 | Requirement | Recommended Approach |
