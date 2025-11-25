@@ -5,14 +5,14 @@ import parser.core._
 import parser.runtime.{ParserState, interpretI, IResult, LazyFailure}
 
 /**
- * Minimal-cast stack-safe interpreter inspired by Eru's design.
+ * Minimal-cast stack-safe interpreter using GADT Continuations.
  *
  * This implementation demonstrates that parser combinators can MOSTLY achieve
  * type safety with minimal runtime casts, at the cost of using Scala's
  * TailCalls trampoline instead of a manual stack.
  *
  * Key differences from TrampolineOpt:
- * 1. GADT Continuation with proper type tracking (like Eru)
+ * 1. GADT Continuation with proper type tracking
  * 2. Continuation APPLICATION is zero-cast (applyContinuation)
  * 3. Continuation COMPOSITION requires localized casts (runWithContinuation)
  * 4. Uses scala.util.control.TailCalls for stack safety
@@ -21,15 +21,14 @@ import parser.runtime.{ParserState, interpretI, IResult, LazyFailure}
  * vs TrampolineOpt's ~17 casts (5 sentinels + 12 type erasure)
  *
  * Why casts are needed for composition:
- * Parser combinators require immediate execution (unlike Eru's deferred effects).
- * When extending continuation chains dynamically, we need type erasure at
- * composition points. However, GADT tracking ensures these casts are safe.
+ * Parser combinators require immediate execution, unlike effect systems that
+ * build AST data structures. When extending continuation chains dynamically,
+ * we need type erasure at composition points. However, GADT tracking ensures
+ * these casts are safe.
  *
  * Performance tradeoff: ~2-3x slower due to TailRec allocations,
- * but proves the principled design is possible.
- *
- * This serves as a blueprint for Fungal's parser implementation,
- * which will have proper TCO in the Cranelift backend.
+ * but proves the principled design is possible. The overhead would be
+ * eliminated in a language with proper tail call optimization.
  */
 object TrampolineZeroCast {
 
@@ -154,8 +153,8 @@ object TrampolineZeroCast {
    *
    * Type safety note: We need localized casts here because we're composing
    * continuations dynamically. The GADT tracks types, but dynamic composition
-   * requires erasure. This is fundamentally different from Eru's approach where
-   * effects build AST data structures - parsers need immediate execution.
+   * requires erasure. This differs from effect systems where AST data structures
+   * are built - parsers need immediate execution for performance.
    */
   private def runWithContinuation[E, A, Out](
     parser: Parser[E, A],
