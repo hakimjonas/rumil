@@ -154,10 +154,11 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
           state.advance()
           Result.Success(c, 1)
         } else {
-          val loc   = state.location
-          val found = c.toString // Capture for lazy thunk
+          val loc = state.location
+          // Capture char as primitive, defer toString to when error is materialized
+          // This saves ~40 bytes per failed parse when error is never accessed
           LazyFailure(
-            () => List(ParseError.Unexpected(found, Set(expected), loc)),
+            () => List(ParseError.Unexpected(c.toString, Set(expected), loc)),
             loc
           )
         }
@@ -185,10 +186,12 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
           Result.Success(target, len)
         } else {
           val loc = state.location // Only compute location on failure
-          val found =
-            state.input.substring(state.offset, math.min(state.offset + len, state.input.length))
+          // Capture position info as primitives, defer substring to error materialization
+          val input     = state.input
+          val start     = state.offset
+          val endOffset = math.min(start + len, input.length)
           LazyFailure(
-            () => List(ParseError.Unexpected(found, Set(s"\"$target\""), loc)),
+            () => List(ParseError.Unexpected(input.substring(start, endOffset), Set(s"\"$target\""), loc)),
             loc
           )
         }
