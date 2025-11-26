@@ -49,6 +49,8 @@ class TrampolineComparison {
   //
   // Benchmark 2: Deep flatMap chains
   //
+  // IMPORTANT: flatMap chains need N+1 chars (initial parse + N continuations)
+  //
 
   @Benchmark
   def rumil_deepFlatMap(): Any = {
@@ -60,7 +62,7 @@ class TrampolineComparison {
     for (_ <- 1 to 100) {
       p = p.flatMap(_ => char('1'))
     }
-    val input = "1" * 100
+    val input = "1" * 101  // Fixed: need 101 chars for 100 flatMaps
     run(p, input)
   }
 
@@ -68,12 +70,12 @@ class TrampolineComparison {
   def zio_deepFlatMap(): Any = {
     import zio.parser._
 
-    // zio-parser doesn't have flatMap on Syntax, use zip instead
+    // zio-parser doesn't have flatMap on Syntax, use ~> (zipRight) instead
     var p = Syntax.char('1')
     for (_ <- 1 to 100) {
       p = p ~> Syntax.char('1')
     }
-    val input = "1" * 100
+    val input = "1" * 101  // Fixed: need 101 chars
     p.parseString(input)
   }
 
