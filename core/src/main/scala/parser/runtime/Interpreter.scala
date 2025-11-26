@@ -7,7 +7,7 @@ import parser.core._
 // ============================================================================
 
 /**
- * Lazy failure wrapper - only this case differs from public Result.
+ * Lazy failure wrapper - defers error construction until needed.
  *
  * Holds a thunk `() => List[E]` instead of `List[E]`, allowing us to defer
  * error construction until we know the error is actually needed.
@@ -18,19 +18,42 @@ import parser.core._
 final private[runtime] case class LazyFailure[+E](mkErrors: () => List[E], furthest: Location)
 
 /**
+ * Lazy partial wrapper - defers error construction in partial results.
+ *
+ * Like LazyFailure, this holds a thunk `() => List[E]` to defer error
+ * construction. Used when RecoverWith succeeds with fallback - we have a
+ * successful parse value but also accumulated errors.
+ *
+ * During error accumulation (Many, sepBy), if many LazyPartial results are
+ * combined, the error thunks remain unevaluated until the final toResult call.
+ * This significantly reduces allocation in error-heavy parsing scenarios.
+ *
+ * Example: Many with orElse recovery parsing 1000 items with 900 errors:
+ * - Without LazyPartial: 900 error thunk evaluations during Many
+ * - With LazyPartial: 1 batch error evaluation at toResult
+ */
+final private[runtime] case class LazyPartial[+E, +A](
+  value: A,
+  mkErrors: () => List[E],
+  consumed: Int
+)
+
+/**
  * Internal result type used during interpretation.
  *
- * This is a union of the public Result success/partial types with LazyFailure.
- * Success and Partial reuse Result types directly (no double allocation).
- * Only Failure uses a separate lazy wrapper.
+ * This is a union of the public Result success type with lazy wrappers for
+ * partial and failure cases.
+ * - Success reuses Result.Success directly (no double allocation)
+ * - LazyPartial defers Partial error construction
+ * - LazyFailure defers Failure error construction
  */
-private[runtime] type IResult[+E, +A] = Result.Success[E, A] | Result.Partial[E, A] | LazyFailure[E]
+private[runtime] type IResult[+E, +A] = Result.Success[E, A] | LazyPartial[E, A] | LazyFailure[E]
 
 /** Convert IResult to public Result */
 private[runtime] def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match {
-  case s: Result.Success[?, ?]  => s.asInstanceOf[Result[E, A]]
-  case p: Result.Partial[?, ?]  => p.asInstanceOf[Result[E, A]]
-  case LazyFailure(mkErrs, loc) => Result.Failure(mkErrs(), loc)
+  case s: Result.Success[?, ?]     => s.asInstanceOf[Result[E, A]]
+  case LazyPartial(v, mkErrs, c)   => Result.Partial(v, mkErrs(), c)
+  case LazyFailure(mkErrs, loc)    => Result.Failure(mkErrs(), loc)
 }
 
 // ============================================================================
@@ -77,26 +100,27 @@ def runRecursive[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
   toResult(interpretI(parser, state))
 }
 
-/**
- * Runs a parser using the zero-cast experimental interpreter.
- *
- * This version achieves full type safety with minimal runtime casts by using
- * GADT Continuations and Scala's TailCalls trampoline. It's approximately
- * 2-3x slower than the optimized TrampolineOpt due to TailRec allocations.
- *
- * This implementation demonstrates that parser combinators can achieve
- * near-perfect type safety, with only 6 localized casts needed for dynamic
- * continuation composition. The performance penalty is due to TailRec overhead,
- * which could be eliminated in a language with proper tail call optimization.
- *
- * @param parser The parser to execute
- * @param input The input string to parse
- * @return Result containing either success value or error list
- */
-def runZeroCast[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
-  val state = parserState(input)
-  toResult(experimental.TrampolineZeroCast.run(parser, state))
-}
+// Commented out - experimental interpreter was removed
+// /**
+//  * Runs a parser using the zero-cast experimental interpreter.
+//  *
+//  * This version achieves full type safety with minimal runtime casts by using
+//  * GADT Continuations and Scala's TailCalls trampoline. It's approximately
+//  * 2-3x slower than the optimized TrampolineOpt due to TailRec allocations.
+//  *
+//  * This implementation demonstrates that parser combinators can achieve
+//  * near-perfect type safety, with only 6 localized casts needed for dynamic
+//  * continuation composition. The performance penalty is due to TailRec overhead,
+//  * which could be eliminated in a language with proper tail call optimization.
+//  *
+//  * @param parser The parser to execute
+//  * @param input The input string to parse
+//  * @return Result containing either success value or error list
+//  */
+// def runZeroCast[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
+//   val state = parserState(input)
+//   toResult(experimental.TrampolineZeroCast.run(parser, state))
+// }
 
 /**
  * Public interpret function that returns Result directly.
@@ -200,8 +224,8 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
       interpretI(source, state) match {
         case Result.Success(value, consumed) =>
           Result.Success(f(value), consumed)
-        case Result.Partial(value, errors, consumed) =>
-          Result.Partial(f(value), errors, consumed)
+        case LazyPartial(value, mkErrs, consumed) =>
+          LazyPartial(f(value), mkErrs, consumed)
         case LazyFailure(mkErrs, loc) =>
           LazyFailure(mkErrs, loc)
       }
@@ -212,20 +236,21 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
           interpretI(f(value), state) match {
             case Result.Success(value2, consumed2) =>
               Result.Success(value2, consumed1 + consumed2)
-            case Result.Partial(value2, errors2, consumed2) =>
-              Result.Partial(value2, errors2, consumed1 + consumed2)
+            case LazyPartial(value2, mkErrs2, consumed2) =>
+              LazyPartial(value2, mkErrs2, consumed1 + consumed2)
             case LazyFailure(mkErrs, loc) =>
               LazyFailure(mkErrs, loc)
           }
-        case Result.Partial(value, errors1, consumed1) =>
+        case LazyPartial(value, mkErrors1, consumed1) =>
           interpretI(f(value), state) match {
             case Result.Success(value2, consumed2) =>
-              Result.Partial(value2, errors1, consumed1 + consumed2)
-            case Result.Partial(value2, errors2, consumed2) =>
-              Result.Partial(value2, errors1 ++ errors2, consumed1 + consumed2)
+              LazyPartial(value2, mkErrors1, consumed1 + consumed2)
+            case LazyPartial(value2, mkErrors2, consumed2) =>
+              // Combine error thunks lazily
+              LazyPartial(value2, () => mkErrors1() ++ mkErrors2(), consumed1 + consumed2)
             case LazyFailure(mkErrors2, furthest) =>
-              // Need to force errors here since we're combining with materialized errors1
-              LazyFailure(() => errors1 ++ mkErrors2(), furthest)
+              // Combine with failure thunk lazily
+              LazyFailure(() => mkErrors1() ++ mkErrors2(), furthest)
           }
         case LazyFailure(mkErrs, loc) =>
           LazyFailure(mkErrs, loc)
@@ -235,13 +260,13 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
       val snapshot = state.save
       interpretI(left, state) match {
         case success @ Result.Success(_, _)          => success
-        case partial @ Result.Partial(_, _, _)       => partial
+        case partial @ LazyPartial(_, _, _)          => partial
         case LazyFailure(leftMkErrors, leftFurthest) =>
           // Left failed - try right. leftMkErrors NOT evaluated yet!
           state.restore(snapshot)
           interpretI(right, state) match {
             case success @ Result.Success(_, _)            => success // leftMkErrors never called!
-            case partial @ Result.Partial(_, _, _)         => partial // leftMkErrors never called!
+            case partial @ LazyPartial(_, _, _)            => partial // leftMkErrors never called!
             case LazyFailure(rightMkErrors, rightFurthest) =>
               // Both failed - combine errors lazily
               if (leftFurthest.offset > rightFurthest.offset) {
@@ -269,8 +294,8 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
       interpretI(p, state) match {
         case Result.Success(value, consumed) =>
           Result.Success(Some(value), consumed)
-        case Result.Partial(value, errors, consumed) =>
-          Result.Partial(Some(value), errors, consumed)
+        case LazyPartial(value, mkErrs, consumed) =>
+          LazyPartial(Some(value), mkErrs, consumed)
         case LazyFailure(_, _) =>
           // Failure discarded - error thunk never called!
           state.restore(snapshot)
@@ -283,8 +308,9 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
       interpretI(p, state) match {
         case Result.Success(v, c) =>
           Result.Success(Result.Success(v, c), 0)
-        case Result.Partial(v, e, c) =>
-          Result.Success(Result.Partial(v, e, c), 0)
+        case LazyPartial(v, mkErrs, c) =>
+          // Force errors here since we're wrapping in Success
+          Result.Success(Result.Partial(v, mkErrs(), c), 0)
         case LazyFailure(mkErrs, loc) =>
           state.restore(snapshot)
           // Force errors here since we're wrapping in Success
@@ -297,9 +323,9 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
         case Result.Success(value, _) =>
           state.restore(snapshot)
           Result.Success(value, 0)
-        case Result.Partial(value, errors, _) =>
+        case LazyPartial(value, mkErrs, _) =>
           state.restore(snapshot)
-          Result.Partial(value, errors, 0)
+          LazyPartial(value, mkErrs, 0)
         case failure @ LazyFailure(_, _) =>
           state.restore(snapshot)
           failure
@@ -315,7 +341,7 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
             () => List(ParseError.Custom("Unexpected success", loc)),
             loc
           )
-        case Result.Partial(_, _, _) =>
+        case LazyPartial(_, _, _) =>
           state.restore(snapshot)
           val loc = state.location
           LazyFailure(
@@ -330,9 +356,9 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
 
     case Parser.Named(p, name) =>
       interpretI(p, state) match {
-        case success @ Result.Success(_, _)    => success
-        case partial @ Result.Partial(_, _, _) => partial
-        case LazyFailure(mkErrors, furthest)   =>
+        case success @ Result.Success(_, _)  => success
+        case partial @ LazyPartial(_, _, _)  => partial
+        case LazyFailure(mkErrors, furthest) =>
           // Defer enhancement until errors are needed
           LazyFailure(
             () =>
@@ -351,10 +377,13 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
         case success @ Result.Success(_, consumed) =>
           System.err.println(s"[TRACE] $label: success, consumed $consumed chars")
           success
-        case partial @ Result.Partial(_, errors, consumed) =>
+        case partial @ LazyPartial(_, mkErrs, consumed) =>
+          // Force errors for trace output
+          val errors = mkErrs()
           System.err.println(
             s"[TRACE] $label: partial success, consumed $consumed chars with ${errors.length} errors")
-          partial
+          // Re-wrap as lazy after forcing for trace
+          LazyPartial(partial.value, () => errors, consumed)
         case failure @ LazyFailure(_, _) =>
           System.err.println(s"[TRACE] $label: failed")
           failure
@@ -367,11 +396,13 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
         case success @ Result.Success(value, _) =>
           System.err.println(s"[DEBUG] $label: success, parsed $value")
           success
-        case partial @ Result.Partial(value, errors, _) =>
+        case LazyPartial(value, mkErrors, consumed) =>
+          val errors = mkErrors() // Force for debug output
           val errorList = errors.map(formatError).mkString(", ")
           System.err.println(
             s"[DEBUG] $label: partial success, parsed $value with errors: $errorList")
-          partial
+          // Re-wrap as lazy (already evaluated)
+          LazyPartial(value, () => errors, consumed)
         case LazyFailure(mkErrors, loc) =>
           val errors = mkErrors() // Force for debug output
           val error  = errors.headOption.map(formatError).getOrElse("unknown error")
@@ -396,33 +427,32 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
     case Parser.RecoverWith(p, recovery) =>
       val snapshot = state.save
       interpretI(p, state) match {
-        case success @ Result.Success(_, _)    => success
-        case partial @ Result.Partial(_, _, _) => partial
+        case success @ Result.Success(_, _)   => success
+        case partial @ LazyPartial(_, _, _)   => partial
         case LazyFailure(mkErrors, furthest) =>
           state.restore(snapshot)
-          // Force errors here since recovery produces Partial which needs List[E]
-          val errors = mkErrors()
+          // KEY OPTIMIZATION: Keep errors lazy!
           interpretI(recovery, state) match {
             case Result.Success(value, consumed) =>
-              // Recovered successfully, but note the original errors
-              Result.Partial(value, errors, consumed)
-            case Result.Partial(value, recoveryErrors, consumed) =>
-              // Recovery was partial, combine all errors
-              Result.Partial(value, errors ++ recoveryErrors, consumed)
+              // Recovered successfully - return LazyPartial to defer error construction
+              LazyPartial(value, mkErrors, consumed)
+            case LazyPartial(value, mkRecoveryErrors, consumed) =>
+              // Recovery was partial - combine error thunks lazily
+              LazyPartial(value, () => mkErrors() ++ mkRecoveryErrors(), consumed)
             case LazyFailure(mkRecoveryErrors, recoveryFurthest) =>
-              // Both failed, combine errors lazily
+              // Both failed - combine errors lazily
               val finalFurthest =
                 if (furthest.offset > recoveryFurthest.offset) furthest
                 else recoveryFurthest
-              LazyFailure(() => errors ++ mkRecoveryErrors(), finalFurthest)
+              LazyFailure(() => mkErrors() ++ mkRecoveryErrors(), finalFurthest)
           }
       }
 
     case Parser.Expect(p, message) =>
       interpretI(p, state) match {
-        case success @ Result.Success(_, _)    => success
-        case partial @ Result.Partial(_, _, _) => partial
-        case LazyFailure(_, furthest)          =>
+        case success @ Result.Success(_, _) => success
+        case partial @ LazyPartial(_, _, _) => partial
+        case LazyFailure(_, furthest)       =>
           // Replace the error with a custom message (still lazy)
           LazyFailure(
             () => List(ParseError.Custom(message, furthest)),
@@ -481,7 +511,7 @@ private def interpretMemoI[E, A](
 /** Convert Result to IResult (wrap errors in thunk that returns them) */
 private def resultToIResult[E, A](result: Result[E, A]): IResult[E, A] = result match {
   case Result.Success(v, c)      => Result.Success(v, c)
-  case Result.Partial(v, e, c)   => Result.Partial(v, e, c)
+  case Result.Partial(v, e, c)   => LazyPartial(v, () => e, c)
   case Result.Failure(errs, loc) => LazyFailure(() => errs, loc)
 }
 
@@ -852,10 +882,10 @@ private def castSimpleCacheResult[E, A](result: Result[Any, Any]): Result[E, A] 
  * @return Success with list of all parsed values
  */
 private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E, List[A]] = {
-  val acc           = scala.collection.mutable.ArrayBuffer.empty[A]
-  val errAcc        = scala.collection.mutable.ListBuffer.empty[E]
-  var totalConsumed = 0
-  var continue      = true
+  val acc                   = scala.collection.mutable.ArrayBuffer.empty[A]
+  val errThunks             = scala.collection.mutable.ArrayBuffer.empty[() => List[E]]
+  var totalConsumed         = 0
+  var continue              = true
 
   while (continue) {
     val snapshot = state.save
@@ -863,9 +893,10 @@ private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E
       case Result.Success(value, consumed) =>
         acc += value
         totalConsumed += consumed
-      case Result.Partial(value, errors, consumed) =>
+      case LazyPartial(value, mkErrs, consumed) =>
+        // KEY OPTIMIZATION: Keep error thunk lazy!
         acc += value
-        errAcc ++= errors  // O(1) amortized instead of O(n) List concatenation
+        errThunks += mkErrs
         totalConsumed += consumed
       case LazyFailure(_, _) =>
         // Failure discarded - error thunk never called!
@@ -874,10 +905,11 @@ private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E
     }
   }
 
-  if (errAcc.isEmpty) {
+  if (errThunks.isEmpty) {
     Result.Success(acc.toList, totalConsumed)
   } else {
-    Result.Partial(acc.toList, errAcc.toList, totalConsumed)
+    // Combine all error thunks into one lazy thunk
+    LazyPartial(acc.toList, () => errThunks.flatMap(_.apply()).toList, totalConsumed)
   }
 }
 
@@ -897,19 +929,20 @@ private def interpretMany1I[E, A](p: Parser[E, A], state: ParserState): IResult[
       interpretManyI(p, state) match {
         case Result.Success(tail, consumed2) =>
           Result.Success(head :: tail, consumed1 + consumed2)
-        case Result.Partial(tail, errors, consumed2) =>
-          Result.Partial(head :: tail, errors, consumed1 + consumed2)
+        case LazyPartial(tail, mkErrs, consumed2) =>
+          LazyPartial(head :: tail, mkErrs, consumed1 + consumed2)
         case LazyFailure(mkErrs, loc) =>
           LazyFailure(mkErrs, loc)
       }
-    case Result.Partial(head, errors1, consumed1) =>
+    case LazyPartial(head, mkErrors1, consumed1) =>
       interpretManyI(p, state) match {
         case Result.Success(tail, consumed2) =>
-          Result.Partial(head :: tail, errors1, consumed1 + consumed2)
-        case Result.Partial(tail, errors2, consumed2) =>
-          Result.Partial(head :: tail, errors1 ++ errors2, consumed1 + consumed2)
+          LazyPartial(head :: tail, mkErrors1, consumed1 + consumed2)
+        case LazyPartial(tail, mkErrors2, consumed2) =>
+          // Combine error thunks lazily
+          LazyPartial(head :: tail, () => mkErrors1() ++ mkErrors2(), consumed1 + consumed2)
         case LazyFailure(mkErrors2, furthest) =>
-          LazyFailure(() => errors1 ++ mkErrors2(), furthest)
+          LazyFailure(() => mkErrors1() ++ mkErrors2(), furthest)
       }
     case LazyFailure(mkErrs, loc) =>
       LazyFailure(mkErrs, loc)
@@ -942,8 +975,8 @@ private def interpretChoiceI[E, A](
     LazyFailure(accMkErrors, furthest)
   case head :: tail =>
     interpretI(head, state) match {
-      case success @ Result.Success(_, _)    => success // accMkErrors never called!
-      case partial @ Result.Partial(_, _, _) => partial // accMkErrors never called!
+      case success @ Result.Success(_, _)  => success // accMkErrors never called!
+      case partial @ LazyPartial(_, _, _)  => partial // accMkErrors never called!
       case LazyFailure(mkErrs, loc) =>
         state.restore(snapshot)
         val (newMkErrors, newFurthest) =

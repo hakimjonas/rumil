@@ -32,8 +32,8 @@ object TrampolineOpt {
     /** FlatMap continuation: apply function to success value, track consumed chars */
     case FlatMap(fn: Any => Parser[Any, Any], consumed: Int)
 
-    /** FlatMap continuation for partial results: carries accumulated errors */
-    case FlatMapPartial(errors: List[Any], consumed: Int)
+    /** FlatMap continuation for partial results: carries accumulated error thunk */
+    case FlatMapPartial(mkErrors: () => List[Any], consumed: Int)
   }
 
   /**
@@ -113,8 +113,8 @@ object TrampolineOpt {
         result = result match {
           case Result.Success(value, consumed) =>
             Result.Success(mf(value), consumed)
-          case Result.Partial(value, errors, consumed) =>
-            Result.Partial(mf(value), errors, consumed)
+          case LazyPartial(value, mkErrs, consumed) =>
+            LazyPartial(mf(value), mkErrs, consumed)
           case lf: LazyFailure[?] =>
             lf.asInstanceOf[IResult[Any, Any]]
         }
@@ -128,8 +128,8 @@ object TrampolineOpt {
             result = result match {
               case Result.Success(value, consumed) =>
                 Result.Success(value, consumedAcc + consumed)
-              case Result.Partial(value, errors, consumed) =>
-                Result.Partial(value, errors, consumedAcc + consumed)
+              case LazyPartial(value, mkErrs, consumed) =>
+                LazyPartial(value, mkErrs, consumedAcc + consumed)
               case lf: LazyFailure[?] =>
                 lf.asInstanceOf[IResult[Any, Any]]
             }
@@ -154,7 +154,7 @@ object TrampolineOpt {
                 current = fn(value)
                 result = NoResult // Switch to Phase 1
 
-              case Result.Partial(value, errors, consumed) =>
+              case LazyPartial(value, mkErrs, consumed) =>
                 // Partial: push partial continuation and continue
                 if (stackTop >= stack.length) {
                   val newStack = new Array[Frame](stack.length * 2)
@@ -162,7 +162,7 @@ object TrampolineOpt {
                   stack = newStack
                 }
                 stack(stackTop) = Frame.FlatMapPartial(
-                  errors.asInstanceOf[List[Any]],
+                  mkErrs.asInstanceOf[() => List[Any]],
                   prevConsumed + consumed + consumedAcc
                 )
                 stackTop += 1
@@ -177,22 +177,22 @@ object TrampolineOpt {
             }
 
           case fmp: Frame.FlatMapPartial =>
-            val errors1      = fmp.errors
+            val mkErrors1    = fmp.mkErrors
             val prevConsumed = fmp.consumed
 
             result match {
               case Result.Success(value, consumed) =>
-                result = Result.Partial(value, errors1, prevConsumed + consumed + consumedAcc)
+                result = LazyPartial(value, mkErrors1, prevConsumed + consumed + consumedAcc)
                 consumedAcc = 0
 
-              case Result.Partial(value, errors2, consumed) =>
+              case LazyPartial(value, mkErrors2, consumed) =>
                 result =
-                  Result.Partial(value, errors1 ++ errors2, prevConsumed + consumed + consumedAcc)
+                  LazyPartial(value, () => mkErrors1() ++ mkErrors2(), prevConsumed + consumed + consumedAcc)
                 consumedAcc = 0
 
               case LazyFailure(mkErrors2, furthest) =>
                 result = LazyFailure(
-                  () => errors1 ++ mkErrors2().asInstanceOf[List[Any]],
+                  () => mkErrors1() ++ mkErrors2().asInstanceOf[List[Any]],
                   furthest
                 )
                 consumedAcc += prevConsumed
