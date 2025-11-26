@@ -853,7 +853,7 @@ private def castSimpleCacheResult[E, A](result: Result[Any, Any]): Result[E, A] 
  */
 private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E, List[A]] = {
   val acc           = scala.collection.mutable.ArrayBuffer.empty[A]
-  var accErrors     = List.empty[E]
+  val errAcc        = scala.collection.mutable.ListBuffer.empty[E]
   var totalConsumed = 0
   var continue      = true
 
@@ -865,7 +865,7 @@ private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E
         totalConsumed += consumed
       case Result.Partial(value, errors, consumed) =>
         acc += value
-        accErrors = accErrors ++ errors
+        errAcc ++= errors  // O(1) amortized instead of O(n) List concatenation
         totalConsumed += consumed
       case LazyFailure(_, _) =>
         // Failure discarded - error thunk never called!
@@ -874,10 +874,10 @@ private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E
     }
   }
 
-  if (accErrors.isEmpty) {
+  if (errAcc.isEmpty) {
     Result.Success(acc.toList, totalConsumed)
   } else {
-    Result.Partial(acc.toList, accErrors, totalConsumed)
+    Result.Partial(acc.toList, errAcc.toList, totalConsumed)
   }
 }
 
