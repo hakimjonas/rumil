@@ -100,28 +100,6 @@ def runRecursive[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
   toResult(interpretI(parser, state))
 }
 
-// Commented out - experimental interpreter was removed
-// /**
-//  * Runs a parser using the zero-cast experimental interpreter.
-//  *
-//  * This version achieves full type safety with minimal runtime casts by using
-//  * GADT Continuations and Scala's TailCalls trampoline. It's approximately
-//  * 2-3x slower than the optimized TrampolineOpt due to TailRec allocations.
-//  *
-//  * This implementation demonstrates that parser combinators can achieve
-//  * near-perfect type safety, with only 6 localized casts needed for dynamic
-//  * continuation composition. The performance penalty is due to TailRec overhead,
-//  * which could be eliminated in a language with proper tail call optimization.
-//  *
-//  * @param parser The parser to execute
-//  * @param input The input string to parse
-//  * @return Result containing either success value or error list
-//  */
-// def runZeroCast[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
-//   val state = parserState(input)
-//   toResult(experimental.TrampolineZeroCast.run(parser, state))
-// }
-
 /**
  * Public interpret function that returns Result directly.
  *

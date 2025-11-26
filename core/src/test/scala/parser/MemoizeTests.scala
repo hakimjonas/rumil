@@ -236,7 +236,8 @@ class MemoizeTests extends FunSuite {
   }
 
   test(".memoize handles partial results") {
-    val parser = (char('a') ~ char('b')).memoize.orElse(succeed(('x', 'x')))
+    // Use recover to get Partial result with errors
+    val parser = (char('a') ~ char('b')).memoize.recover(succeed(('x', 'x')))
 
     val result = parser.run("ac") // 'a' succeeds, 'b' fails, fallback used
 

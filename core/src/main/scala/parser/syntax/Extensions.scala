@@ -140,20 +140,40 @@ extension [E, A](p: Parser[E, A]) {
     parser.core.recoverWith(p)(f)
 
   /**
-   * Provides a static fallback parser for error recovery.
+   * Tries this parser, falling back to another if it fails (fast alternation).
+   *
+   * This is simple alternation without error tracking. When this parser fails,
+   * the fallback is tried. If fallback succeeds, returns Success with no error
+   * information from the failed primary parser.
+   *
+   * Use `orElse` for simple alternation. Use `recover` when you need error tracking.
+   *
+   * Example:
+   * {{{
+   * val letter = char('a').orElse(char('b')).orElse(char('c'))
+   * letter.run("b")  // Success('b', 1) - fast, no error tracking
+   * }}}
+   */
+  inline def orElse(fallback: Parser[E, A]): Parser[E, A] =
+    parser.core.orElse(p, fallback)
+
+  /**
+   * Tries this parser, falling back to another with error tracking (resilient parsing).
    *
    * When this parser fails, the fallback runs and the result is `Partial`
    * to preserve the original error information. This enables resilient
    * parsing where errors are accumulated but parsing continues.
    *
+   * Use `recover` for error recovery with tracking. Use `orElse` for fast alternation.
+   *
    * Example:
    * {{{
    * val number = digit.many1.map(_.mkString.toInt)
-   * number.orElse(succeed(0)).run("abc")  // Partial(0, errors, 0)
+   * number.recover(succeed(0)).run("abc")  // Partial(0, errors, 0) - has errors!
    * }}}
    */
-  inline def orElse(fallback: Parser[E, A]): Parser[E, A] =
-    parser.core.orElse(p, fallback)
+  inline def recover(fallback: Parser[E, A]): Parser[E, A] =
+    parser.core.recover(p, fallback)
 
   // Debugging
   inline def trace(label: String): Parser[E, A] =

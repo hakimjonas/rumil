@@ -31,19 +31,19 @@ class ErrorPathBenchmarks extends munit.FunSuite {
   // Category 1: Many with Recovery (Error Accumulation)
   // ==========================================================================
 
-  test("error path 1.1: Many with orElse recovery (100 items, 5K iterations)") {
+  test("error path 1.1: Many with recover (100 items, 5K iterations)") {
     val input = "a" * 50 + "x" * 50  // 50 successes, 50 recoveries
 
     val rumilParser = {
       import parser.core._
       import parser.syntax._
-      val errorProne = char('a').orElse(char('x'))  // 'x' produces Partial
+      val errorProne = char('a').recover(char('x'))  // 'x' produces Partial with errors
       parser.core.many(errorProne)
     }
 
     val catsParser = {
       import cats.parse.{Parser => P}
-      val errorProne = P.charIn('a').orElse(P.charIn('x'))
+      val errorProne = P.charIn('a').orElse(P.charIn('x'))  // cats-parse has no error tracking
       errorProne.rep0
     }
 
@@ -80,13 +80,13 @@ class ErrorPathBenchmarks extends munit.FunSuite {
     val rumilParser = {
       import parser.core._
       import parser.syntax._
-      val errorProne = char('a').orElse(char('x'))
+      val errorProne = char('a').recover(char('x'))  // recover tracks errors
       parser.core.many(errorProne)
     }
 
     val catsParser = {
       import cats.parse.{Parser => P}
-      val errorProne = P.charIn('a').orElse(P.charIn('x'))
+      val errorProne = P.charIn('a').orElse(P.charIn('x'))  // cats-parse has no error tracking
       errorProne.rep0
     }
 
@@ -124,8 +124,8 @@ class ErrorPathBenchmarks extends munit.FunSuite {
     val rumilParser = {
       import parser.core._
       import parser.syntax._
-      val num = digit.map(_.toString.toInt).orElse(
-        char('x').map(_ => -1)  // Recover with sentinel value
+      val num = digit.map(_.toString.toInt).recover(
+        char('x').map(_ => -1)  // Recover with sentinel value and track errors
       )
       num.sepBy1(char(','))
     }
@@ -133,7 +133,7 @@ class ErrorPathBenchmarks extends munit.FunSuite {
     val catsParser = {
       import cats.parse.{Parser => P}
       val num = P.charIn('0' to '9').map(_.toString.toInt).orElse(
-        P.charIn('x').map(_ => -1)
+        P.charIn('x').map(_ => -1)  // cats-parse has no error tracking
       )
       num.repSep(P.charIn(','))
     }

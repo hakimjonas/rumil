@@ -1,8 +1,8 @@
-# Rumil: Path to Excellence
+# Rumil: Path to v1.0
 
 ## Philosophy
 
-**Excellence before release.** The first public impression matters. We will not publish until every aspect of Rumil meets world-class standards.
+**Excellence before release.** The first public impression matters. We will not publish until every aspect of Rumil meets world-class standards. No intermediate v0.x releases - we go straight to v1.0 when ready.
 
 ---
 
@@ -12,198 +12,191 @@
 - **40+ Parser Combinators** - Complete combinator library
 - **Left Recursion** - Both direct and indirect (Warth et al. algorithm)
 - **Error Recovery** - Result.Partial with multi-error accumulation
-- **GreenNode** - Lossless syntax trees preserving all source information
+- **GreenNode/RedTree** - Lossless syntax trees (Rowan-style architecture)
 - **6 Format Parsers** - JSON, XML, TOML, CSV, YAML, Protobuf
 - **Decoders** - JSON, XML, TOML, YAML with automatic case class derivation
-- **Type Safety** - No naked type casts in production code (except 2 isolated in LR seed handling)
+- **Type Safety** - Minimal casts, all localized with safety proofs
 - **Property Tests** - 23 functor/monad laws verified
-- **190+ Tests** - Comprehensive test coverage
+- **249+ Tests** - Comprehensive test coverage
 - **JMH Benchmarks** - Complete benchmark suite with cats-parse comparison
+
+### Recent Optimizations
+- **LazyFailure** - Deferred error construction for failure paths
+- **LazyPartial** - Deferred error construction for recovery paths (2.65x faster on error-heavy workloads)
+- **ListBuffer for Many** - Efficient accumulation in repetition combinators
 
 ---
 
-## Excellence Roadmap
+## v1.0 Release Criteria
 
-### TIER 1: Feature Completeness ✅ COMPLETE
-*What users will expect from a complete library*
+### TIER 1: Core Excellence ✅ MOSTLY COMPLETE
 
-| Feature | Status | Priority |
-|---------|--------|----------|
-| XML Decoder (XmlNode -> case class) | **Complete** | HIGH |
-| TOML Decoder (TomlValue -> case class) | **Complete** | HIGH |
-| YAML Decoder (YamlValue -> case class) | **Complete** | HIGH |
-| Field Annotations (@JsonKey, @JsonIgnore, @FieldName) | **Complete** | MEDIUM |
-| Memoization Combinator (.memoize) | **Complete** | LOW |
-| Streaming Parsing (large files) | Future/Community | LOW |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Complete combinator library | ✅ Complete | 40+ combinators |
+| Left recursion support | ✅ Complete | Warth et al. algorithm |
+| Error recovery (resilient parsing) | ✅ Complete | Result.Partial + multi-error |
+| Lossless syntax trees | ✅ Complete | GreenNode/RedTree |
+| Type safety | ✅ Complete | Minimal localized casts |
+| Property-based tests | ✅ Complete | 23 laws verified |
 
-### TIER 2: Proof of Quality
-*Evidence that backs up our claims*
+### TIER 2: Performance Parity ⚠️ IN PROGRESS
+
+Goal: Within 2-3x of cats-parse on common workloads.
+
+| Optimization | Status | Impact |
+|--------------|--------|--------|
+| LazyFailure (deferred errors) | ✅ Complete | Improved failure paths |
+| LazyPartial (deferred recovery errors) | ✅ Complete | 2.65x faster on error-heavy |
+| **orElse/recover separation** | 🔄 Next | 8-10x faster on alternation |
+| ListBuffer for Many | ✅ Complete | Faster repetition |
+
+#### Current Bottleneck: orElse Error Tracking
+
+The biggest remaining performance gap is `orElse` tracking errors even when not needed:
+
+| Benchmark | Rumil | cats-parse | Gap |
+|-----------|-------|------------|-----|
+| Many with 90% errors | 3650ms | 9ms | 405x |
+| Choice (10 alternatives) | 30ms | 1ms | 30x |
+
+**Solution**: Separate `orElse` (fast alternation) from `recover` (error tracking):
+- `orElse` → `Parser.Or` (no error tracking, matches cats-parse)
+- `recover` → `Parser.RecoverWith` (error tracking for resilient parsing)
+
+See: `docs/OPTION_5_ORELSE_SEMANTICS_DESIGN.md`
+
+### TIER 3: API Polish ⚠️ IN PROGRESS
 
 | Item | Status | Priority |
 |------|--------|----------|
-| JMH Benchmark Suite | **Complete** | HIGH |
-| vs cats-parse comparison | **Complete** | HIGH |
-| Memoization Performance Analysis | **Complete** | HIGH |
-| vs fastparse comparison | Not Needed | LOW |
-| Memory profiling | Future/Community | LOW |
-| Real-world workloads | Future/Community | LOW |
+| orElse/recover semantic clarity | 🔄 Next | HIGH |
+| Consistent naming conventions | Needs review | MEDIUM |
+| Extension method organization | Needs review | MEDIUM |
+| Deprecation of old APIs | As needed | LOW |
 
-### TIER 3: Documentation Excellence ⚠️ IN PROGRESS
-*Users should understand everything without reading source*
+### TIER 4: Documentation Excellence
 
 | Document | Status | Priority |
 |----------|--------|----------|
-| Getting Started (15-min guide) | **In Progress** | HIGH |
-| Cookbook (10 common patterns) | **In Progress** | HIGH |
-| Performance Guide (memoization) | **Complete** | HIGH |
-| API Reference (Scaladoc) | Exists, needs review | MEDIUM |
+| Getting Started (15-min guide) | In Progress | HIGH |
+| Cookbook (10 common patterns) | In Progress | HIGH |
+| Performance Guide | ✅ Complete | HIGH |
+| API Reference (Scaladoc) | Exists, needs polish | MEDIUM |
 | Error Handling Guide | Partial | MEDIUM |
-| Comparison Matrix (vs competitors) | Future/Community | LOW |
-| Troubleshooting Guide | Future/Community | LOW |
+| Migration Guide (if breaking changes) | As needed | HIGH |
 
-### TIER 4: Platform Reach
-*Where can Rumil run?*
+### TIER 5: Platform Reach (Post-1.0)
 
 | Platform | Status | Priority |
 |----------|--------|----------|
-| JVM | Complete | - |
-| Scala.js (browser/Node) | Future/Community | LOW |
-| Scala Native | Future/Community | LOW |
+| JVM | ✅ Complete | - |
+| Scala.js | Future | LOW |
+| Scala Native | Future | LOW |
 
 ---
 
-## Benchmark Results (vs cats-parse)
+## Immediate Priorities
 
-### Parser Combinators
+### 1. Implement orElse/recover Separation
 
-| Benchmark | cats-parse | Rumil | Ratio |
-|-----------|-----------|-------|-------|
-| choice10 (10-way alternative) | 174,798 ops/ms | 2,799 ops/ms | **62x** |
-| stringMatch ("hello world") | 302,200 ops/ms | 24,132 ops/ms | **12.5x** |
-| parseDigits1000 (1000 digits) | 417 ops/ms | 103 ops/ms | **4x** |
-| parseCommaSep100 (100 numbers) | 395 ops/ms | 134 ops/ms | **2.9x** |
+**Breaking Change** - but essential for performance parity.
 
-### JSON Parsing
+```scala
+// Current (always tracks errors)
+inline def orElse[E, A](p: Parser[E, A], fallback: Parser[E, A]): Parser[E, A] =
+  Parser.RecoverWith(p, fallback)
 
-| Benchmark | cats-parse | Rumil | Ratio |
-|-----------|-----------|-------|-------|
-| jsonTiny (`{"x":1}`) | 2,334 ops/ms | 407 ops/ms | **5.7x** |
-| jsonSmall (3 fields) | 903 ops/ms | 162 ops/ms | **5.6x** |
-| jsonMedium (nested) | 183 ops/ms | 29 ops/ms | **6.3x** |
-| jsonNested10 (10 levels) | 208 ops/ms | 43 ops/ms | **4.8x** |
-| jsonArray100 (100 objects) | 12 ops/ms | 2.1 ops/ms | **5.7x** |
+// New (fast alternation, no error tracking)
+inline def orElse[E, A](p: Parser[E, A], fallback: Parser[E, A]): Parser[E, A] =
+  Parser.Or(p, fallback)
 
-**Summary:** Rumil is approximately **4-6x slower** than cats-parse for most operations, with the notable exception of choice/alternative where the gap widens significantly.
+// New (explicit error recovery)
+inline def recover[E, A](p: Parser[E, A], fallback: Parser[E, A]): Parser[E, A] =
+  Parser.RecoverWith(p, fallback)
+```
+
+**Migration**: Users who need error tracking change `.orElse` to `.recover`.
+
+### 2. Complete Documentation
+
+- Finish Getting Started guide
+- Finish Cookbook with 10 patterns
+- Update all examples for new orElse/recover semantics
+
+### 3. Final Polish
+
+- Review all public APIs
+- Clean up any remaining dead code
+- Ensure consistent naming
 
 ---
 
-## Performance Analysis & Optimization Opportunities
+## Performance Philosophy
 
-### Why Rumil is Slower
-
-1. **Interpreter-Based Design**: Rumil evaluates parser ASTs at runtime via pattern matching. cats-parse compiles parsers to optimized code paths.
-
-2. **Error Infrastructure**: Every operation tracks position (line, column, offset), accumulates errors, and maintains furthest-failure location.
-
-3. **State Management**: ParserState saves/restores snapshots for backtracking, adding allocation overhead.
-
-4. **List Building**: `many` and `many1` build `List[A]` via prepend-then-reverse, while cats-parse uses builder patterns.
-
-### Optimization Opportunities (Preserving Design Principles)
-
-These optimizations maintain Rumil's structural design, type safety, and error reporting quality:
-
-#### HIGH IMPACT (Preserves all ideals)
-
-| Optimization | Expected Gain | Complexity | Principle Impact |
-|--------------|---------------|------------|------------------|
-| **Specialized Many/Many1** - Use ArrayBuffer internally, convert to List at end | 2-3x for repetition | Low | None |
-| **String Parsing Optimization** - Use `regionMatches` instead of manual loop | 1.5-2x for strings | Low | None |
-| **Inline State Checks** - Avoid Option wrapping in `state.current` | 1.2-1.5x overall | Medium | None |
-| **Lazy Error Construction** - Only build error objects on failure | 1.5-2x for success paths | Medium | None |
-
-#### MEDIUM IMPACT (Preserves most ideals)
-
-| Optimization | Expected Gain | Complexity | Principle Impact |
-|--------------|---------------|------------|------------------|
-| **Choice Optimization** - Compile static choice to jump table | 5-10x for choice | High | Minor: adds compilation step |
-| **Satisfy Specialization** - Special cases for common predicates (isDigit, isLetter) | 1.3-1.5x for char parsing | Medium | None |
-| **State Pool** - Reuse snapshot objects | 1.2x for backtracking | Medium | None |
-
-#### REQUIRES DESIGN TRADE-OFFS
-
-| Optimization | Expected Gain | Trade-off |
-|--------------|---------------|-----------|
-| **Compilation Phase** - Compile parser AST to bytecode | 5-10x overall | Adds complexity, longer startup |
-| **Remove Line/Column Tracking** - Only track offset | 1.3-1.5x | Worse error messages |
-| **Strict Mode** - Disable error accumulation | 1.5-2x | Loses resilient parsing |
-
-### Recommended Optimization Path
-
-1. **Phase 1** (Low-hanging fruit): ArrayBuffer for Many, lazy error construction
-2. **Phase 2** (Medium effort): Choice optimization, satisfy specialization
-3. **Phase 3** (If needed): Compilation phase as opt-in feature
-
-### Performance Philosophy
-
-Rumil prioritizes:
+Rumil prioritizes (in order):
 1. **Correctness** - Type-safe, principled design
 2. **Error Quality** - Rich, helpful error messages
 3. **Ergonomics** - Pleasant API, IDE-friendly ASTs
-4. **Performance** - "Fast enough" for most use cases
+4. **Performance** - Competitive with alternatives
 
-For applications requiring maximum throughput on hot paths, users can:
-- Use specialized parsers for critical sections
-- Consider cats-parse for pure performance needs
-- Mix libraries (parse structure with Rumil, then optimize bottlenecks)
+### Design Trade-offs
 
----
-
-## Current Focus: Documentation for v0.2.0 Release
-
-### Remaining Work Before Release
-
-1. **Getting Started Guide** (15-min tutorial) - IN PROGRESS
-2. **Cookbook** (10 common patterns) - IN PROGRESS
-3. **Final cleanup** (remove dead code, polish APIs)
-4. **Publish Scaladoc** (API reference)
-
-### Post-Release Improvements (Community/Future)
-
-1. **Performance Phase 1** - ArrayBuffer for `many`, lazy error construction
-2. **Streaming** - Large file handling
-3. **Platform Expansion** - Scala.js, Scala Native
+| Feature | Rumil | cats-parse | Trade-off |
+|---------|-------|------------|-----------|
+| Error tracking | Optional (orElse vs recover) | Never | User chooses |
+| Line/column tracking | Always | Never | Better errors, some overhead |
+| Lossless trees | GreenNode/RedTree | Not supported | IDE features, memory overhead |
+| Left recursion | Built-in | Not supported | Unique capability |
 
 ---
 
-## Design Principles
+## Benchmark Targets for v1.0
 
-### Structural-First Design
-- **Enums** for sum types (Parser, Result, ParseError)
-- **Named Tuples** for product types (Location, Span)
-- **Controlled mutation** only in interpreter shell
+### Happy-Path Performance
 
-### Two-Layer Architecture
-- **Core Layer** - Pure, principled parser combinators
-- **Adapter Layer** - Idiomatic Scala interop (Decoder, derived)
+| Benchmark | Target | Current | Status |
+|-----------|--------|---------|--------|
+| String matching | Within 3x of cats-parse | ~2x | ✅ |
+| Many (1K chars) | Within 3x of cats-parse | ~3x | ✅ |
+| Sequential (100 parsers) | Within 3x of cats-parse | ~3x | ✅ |
+| Number parsing | Within 2x of cats-parse | ~1x | ✅ |
 
-### Quality Standards
-- No type casts in production code (2 isolated casts with safety proofs)
-- Property-based testing for all laws
-- Comprehensive documentation before release
-- Benchmark evidence for performance claims
+### Error-Path Performance (after orElse/recover split)
+
+| Benchmark | Target | Current | After Split |
+|-----------|--------|---------|-------------|
+| Choice (10 alternatives) | Within 3x | 30x | ~3x expected |
+| Many with recovery | Within 3x | 405x | ~3x expected |
 
 ---
 
-## What "World-Class" Means
+## What "Ready for v1.0" Means
 
-A world-class parser combinator library has:
+1. ✅ **Complete Feature Set** - All expected combinators + unique features
+2. ⚠️ **Competitive Performance** - Within 2-3x of cats-parse (needs orElse/recover)
+3. ⚠️ **Excellent Documentation** - Learn without reading source (in progress)
+4. ✅ **Type Safety** - Principled design, minimal escape hatches
+5. ✅ **Tested** - 249+ tests, property-based verification
+6. ⚠️ **API Stability** - Breaking changes addressed before release
 
-1. **Complete Feature Set** - All expected combinators + extras
-2. **Proven Performance** - Benchmarks vs industry standards
-3. **Excellent Documentation** - Learn without reading source
-4. **Multi-Platform** - JVM, JS, Native
-5. **Type Safety** - Principled design, no escape hatches
-6. **Production Ready** - Battle-tested with real workloads
+---
 
-Rumil will meet all these criteria before public release.
+## Non-Goals for v1.0
+
+- Scala.js / Scala Native (post-1.0)
+- Streaming parsing (post-1.0)
+- Maximum raw performance (we optimize for correctness + ergonomics first)
+- Feature parity with every competitor (we have unique strengths)
+
+---
+
+## Timeline
+
+No fixed dates. Release when ready:
+- All v1.0 criteria met
+- Documentation complete
+- Performance targets achieved
+- API stable
+
+**Quality over speed.** Better to release later with excellence than earlier with compromise.

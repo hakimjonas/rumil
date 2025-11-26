@@ -482,17 +482,21 @@ def recoverWith[E, E2, A](p: Parser[E, A])(f: E => Parser[E2, A]): Parser[E2, A]
   )
 
 /**
- * Provides a static fallback parser for error recovery.
+ * Tries a parser, falling back to another if it fails (fast alternation).
  *
- * Unlike `recoverWith` which chooses recovery based on the error,
- * `orElse` always uses the same fallback parser. When the primary
- * parser fails, the fallback runs and the result is `Partial` to
- * preserve the original error information.
+ * This is simple alternation without error tracking. When the primary parser
+ * fails, the fallback is tried. If fallback succeeds, returns [[Result.Success]]
+ * with no error information from the failed primary parser.
  *
- * This is useful for resilient parsing where you want to:
- * - Continue parsing despite errors
- * - Accumulate all errors for later reporting
- * - Produce a best-effort parse result
+ * Use `orElse` for:
+ * - Simple alternation between parsers (e.g., `keyword1.orElse(keyword2)`)
+ * - Performance-critical code where error tracking isn't needed
+ * - Choice between valid alternatives
+ *
+ * Use [[recover]] instead when you need:
+ * - Error tracking for diagnostics
+ * - Resilient parsing with error accumulation
+ * - IDE error reporting (red squiggles on recovery)
  *
  * @param p The primary parser to try first
  * @param fallback The parser to use if p fails
@@ -500,13 +504,51 @@ def recoverWith[E, E2, A](p: Parser[E, A])(f: E => Parser[E2, A]): Parser[E2, A]
  *
  * Example:
  * {{{
- * val number = digit.many1.map(_.mkString.toInt)
- * val resilient = orElse(number, succeed(0))
- * resilient.run("abc")  // Partial(0, List(error), 0) - recovered with default
- * resilient.run("42")   // Success(42, 2) - primary succeeded
+ * val letter = char('a').orElse(char('b')).orElse(char('c'))
+ * letter.run("b")  // Success('b', 1) - fast, no error tracking
+ * letter.run("x")  // Failure - neither matched
  * }}}
  */
 inline def orElse[E, A](p: Parser[E, A], fallback: Parser[E, A]): Parser[E, A] =
+  Parser.Or(p, fallback)
+
+/**
+ * Tries a parser, falling back to another with error tracking (resilient parsing).
+ *
+ * Unlike [[orElse]] which discards errors, `recover` tracks errors from
+ * the primary parser even when the fallback succeeds. This creates
+ * [[Result.Partial]] results which contain both a value and errors,
+ * enabling error recovery without losing diagnostic information.
+ *
+ * When the primary parser fails:
+ * - The parser state is restored
+ * - The fallback is tried
+ * - If fallback succeeds: returns [[Result.Partial]] with fallback value + primary errors
+ * - If fallback fails: returns [[Result.Failure]] combining both error lists
+ *
+ * Use `recover` for:
+ * - Resilient parsing (continue despite errors)
+ * - Error accumulation for reporting
+ * - IDE integration (show errors on recovered code)
+ *
+ * Use [[orElse]] instead when you:
+ * - Just need simple alternation
+ * - Want maximum performance
+ * - Don't need error diagnostics
+ *
+ * @param p The primary parser to try first
+ * @param fallback The parser to use if p fails
+ * @return A parser that tries p, then fallback on failure with error tracking
+ *
+ * Example:
+ * {{{
+ * val number = digit.many1.map(_.mkString.toInt)
+ * val resilient = recover(number, succeed(0))
+ * resilient.run("abc")  // Partial(0, List(error), 0) - recovered with errors
+ * resilient.run("42")   // Success(42, 2) - primary succeeded
+ * }}}
+ */
+inline def recover[E, A](p: Parser[E, A], fallback: Parser[E, A]): Parser[E, A] =
   Parser.RecoverWith(p, fallback)
 
 /**

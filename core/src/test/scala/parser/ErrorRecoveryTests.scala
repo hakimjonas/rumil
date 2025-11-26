@@ -5,17 +5,19 @@ import parser.core._
 import parser.syntax._
 
 /**
- * Tests for error recovery combinators: orElse (Parser.RecoverWith) and expect (Parser.Expect).
+ * Tests for error recovery and alternation combinators.
  *
- * These combinators enable resilient parsing where:
- * - Parsing can continue despite errors (via orElse)
- * - Errors can be given custom messages (via expect)
- * - Multiple errors can be accumulated (via Result.Partial)
+ * Two combinators for trying alternatives:
+ * - `orElse` (Parser.Or) - Fast alternation, no error tracking
+ * - `recover` (Parser.RecoverWith) - Error recovery with error tracking
+ *
+ * And for error customization:
+ * - `expect` (Parser.Expect) - Custom error messages
  */
 class ErrorRecoveryTests extends FunSuite {
 
   // ============================================================================
-  // orElse (Parser.RecoverWith) Tests
+  // orElse (Parser.Or) Tests - Fast alternation WITHOUT error tracking
   // ============================================================================
 
   test("orElse: primary parser succeeds - returns Success") {
@@ -26,14 +28,14 @@ class ErrorRecoveryTests extends FunSuite {
     assertEquals(result.toOption, Some('a'))
   }
 
-  test("orElse: primary fails, fallback succeeds - returns Partial with errors") {
+  test("orElse: primary fails, fallback succeeds - returns Success (no errors)") {
     val parser = char('a').orElse(char('b'))
     val result = parser.run("b")
 
-    // Should be Partial because we recovered but want to preserve the original error
-    assert(result.isPartial, s"Expected Partial, got $result")
+    // New behavior: orElse is fast alternation - no error tracking!
+    assert(result.isSuccess, s"Expected Success (no error tracking), got $result")
     assertEquals(result.toOption, Some('b'))
-    assert(result.errors.nonEmpty, "Should preserve original error")
+    assert(result.errors.isEmpty, "orElse should not track errors from primary")
   }
 
   test("orElse: both parsers fail - returns Failure with combined errors") {
@@ -48,7 +50,8 @@ class ErrorRecoveryTests extends FunSuite {
     val parser = string("hello").orElse(string("help"))
     val result = parser.run("help")
 
-    assert(result.isPartial || result.isSuccess)
+    // Should be Success - no error tracking in orElse
+    assert(result.isSuccess)
     assertEquals(result.toOption, Some("help"))
   }
 
@@ -57,10 +60,10 @@ class ErrorRecoveryTests extends FunSuite {
     val result = parser.run("xyz")
 
     result match {
-      case Result.Partial(value, _, consumed) =>
+      case Result.Success(value, consumed) =>
         assertEquals(value, "xyz")
         assertEquals(consumed, 3)
-      case other => fail(s"Expected Partial, got $other")
+      case other => fail(s"Expected Success, got $other")
     }
   }
 
@@ -80,14 +83,87 @@ class ErrorRecoveryTests extends FunSuite {
     // Valid number
     assertEquals(withDefault.run("42").toOption, Some(42))
 
-    // Invalid - should recover with default
+    // Invalid - should recover with default (Success, no errors)
     val recovered = withDefault.run("abc")
-    assert(recovered.isPartial)
+    assert(recovered.isSuccess, "orElse returns Success, not Partial")
     assertEquals(recovered.toOption, Some(0))
   }
 
-  test("orElse: error location preserved from primary parser") {
-    val parser = string("hello").orElse(succeed("default"))
+  // ============================================================================
+  // recover (Parser.RecoverWith) Tests - Error recovery WITH tracking
+  // ============================================================================
+
+  test("recover: primary parser succeeds - returns Success") {
+    val parser = char('a').recover(char('b'))
+    val result = parser.run("a")
+
+    assert(result.isSuccess)
+    assertEquals(result.toOption, Some('a'))
+  }
+
+  test("recover: primary fails, fallback succeeds - returns Partial with errors") {
+    val parser = char('a').recover(char('b'))
+    val result = parser.run("b")
+
+    // Should be Partial because we recovered but want to preserve the original error
+    assert(result.isPartial, s"Expected Partial, got $result")
+    assertEquals(result.toOption, Some('b'))
+    assert(result.errors.nonEmpty, "Should preserve original error")
+  }
+
+  test("recover: both parsers fail - returns Failure with combined errors") {
+    val parser = char('a').recover(char('b'))
+    val result = parser.run("x")
+
+    assert(result.isFailure)
+    assert(result.errors.nonEmpty)
+  }
+
+  test("recover: fallback consumes input correctly") {
+    val parser = string("hello").recover(string("help"))
+    val result = parser.run("help")
+
+    assert(result.isPartial)
+    assertEquals(result.toOption, Some("help"))
+  }
+
+  test("recover: preserves consumed count from fallback") {
+    val parser = char('a').recover(string("xyz"))
+    val result = parser.run("xyz")
+
+    result match {
+      case Result.Partial(value, _, consumed) =>
+        assertEquals(value, "xyz")
+        assertEquals(consumed, 3)
+      case other => fail(s"Expected Partial, got $other")
+    }
+  }
+
+  test("recover: chained recovery") {
+    val parser = char('a').recover(char('b')).recover(char('c'))
+
+    assertEquals(parser.run("a").toOption, Some('a'))
+    assertEquals(parser.run("b").toOption, Some('b'))
+    assertEquals(parser.run("c").toOption, Some('c'))
+    assert(parser.run("x").isFailure)
+  }
+
+  test("recover: with succeed as fallback (default value pattern)") {
+    val number      = digit.many1.map(_.mkString.toInt)
+    val withDefault = number.recover(succeed(0))
+
+    // Valid number
+    assertEquals(withDefault.run("42").toOption, Some(42))
+
+    // Invalid - should recover with default and track error
+    val recovered = withDefault.run("abc")
+    assert(recovered.isPartial, "recover returns Partial with errors")
+    assertEquals(recovered.toOption, Some(0))
+    assert(recovered.errors.nonEmpty, "Should have error from failed primary")
+  }
+
+  test("recover: error location preserved from primary parser") {
+    val parser = string("hello").recover(succeed("default"))
     val result = parser.run("xyz")
 
     result match {
@@ -160,26 +236,26 @@ class ErrorRecoveryTests extends FunSuite {
   }
 
   test("expect: partial result passes through") {
-    // Create a parser that might produce Partial
-    val parser = char('a').orElse(char('b')).expect("a or b required")
+    // Create a parser that might produce Partial (using recover)
+    val parser = char('a').recover(char('b')).expect("a or b required")
     val result = parser.run("b")
 
-    // orElse produces Partial, expect should pass it through
+    // recover produces Partial, expect should pass it through
     assert(result.isPartial)
     assertEquals(result.toOption, Some('b'))
   }
 
   // ============================================================================
-  // Combined orElse + expect Tests
+  // Combined recover + expect Tests
   // ============================================================================
 
-  test("orElse with expect: custom error on complete failure") {
-    val parser = char('a').orElse(char('b')).expect("must be 'a' or 'b'")
+  test("recover with expect: custom error on complete failure") {
+    val parser = char('a').recover(char('b')).expect("must be 'a' or 'b'")
 
     // Success case
     assertEquals(parser.run("a").toOption, Some('a'))
 
-    // Recovery case (Partial)
+    // Recovery case (Partial with errors)
     assert(parser.run("b").isPartial)
 
     // Failure case - should have custom message
@@ -200,23 +276,23 @@ class ErrorRecoveryTests extends FunSuite {
   // Integration Tests - Real-world Scenarios
   // ============================================================================
 
-  test("resilient number parsing with default") {
+  test("resilient number parsing with default (using recover)") {
     val number          = digit.many1.map(_.mkString.toInt)
-    val resilientNumber = number.orElse(succeed(-1)).expect("integer expected")
+    val resilientNumber = number.recover(succeed(-1)).expect("integer expected")
 
     // Valid numbers
     assertEquals(resilientNumber.run("123").toOption, Some(123))
     assertEquals(resilientNumber.run("0").toOption, Some(0))
 
-    // Invalid - recovers with default
+    // Invalid - recovers with default and tracks error
     val recovered = resilientNumber.run("abc")
     assert(recovered.isPartial)
     assertEquals(recovered.toOption, Some(-1))
   }
 
-  test("resilient list parsing - continues after error") {
+  test("resilient list parsing - continues after error (using recover)") {
     val number = digit.many1.map(_.mkString.toInt)
-    val item   = number.orElse(succeed(0))
+    val item   = number.recover(succeed(0))
     val list   = item.sepBy(char(','))
 
     // All valid
@@ -229,13 +305,13 @@ class ErrorRecoveryTests extends FunSuite {
     assert(result.toOption.isDefined)
   }
 
-  test("error accumulation through multiple orElse") {
+  test("error accumulation through multiple recover") {
     val a = char('a')
     val b = char('b')
     val c = char('c')
 
-    // Chain of recoveries
-    val parser = a.orElse(b).orElse(c)
+    // Chain of recoveries (using recover for error tracking)
+    val parser = a.recover(b).recover(c)
 
     // 'c' requires going through two fallbacks
     val result = parser.run("c")
@@ -252,10 +328,20 @@ class ErrorRecoveryTests extends FunSuite {
   // Edge Cases
   // ============================================================================
 
-  test("orElse: empty input") {
+  test("orElse: empty input - returns Success from fallback") {
     val parser = char('a').orElse(succeed('?'))
     val result = parser.run("")
 
+    // orElse doesn't track errors
+    assert(result.isSuccess)
+    assertEquals(result.toOption, Some('?'))
+  }
+
+  test("recover: empty input - returns Partial with error") {
+    val parser = char('a').recover(succeed('?'))
+    val result = parser.run("")
+
+    // recover tracks errors
     assert(result.isPartial)
     assertEquals(result.toOption, Some('?'))
   }
@@ -276,8 +362,16 @@ class ErrorRecoveryTests extends FunSuite {
     }
   }
 
-  test("orElse: fallback also uses orElse (nested recovery)") {
+  test("orElse: fallback also uses orElse (nested alternation)") {
     val deep = char('a').orElse(char('b').orElse(char('c')))
+
+    assertEquals(deep.run("a").toOption, Some('a'))
+    assertEquals(deep.run("b").toOption, Some('b'))
+    assertEquals(deep.run("c").toOption, Some('c'))
+  }
+
+  test("recover: fallback also uses recover (nested recovery)") {
+    val deep = char('a').recover(char('b').recover(char('c')))
 
     assertEquals(deep.run("a").toOption, Some('a'))
     assertEquals(deep.run("b").toOption, Some('b'))
@@ -300,5 +394,25 @@ class ErrorRecoveryTests extends FunSuite {
         }
       case _ => fail("Expected Failure")
     }
+  }
+
+  // ============================================================================
+  // Comparison: orElse vs recover
+  // ============================================================================
+
+  test("comparison: orElse is faster (no error tracking)") {
+    val parser = char('a').orElse(char('b'))
+    val result = parser.run("b")
+
+    assert(result.isSuccess, "orElse returns Success")
+    assert(result.errors.isEmpty, "orElse has no errors")
+  }
+
+  test("comparison: recover tracks errors") {
+    val parser = char('a').recover(char('b'))
+    val result = parser.run("b")
+
+    assert(result.isPartial, "recover returns Partial")
+    assert(result.errors.nonEmpty, "recover has errors from primary")
   }
 }
