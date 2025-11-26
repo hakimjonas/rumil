@@ -171,7 +171,8 @@ lazy val benchmarks = (project in file("benchmarks"))
     name           := "rumil-benchmarks",
     publish / skip := true,
     libraryDependencies ++= Seq(
-      "org.typelevel" %% "cats-parse" % "1.1.0" // For comparative benchmarks
+      "org.typelevel" %% "cats-parse"  % "1.1.0",  // For comparative benchmarks
+      "dev.zio"       %% "zio-parser"  % "0.1.9"   // For comparative benchmarks
     ),
     scalacOptions ++= Seq(
       "-deprecation",
