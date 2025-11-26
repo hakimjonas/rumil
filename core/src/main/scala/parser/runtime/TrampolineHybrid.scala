@@ -236,7 +236,12 @@ object TrampolineHybrid {
           case Continuation.FlatMapPartialCont(errors1, prevConsumed, next) =>
             result match {
               case Result.Success(value, consumed) =>
-                result = Result.Partial(value, errors1, prevConsumed + consumed)
+                // Only convert to Partial if there are actual errors
+                result = if (errors1.isEmpty) {
+                  Result.Success(value, prevConsumed + consumed)
+                } else {
+                  Result.Partial(value, errors1, prevConsumed + consumed)
+                }
 
               case Result.Partial(value, errors2, consumed) =>
                 result = Result.Partial(value, errors1 ++ errors2, prevConsumed + consumed)
