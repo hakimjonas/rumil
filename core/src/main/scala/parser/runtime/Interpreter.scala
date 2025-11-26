@@ -56,8 +56,9 @@ private[runtime] def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match 
  */
 def run[E, A](parser: Parser[E, A], input: String): Result[E, A] = {
   val state = parserState(input)
-  // Use hybrid GADT trampolined interpreter for stack safety + type tracking
-  toResult(TrampolineHybrid.run(parser, state))
+  // Use optimized trampolined interpreter for stack safety
+  // TrampolineOpt is faster than Hybrid on most workloads (see benchmarks)
+  toResult(TrampolineOpt.run(parser, state))
 }
 
 /**
