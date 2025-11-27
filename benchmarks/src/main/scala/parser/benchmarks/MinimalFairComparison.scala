@@ -1,7 +1,8 @@
 package parser.benchmarks
 
-import org.openjdk.jmh.annotations._
 import java.util.concurrent.TimeUnit
+
+import org.openjdk.jmh.annotations._
 
 /**
  * Minimal FAIR comparison: Only benchmarks where APIs are truly equivalent.
@@ -21,28 +22,27 @@ class MinimalFairComparison {
 
   // Inputs
   var choiceInput: String = _
-  var manyInput: String = _
+  var manyInput: String   = _
 
   // Parsers (built once)
   var rumilChoice: parser.core.Parser[parser.core.ParseError, String] = _
-  var zioChoice: zio.parser.Syntax[String, Char, Char, String] = _
+  var zioChoice: zio.parser.Syntax[String, Char, Char, String]        = _
 
   var rumilMany: parser.core.Parser[parser.core.ParseError, List[Char]] = _
-  var zioMany: zio.parser.Syntax[String, Char, Char, zio.Chunk[Unit]] = _
+  var zioMany: zio.parser.Syntax[String, Char, Char, zio.Chunk[Unit]]   = _
 
   @Setup
   def setup(): Unit = {
     // Test inputs
-    choiceInput = "lemon"  // Last choice, exercises all branches
-    manyInput = "1" * 10000  // 10K repetitions
+    choiceInput = "lemon"   // Last choice, exercises all branches
+    manyInput = "1" * 10000 // 10K repetitions
 
     // Build parsers ONCE
     {
       import parser.core._
       import parser.syntax._
 
-      rumilChoice =
-        string("apple") | string("banana") | string("cherry") |
+      rumilChoice = string("apple") | string("banana") | string("cherry") |
         string("date") | string("elderberry") | string("fig") |
         string("grape") | string("honeydew") | string("kiwi") |
         string("lemon")
@@ -53,8 +53,7 @@ class MinimalFairComparison {
     {
       import zio.parser._
 
-      zioChoice =
-        Syntax.string("apple", "apple") | Syntax.string("banana", "banana") |
+      zioChoice = Syntax.string("apple", "apple") | Syntax.string("banana", "banana") |
         Syntax.string("cherry", "cherry") | Syntax.string("date", "date") |
         Syntax.string("elderberry", "elderberry") | Syntax.string("fig", "fig") |
         Syntax.string("grape", "grape") | Syntax.string("honeydew", "honeydew") |
@@ -95,9 +94,8 @@ class MinimalFairComparison {
   }
 
   @Benchmark
-  def zio_choice(): Any = {
+  def zio_choice(): Any =
     zioChoice.parseString(choiceInput)
-  }
 
   //
   // Benchmark 2: Many repetition (10K elements)
@@ -110,7 +108,6 @@ class MinimalFairComparison {
   }
 
   @Benchmark
-  def zio_many(): Any = {
+  def zio_many(): Any =
     zioMany.parseString(manyInput)
-  }
 }

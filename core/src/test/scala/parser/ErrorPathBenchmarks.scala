@@ -32,18 +32,18 @@ class ErrorPathBenchmarks extends munit.FunSuite {
   // ==========================================================================
 
   test("error path 1.1: Many with recover (100 items, 5K iterations)") {
-    val input = "a" * 50 + "x" * 50  // 50 successes, 50 recoveries
+    val input = "a" * 50 + "x" * 50 // 50 successes, 50 recoveries
 
     val rumilParser = {
       import parser.core._
       import parser.syntax._
-      val errorProne = char('a').recover(char('x'))  // 'x' produces Partial with errors
+      val errorProne = char('a').recover(char('x')) // 'x' produces Partial with errors
       parser.core.many(errorProne)
     }
 
     val catsParser = {
       import cats.parse.{Parser => P}
-      val errorProne = P.charIn('a').orElse(P.charIn('x'))  // cats-parse has no error tracking
+      val errorProne = P.charIn('a').orElse(P.charIn('x')) // cats-parse has no error tracking
       errorProne.rep0
     }
 
@@ -75,18 +75,18 @@ class ErrorPathBenchmarks extends munit.FunSuite {
 
   test("error path 1.2: Many with high error rate (1K items, 2K iterations)") {
     // Input: 90% errors, 10% success
-    val input = ("x" * 9 + "a") * 100  // 900 recoveries, 100 successes
+    val input = ("x" * 9 + "a") * 100 // 900 recoveries, 100 successes
 
     val rumilParser = {
       import parser.core._
       import parser.syntax._
-      val errorProne = char('a').recover(char('x'))  // recover tracks errors
+      val errorProne = char('a').recover(char('x')) // recover tracks errors
       parser.core.many(errorProne)
     }
 
     val catsParser = {
       import cats.parse.{Parser => P}
-      val errorProne = P.charIn('a').orElse(P.charIn('x'))  // cats-parse has no error tracking
+      val errorProne = P.charIn('a').orElse(P.charIn('x')) // cats-parse has no error tracking
       errorProne.rep0
     }
 
@@ -119,22 +119,27 @@ class ErrorPathBenchmarks extends munit.FunSuite {
   // ==========================================================================
 
   test("error path 2.1: sepBy with error recovery (10 numbers, 5K iterations)") {
-    val input = "1,x,3,x,5,x,7,x,9,x"  // Mix of valid and invalid numbers
+    val input = "1,x,3,x,5,x,7,x,9,x" // Mix of valid and invalid numbers
 
     val rumilParser = {
       import parser.core._
       import parser.syntax._
-      val num = digit.map(_.toString.toInt).recover(
-        char('x').map(_ => -1)  // Recover with sentinel value and track errors
-      )
+      val num = digit
+        .map(_.toString.toInt)
+        .recover(
+          char('x').map(_ => -1) // Recover with sentinel value and track errors
+        )
       num.sepBy1(char(','))
     }
 
     val catsParser = {
       import cats.parse.{Parser => P}
-      val num = P.charIn('0' to '9').map(_.toString.toInt).orElse(
-        P.charIn('x').map(_ => -1)  // cats-parse has no error tracking
-      )
+      val num = P
+        .charIn('0' to '9')
+        .map(_.toString.toInt)
+        .orElse(
+          P.charIn('x').map(_ => -1) // cats-parse has no error tracking
+        )
       num.repSep(P.charIn(','))
     }
 
@@ -168,23 +173,23 @@ class ErrorPathBenchmarks extends munit.FunSuite {
   // ==========================================================================
 
   test("error path 3.1: Choice exhaustion (10 alternatives, all fail, 10K iterations)") {
-    val input = "zzz"  // None of the alternatives match
+    val input = "zzz" // None of the alternatives match
 
     val rumilParser = {
       import parser.core._
       import parser.syntax._
       string("apple") | string("banana") | string("cherry") |
-      string("date") | string("elderberry") | string("fig") |
-      string("grape") | string("honeydew") | string("kiwi") |
-      string("lemon")
+        string("date") | string("elderberry") | string("fig") |
+        string("grape") | string("honeydew") | string("kiwi") |
+        string("lemon")
     }
 
     val catsParser = {
       import cats.parse.{Parser => P}
       P.string("apple").string | P.string("banana").string | P.string("cherry").string |
-      P.string("date").string | P.string("elderberry").string | P.string("fig").string |
-      P.string("grape").string | P.string("honeydew").string | P.string("kiwi").string |
-      P.string("lemon").string
+        P.string("date").string | P.string("elderberry").string | P.string("fig").string |
+        P.string("grape").string | P.string("honeydew").string | P.string("kiwi").string |
+        P.string("lemon").string
     }
 
     // Validate: both should fail
@@ -207,13 +212,13 @@ class ErrorPathBenchmarks extends munit.FunSuite {
   }
 
   test("error path 3.2: Nested choice with partial matches (10K iterations)") {
-    val input = "abcz"  // Matches 'abc' but fails on 'z'
+    val input = "abcz" // Matches 'abc' but fails on 'z'
 
     val rumilParser = {
       import parser.core._
       import parser.syntax._
       // Try several partial matches before complete failure
-      (string("abcd") | string("abce") | string("abcf") | string("abcg"))
+      string("abcd") | string("abce") | string("abcf") | string("abcg")
     }
 
     val catsParser = {
@@ -246,7 +251,7 @@ class ErrorPathBenchmarks extends munit.FunSuite {
 
   test("error path 4.1: Deep backtracking with many attempts (5K iterations)") {
     // Input requires trying many alternatives before succeeding
-    val input = "zzzzza"  // 4 failures then success
+    val input = "zzzzza" // 4 failures then success
 
     val rumilParser = {
       import parser.core._
@@ -256,7 +261,7 @@ class ErrorPathBenchmarks extends munit.FunSuite {
       val alt2 = string("zzzzc")
       val alt3 = string("zzzd")
       val alt4 = string("zze")
-      val alt5 = string("zzzzza")  // This one succeeds
+      val alt5 = string("zzzzza") // This one succeeds
       alt1 | alt2 | alt3 | alt4 | alt5
     }
 

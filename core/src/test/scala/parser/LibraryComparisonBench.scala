@@ -27,9 +27,9 @@ class LibraryComparisonBench extends munit.FunSuite {
 
   // Inputs
   val stringInput = "hello"
-  val choiceInput = "lemon"  // Last alternative (worst case for choice)
-  val manyInput = "a" * 1000
-  val seqInput = "1" * 100
+  val choiceInput = "lemon" // Last alternative (worst case for choice)
+  val manyInput   = "a" * 1000
+  val seqInput    = "1" * 100
   val numberInput = "42"
 
   // Rumil parsers
@@ -41,9 +41,9 @@ class LibraryComparisonBench extends munit.FunSuite {
     import parser.core._
     import parser.syntax._
     string("apple") | string("banana") | string("cherry") |
-    string("date") | string("elderberry") | string("fig") |
-    string("grape") | string("honeydew") | string("kiwi") |
-    string("lemon")
+      string("date") | string("elderberry") | string("fig") |
+      string("grape") | string("honeydew") | string("kiwi") |
+      string("lemon")
   }
   val rumilMany = {
     import parser.core._
@@ -53,7 +53,7 @@ class LibraryComparisonBench extends munit.FunSuite {
     import parser.core._
     import parser.syntax._
     var p: parser.core.Parser[parser.core.ParseError, Any] = char('1')
-    (1 until 100).foreach { _ => p = p ~ char('1') }
+    (1 until 100).foreach(_ => p = p ~ char('1'))
     p
   }
   val rumilNumber = {
@@ -70,9 +70,9 @@ class LibraryComparisonBench extends munit.FunSuite {
   val catsChoice = {
     import cats.parse.{Parser => P}
     P.string("apple").string | P.string("banana").string | P.string("cherry").string |
-    P.string("date").string | P.string("elderberry").string | P.string("fig").string |
-    P.string("grape").string | P.string("honeydew").string | P.string("kiwi").string |
-    P.string("lemon").string
+      P.string("date").string | P.string("elderberry").string | P.string("fig").string |
+      P.string("grape").string | P.string("honeydew").string | P.string("kiwi").string |
+      P.string("lemon").string
   }
   val catsMany = {
     import cats.parse.{Parser => P}
@@ -82,7 +82,7 @@ class LibraryComparisonBench extends munit.FunSuite {
     import cats.parse.{Parser => P}
     import cats.syntax.all._
     var p: P[Any] = P.charIn('1')
-    (1 until 100).foreach { _ => p = (p, P.charIn('1')).tupled }
+    (1 until 100).foreach(_ => p = (p, P.charIn('1')).tupled)
     p
   }
   val catsNumber = {
@@ -98,10 +98,10 @@ class LibraryComparisonBench extends munit.FunSuite {
   val zioChoice = {
     import zio.parser._
     Syntax.string("apple", "apple") | Syntax.string("banana", "banana") |
-    Syntax.string("cherry", "cherry") | Syntax.string("date", "date") |
-    Syntax.string("elderberry", "elderberry") | Syntax.string("fig", "fig") |
-    Syntax.string("grape", "grape") | Syntax.string("honeydew", "honeydew") |
-    Syntax.string("kiwi", "kiwi") | Syntax.string("lemon", "lemon")
+      Syntax.string("cherry", "cherry") | Syntax.string("date", "date") |
+      Syntax.string("elderberry", "elderberry") | Syntax.string("fig", "fig") |
+      Syntax.string("grape", "grape") | Syntax.string("honeydew", "honeydew") |
+      Syntax.string("kiwi", "kiwi") | Syntax.string("lemon", "lemon")
   }
   val zioMany = {
     import zio.parser._
@@ -116,11 +116,21 @@ class LibraryComparisonBench extends munit.FunSuite {
   }
 
   // Validate correctness
-  assert(parser.runtime.run(rumilString, stringInput).isInstanceOf[parser.core.Result.Success[?, ?]], "Rumil string")
-  assert(parser.runtime.run(rumilChoice, choiceInput).isInstanceOf[parser.core.Result.Success[?, ?]], "Rumil choice")
-  assert(parser.runtime.run(rumilMany, manyInput).isInstanceOf[parser.core.Result.Success[?, ?]], "Rumil many")
-  assert(parser.runtime.run(rumilSeq, seqInput).isInstanceOf[parser.core.Result.Success[?, ?]], "Rumil seq")
-  assert(parser.runtime.run(rumilNumber, numberInput).isInstanceOf[parser.core.Result.Success[?, ?]], "Rumil number")
+  assert(
+    parser.runtime.run(rumilString, stringInput).isInstanceOf[parser.core.Result.Success[?, ?]],
+    "Rumil string")
+  assert(
+    parser.runtime.run(rumilChoice, choiceInput).isInstanceOf[parser.core.Result.Success[?, ?]],
+    "Rumil choice")
+  assert(
+    parser.runtime.run(rumilMany, manyInput).isInstanceOf[parser.core.Result.Success[?, ?]],
+    "Rumil many")
+  assert(
+    parser.runtime.run(rumilSeq, seqInput).isInstanceOf[parser.core.Result.Success[?, ?]],
+    "Rumil seq")
+  assert(
+    parser.runtime.run(rumilNumber, numberInput).isInstanceOf[parser.core.Result.Success[?, ?]],
+    "Rumil number")
 
   assert(catsString.parse(stringInput).isRight, "cats string")
   assert(catsChoice.parse(choiceInput).isRight, "cats choice")

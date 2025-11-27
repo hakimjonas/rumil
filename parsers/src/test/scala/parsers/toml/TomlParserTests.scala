@@ -235,7 +235,7 @@ active = true
   }
 
   test("parse configuration file") {
-    val toml = """# Application configuration
+    val toml   = """# Application configuration
 title = "TOML Example"
 
 [owner]

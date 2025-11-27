@@ -245,7 +245,7 @@ final class RedTree private (
   def findReparseAncestor(reparsableKinds: Set[SyntaxKind]): Option[RedTree] =
     syntaxKind match {
       case Some(k) if reparsableKinds.contains(k) => Some(this)
-      case _                                      =>
+      case _ =>
         parent.flatMap(_.findReparseAncestor(reparsableKinds))
     }
 

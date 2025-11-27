@@ -135,7 +135,7 @@ object TreeSplicing {
   def pathFromRedTree(node: RedTree): TreePath = {
     def loop(current: RedTree, acc: Vector[Int]): Vector[Int] =
       current.parent match {
-        case None         => acc
+        case None => acc
         case Some(parent) =>
           val siblings = parent.children
           val idx      = siblings.indexWhere(_.offset == current.offset)
@@ -161,11 +161,9 @@ object TreeSplicing {
 
     if (nodeEndOffset <= edit.startOffset) {
       node
-    }
-    else if (nodeStartOffset >= edit.endOffset) {
+    } else if (nodeStartOffset >= edit.endOffset) {
       shiftSpan(node, edit.lengthDelta)
-    }
-    else {
+    } else {
       node match {
         case t @ GreenNode.Token(kind, text, span) =>
           if (span.start.offset >= edit.endOffset) {

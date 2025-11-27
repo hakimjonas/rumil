@@ -44,8 +44,8 @@ object TrampolineOpt {
 
     var current: Parser[Any, Any] = parser.asInstanceOf[Parser[Any, Any]]
     var result: IResult[Any, Any] = NoResult
-    var consumedAcc = 0
-    var mapFn: Any => Any = NoMapFn
+    var consumedAcc               = 0
+    var mapFn: Any => Any         = NoMapFn
 
     while (true) {
       while (current ne NoParser)
@@ -155,8 +155,10 @@ object TrampolineOpt {
                 consumedAcc = 0
 
               case LazyPartial(value, mkErrors2, consumed) =>
-                result =
-                  LazyPartial(value, () => mkErrors1() ++ mkErrors2(), prevConsumed + consumed + consumedAcc)
+                result = LazyPartial(
+                  value,
+                  () => mkErrors1() ++ mkErrors2(),
+                  prevConsumed + consumed + consumedAcc)
                 consumedAcc = 0
 
               case LazyFailure(mkErrors2, furthest) =>

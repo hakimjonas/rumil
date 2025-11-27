@@ -229,8 +229,8 @@ def formatJson(value: JsonValue, config: JsonFormatConfig = compactFormat): Stri
 
 private def formatJsonValue(value: JsonValue, depth: Int, config: JsonFormatConfig): String =
   value match {
-    case JsonValue.Null      => "null"
-    case JsonValue.Bool(b)   => b.toString
+    case JsonValue.Null    => "null"
+    case JsonValue.Bool(b) => b.toString
     case JsonValue.Number(n) =>
       if (n.isWhole) n.toLong.toString
       else n.toString

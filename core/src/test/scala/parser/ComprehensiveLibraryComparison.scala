@@ -124,7 +124,9 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     }
     val zioParser = {
       import zio.parser._
-      Syntax.string("the quick brown fox jumps over the lazy dog", "the quick brown fox jumps over the lazy dog")
+      Syntax.string(
+        "the quick brown fox jumps over the lazy dog",
+        "the quick brown fox jumps over the lazy dog")
     }
 
     // Validate
@@ -174,8 +176,8 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
 
     // Validate
     val rumilResult = parser.runtime.run(rumilParser, input)
-    val catsResult = catsParser.parse(input)
-    val zioResult = zioParser.parseString(input)
+    val catsResult  = catsParser.parse(input)
+    val zioResult   = zioParser.parseString(input)
 
     assert(rumilResult.isInstanceOf[parser.core.Result.Success[?, ?]])
     assert(catsResult.isRight)
@@ -189,7 +191,7 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     }
     catsResult match {
       case Right((_, list)) => assert(list.length == 100, s"cats parsed ${list.length} items")
-      case _ => fail("cats should succeed")
+      case _                => fail("cats should succeed")
     }
 
     val rumilTime = benchmark(500, 5000) {
@@ -395,23 +397,29 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
       import parser.core._
       import parser.syntax._
       string("apple") | string("banana") | string("cherry") |
-      string("date") | string("elderberry") | string("fig") |
-      string("grape") | string("honeydew") | string("jackfruit") |
-      string("kiwi")
+        string("date") | string("elderberry") | string("fig") |
+        string("grape") | string("honeydew") | string("jackfruit") |
+        string("kiwi")
     }
     val catsParser = {
       import cats.parse.{Parser => P}
       P.string("apple").string | P.string("banana").string | P.string("cherry").string |
-      P.string("date").string | P.string("elderberry").string | P.string("fig").string |
-      P.string("grape").string | P.string("honeydew").string | P.string("jackfruit").string |
-      P.string("kiwi").string
+        P.string("date").string | P.string("elderberry").string | P.string("fig").string |
+        P.string("grape").string | P.string("honeydew").string | P.string("jackfruit").string |
+        P.string("kiwi").string
     }
     val zioParser = {
       import zio.parser._
-      Syntax.string("apple", "apple") | Syntax.string("banana", "banana") | Syntax.string("cherry", "cherry") |
-      Syntax.string("date", "date") | Syntax.string("elderberry", "elderberry") | Syntax.string("fig", "fig") |
-      Syntax.string("grape", "grape") | Syntax.string("honeydew", "honeydew") | Syntax.string("jackfruit", "jackfruit") |
-      Syntax.string("kiwi", "kiwi")
+      Syntax.string("apple", "apple") | Syntax.string("banana", "banana") | Syntax.string(
+        "cherry",
+        "cherry") |
+        Syntax.string("date", "date") | Syntax.string("elderberry", "elderberry") | Syntax.string(
+          "fig",
+          "fig") |
+        Syntax.string("grape", "grape") | Syntax.string("honeydew", "honeydew") | Syntax.string(
+          "jackfruit",
+          "jackfruit") |
+        Syntax.string("kiwi", "kiwi")
     }
 
     // Validate
@@ -491,14 +499,14 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
       import parser.core._
       import parser.syntax._
       var p: parser.core.Parser[parser.core.ParseError, Any] = char('1')
-      (1 until 50).foreach { _ => p = p ~ char('1') }
+      (1 until 50).foreach(_ => p = p ~ char('1'))
       p
     }
     val catsParser = {
       import cats.parse.{Parser => P}
       import cats.syntax.all._
       var p: P[Any] = P.charIn('1')
-      (1 until 50).foreach { _ => p = (p, P.charIn('1')).tupled }
+      (1 until 50).foreach(_ => p = (p, P.charIn('1')).tupled)
       p
     }
 
@@ -549,11 +557,11 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     val rumilResult = parser.runtime.run(rumilParser, input)
     rumilResult match {
       case parser.core.Result.Success(n: Int, _) => assert(n == 7)
-      case _ => fail("Should parse to 7")
+      case _                                     => fail("Should parse to 7")
     }
     catsParser.parse(input) match {
       case Right((_, n)) => assert(n == 7)
-      case _ => fail("Should parse to 7")
+      case _             => fail("Should parse to 7")
     }
 
     val rumilTime = benchmark(2000, 50000) {
@@ -600,11 +608,11 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     val rumilResult = parser.runtime.run(rumilParser, input)
     rumilResult match {
       case parser.core.Result.Success(n: Int, _) => assert(n == 42857)
-      case _ => fail("Should parse to 42857")
+      case _                                     => fail("Should parse to 42857")
     }
     catsParser.parse(input) match {
       case Right((_, n)) => assert(n == 42857)
-      case _ => fail("Should parse to 42857")
+      case _             => fail("Should parse to 42857")
     }
 
     val rumilTime = benchmark(1000, 20000) {
@@ -643,7 +651,7 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     val catsParser = {
       import cats.parse.{Parser => P, Numbers}
       import cats.syntax.all._
-      val num = Numbers.digits.map(_.toInt)
+      val num   = Numbers.digits.map(_.toInt)
       val comma = P.charIn(',')
       (num, comma, num, comma, num).mapN { case (n1, _, n2, _, n3) =>
         List(n1, n2, n3)
@@ -659,7 +667,7 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     }
     catsParser.parse(input) match {
       case Right((_, list)) => assert(list == List(123, 456, 789))
-      case _ => fail("Should parse CSV")
+      case _                => fail("Should parse CSV")
     }
 
     val rumilTime = benchmark(1000, 10000) {
@@ -688,7 +696,7 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     }
     val catsParser = {
       import cats.parse.{Parser => P, Numbers}
-      val num = Numbers.digits.map(_.toInt)
+      val num   = Numbers.digits.map(_.toInt)
       val comma = P.charIn(',')
       num.repSep(comma)
     }
@@ -697,12 +705,12 @@ class ComprehensiveLibraryComparison extends munit.FunSuite {
     val rumilResult = parser.runtime.run(rumilParser, input)
     rumilResult match {
       case parser.core.Result.Success(list: List[?], _) =>
-        assert(list == List(1,2,3,4,5,6,7,8,9,10))
+        assert(list == List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
       case _ => fail("Should parse CSV")
     }
     catsParser.parse(input) match {
       case Right((_, list)) =>
-        assert(list.toList == List(1,2,3,4,5,6,7,8,9,10))
+        assert(list.toList == List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
       case _ => fail("Should parse CSV")
     }
 

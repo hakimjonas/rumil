@@ -47,9 +47,9 @@ private[runtime] type IResult[+E, +A] = Result.Success[E, A] | LazyPartial[E, A]
 
 /** Convert IResult to public Result */
 private[runtime] def toResult[E, A](ir: IResult[E, A]): Result[E, A] = ir match {
-  case s: Result.Success[?, ?]     => s.asInstanceOf[Result[E, A]]
-  case LazyPartial(v, mkErrs, c)   => Result.Partial(v, mkErrs(), c)
-  case LazyFailure(mkErrs, loc)    => Result.Failure(mkErrs(), loc)
+  case s: Result.Success[?, ?]   => s.asInstanceOf[Result[E, A]]
+  case LazyPartial(v, mkErrs, c) => Result.Partial(v, mkErrs(), c)
+  case LazyFailure(mkErrs, loc)  => Result.Failure(mkErrs(), loc)
 }
 
 /**
@@ -175,7 +175,9 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
           val start     = state.offset
           val endOffset = math.min(start + len, input.length)
           LazyFailure(
-            () => List(ParseError.Unexpected(input.substring(start, endOffset), Set(s"\"$target\""), loc)),
+            () =>
+              List(
+                ParseError.Unexpected(input.substring(start, endOffset), Set(s"\"$target\""), loc)),
             loc
           )
         }
@@ -221,13 +223,13 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
     case Parser.Or(left, right) =>
       val snapshot = state.save
       interpretI(left, state) match {
-        case success @ Result.Success(_, _)          => success
-        case partial @ LazyPartial(_, _, _)          => partial
+        case success @ Result.Success(_, _) => success
+        case partial @ LazyPartial(_, _, _) => partial
         case LazyFailure(leftMkErrors, leftFurthest) =>
           state.restore(snapshot)
           interpretI(right, state) match {
-            case success @ Result.Success(_, _)            => success
-            case partial @ LazyPartial(_, _, _)            => partial
+            case success @ Result.Success(_, _) => success
+            case partial @ LazyPartial(_, _, _) => partial
             case LazyFailure(rightMkErrors, rightFurthest) =>
               if (leftFurthest.offset > rightFurthest.offset) {
                 LazyFailure(leftMkErrors, leftFurthest)
@@ -310,8 +312,8 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
 
     case Parser.Named(p, name) =>
       interpretI(p, state) match {
-        case success @ Result.Success(_, _)  => success
-        case partial @ LazyPartial(_, _, _)  => partial
+        case success @ Result.Success(_, _) => success
+        case partial @ LazyPartial(_, _, _) => partial
         case LazyFailure(mkErrors, furthest) =>
           LazyFailure(
             () =>
@@ -347,7 +349,7 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
           System.err.println(s"[DEBUG] $label: success, parsed $value")
           success
         case LazyPartial(value, mkErrors, consumed) =>
-          val errors = mkErrors()
+          val errors    = mkErrors()
           val errorList = errors.map(formatError).mkString(", ")
           System.err.println(
             s"[DEBUG] $label: partial success, parsed $value with errors: $errorList")
@@ -376,8 +378,8 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
     case Parser.RecoverWith(p, recovery) =>
       val snapshot = state.save
       interpretI(p, state) match {
-        case success @ Result.Success(_, _)   => success
-        case partial @ LazyPartial(_, _, _)   => partial
+        case success @ Result.Success(_, _) => success
+        case partial @ LazyPartial(_, _, _) => partial
         case LazyFailure(mkErrors, furthest) =>
           state.restore(snapshot)
           interpretI(recovery, state) match {
@@ -397,7 +399,7 @@ private[runtime] def interpretI[E, A](parser: Parser[E, A], state: ParserState):
       interpretI(p, state) match {
         case success @ Result.Success(_, _) => success
         case partial @ LazyPartial(_, _, _) => partial
-        case LazyFailure(_, furthest)       =>
+        case LazyFailure(_, furthest) =>
           LazyFailure(
             () => List(ParseError.Custom(message, furthest)),
             furthest
@@ -672,8 +674,8 @@ private def growLRResult[E, A](
 
   var lastResult: Result[E, A] = castSeed[E, A](lr.seed)
   var lastPos                  = seedEndPos
-  var lastLine   = state.line
-  var lastColumn = state.column
+  var lastLine                 = state.line
+  var lastColumn               = state.column
 
   var continue = true
   while (continue) {
@@ -730,8 +732,8 @@ private def interpretSimpleMemoI[E, A](
       resultToIResult(castSimpleCacheResult[E, A](entry.result))
 
     case None =>
-      val result = interpretI(inner, state)
-      val endPos = state.offset
+      val result       = interpretI(inner, state)
+      val endPos       = state.offset
       val forcedResult = toResult(result)
       state.simpleCache.put(key, pos, forcedResult, endPos)
       result
@@ -760,10 +762,10 @@ private def castSimpleCacheResult[E, A](result: Result[Any, Any]): Result[E, A] 
  * @return Success with list of all parsed values
  */
 private def interpretManyI[E, A](p: Parser[E, A], state: ParserState): IResult[E, List[A]] = {
-  val acc                   = scala.collection.mutable.ArrayBuffer.empty[A]
-  val errThunks             = scala.collection.mutable.ArrayBuffer.empty[() => List[E]]
-  var totalConsumed         = 0
-  var continue              = true
+  val acc           = scala.collection.mutable.ArrayBuffer.empty[A]
+  val errThunks     = scala.collection.mutable.ArrayBuffer.empty[() => List[E]]
+  var totalConsumed = 0
+  var continue      = true
 
   while (continue) {
     val snapshot = state.save
@@ -849,8 +851,8 @@ private def interpretChoiceI[E, A](
     LazyFailure(accMkErrors, furthest)
   case head :: tail =>
     interpretI(head, state) match {
-      case success @ Result.Success(_, _)  => success
-      case partial @ LazyPartial(_, _, _)  => partial
+      case success @ Result.Success(_, _) => success
+      case partial @ LazyPartial(_, _, _) => partial
       case LazyFailure(mkErrs, loc) =>
         state.restore(snapshot)
         val (newMkErrors, newFurthest) =
@@ -879,8 +881,8 @@ private def interpretStringChoice(
   targets: Array[String],
   state: ParserState
 ): IResult[ParseError, String] = {
-  val input  = state.input
-  val offset = state.offset
+  val input   = state.input
+  val offset  = state.offset
   val matched = radix.matchAtOrNull(input, offset)
 
   if (matched ne null) {

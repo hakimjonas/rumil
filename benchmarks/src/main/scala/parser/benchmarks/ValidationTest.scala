@@ -33,9 +33,9 @@ object ValidationTest {
 
     val rumilParser =
       string("apple") | string("banana") | string("cherry") |
-      string("date") | string("elderberry") | string("fig") |
-      string("grape") | string("honeydew") | string("kiwi") |
-      string("lemon")
+        string("date") | string("elderberry") | string("fig") |
+        string("grape") | string("honeydew") | string("kiwi") |
+        string("lemon")
 
     val rumilResult1 = run(rumilParser, "lemon")
     val rumilResult2 = run(rumilParser, "apple")
@@ -50,10 +50,10 @@ object ValidationTest {
 
     val zioParser =
       Syntax.string("apple", "apple") | Syntax.string("banana", "banana") |
-      Syntax.string("cherry", "cherry") | Syntax.string("date", "date") |
-      Syntax.string("elderberry", "elderberry") | Syntax.string("fig", "fig") |
-      Syntax.string("grape", "grape") | Syntax.string("honeydew", "honeydew") |
-      Syntax.string("kiwi", "kiwi") | Syntax.string("lemon", "lemon")
+        Syntax.string("cherry", "cherry") | Syntax.string("date", "date") |
+        Syntax.string("elderberry", "elderberry") | Syntax.string("fig", "fig") |
+        Syntax.string("grape", "grape") | Syntax.string("honeydew", "honeydew") |
+        Syntax.string("kiwi", "kiwi") | Syntax.string("lemon", "lemon")
 
     val zioResult1 = zioParser.parseString("lemon")
     val zioResult2 = zioParser.parseString("apple")
@@ -79,10 +79,9 @@ object ValidationTest {
     import parser.runtime.run
 
     var rumilP: Parser[ParseError, Char] = char('1')
-    for (_ <- 1 to 100) {
+    for (_ <- 1 to 100)
       rumilP = rumilP.flatMap(_ => char('1'))
-    }
-    val input = "1" * 101  // Need 101 chars for 100 flatMaps
+    val input       = "1" * 101 // Need 101 chars for 100 flatMaps
     val rumilResult = run(rumilP, input)
 
     println(s"  Rumil result: ${rumilResult}")
@@ -92,9 +91,8 @@ object ValidationTest {
     import zio.parser._
 
     var zioP = Syntax.char('1')
-    for (_ <- 1 to 100) {
+    for (_ <- 1 to 100)
       zioP = zioP ~> Syntax.char('1')
-    }
     val zioResult = zioP.parseString(input)
 
     println(s"  ZIO result: ${zioResult}")
@@ -112,16 +110,15 @@ object ValidationTest {
 
     // Rumil
     import parser.core._
-    import parser.syntax._
     import parser.runtime.run
 
-    val rumilDigit = satisfy(_.isDigit, "digit")
+    val rumilDigit  = satisfy(_.isDigit, "digit")
     val rumilParser = parser.core.many(rumilDigit)
     val rumilResult = run(rumilParser, input)
 
     val rumilCount = rumilResult match {
       case parser.core.Result.Success(list: List[_], _) => list.size
-      case _ => -1
+      case _                                            => -1
     }
 
     println(s"  Rumil parsed ${rumilCount} digits")
@@ -129,13 +126,13 @@ object ValidationTest {
     // zio-parser
     import zio.parser._
 
-    val zioDigit = Syntax.digit
+    val zioDigit  = Syntax.digit
     val zioParser = zioDigit.repeat
     val zioResult = zioParser.parseString(input)
 
     val zioCount = zioResult match {
       case Right(chunk) => chunk.asInstanceOf[zio.Chunk[_]].size
-      case Left(_) => -1
+      case Left(_)      => -1
     }
 
     println(s"  ZIO parsed ${zioCount} digits")
@@ -154,7 +151,6 @@ object ValidationTest {
 
     // Rumil
     import parser.core._
-    import parser.syntax._
     import parser.runtime.run
 
     val rumilParser = parser.core.many(char('1'))
@@ -162,7 +158,7 @@ object ValidationTest {
 
     val rumilCount = rumilResult match {
       case parser.core.Result.Success(list: List[_], _) => list.size
-      case _ => -1
+      case _                                            => -1
     }
 
     println(s"  Rumil parsed ${rumilCount} chars")
@@ -175,7 +171,7 @@ object ValidationTest {
 
     val zioCount = zioResult match {
       case Right(chunk) => chunk.asInstanceOf[zio.Chunk[_]].size
-      case Left(_) => -1
+      case Left(_)      => -1
     }
 
     println(s"  ZIO parsed ${zioCount} chars")
@@ -197,7 +193,7 @@ object ValidationTest {
 
     val rumilDigit = satisfy(_.isDigit, "digit")
     val rumilParser = rumilDigit ~ rumilDigit ~ rumilDigit ~ rumilDigit ~ rumilDigit ~
-                      rumilDigit ~ rumilDigit ~ rumilDigit ~ rumilDigit ~ rumilDigit
+      rumilDigit ~ rumilDigit ~ rumilDigit ~ rumilDigit ~ rumilDigit
 
     val rumilResult = run(rumilParser, "1234567890")
 
@@ -208,7 +204,7 @@ object ValidationTest {
 
     val zioDigit = Syntax.digit
     val zioParser = zioDigit ~ zioDigit ~ zioDigit ~ zioDigit ~ zioDigit ~
-                    zioDigit ~ zioDigit ~ zioDigit ~ zioDigit ~ zioDigit
+      zioDigit ~ zioDigit ~ zioDigit ~ zioDigit ~ zioDigit
 
     val zioResult = zioParser.parseString("1234567890")
 

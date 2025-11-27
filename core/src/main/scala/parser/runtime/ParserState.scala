@@ -255,7 +255,7 @@ final class ParserState private[runtime] (
   private[runtime] lazy val memo: MemoTable                  = MemoTable()
   private[runtime] lazy val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty
   private[runtime] lazy val heads: mutable.Map[Int, LRHead]  = mutable.Map.empty
-  private[runtime] lazy val simpleCache: SimpleMemoTable = SimpleMemoTable()
+  private[runtime] lazy val simpleCache: SimpleMemoTable     = SimpleMemoTable()
 
   def offset: Int = _offset
   def line: Int   = _line

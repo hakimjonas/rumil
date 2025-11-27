@@ -251,11 +251,11 @@ private def normalElement(config: XmlConfig): Parser[ParseError, XmlNode] =
     _         <- ws
     _         <- char('>')
   } yield
-  if (name == closeName) {
-    XmlNode.Element(name, attrs, children)
-  } else {
-    XmlNode.Element(name, attrs, children)
-  }
+    if (name == closeName) {
+      XmlNode.Element(name, attrs, children)
+    } else {
+      XmlNode.Element(name, attrs, children)
+    }
 
 /**
  * Parses any XML element.

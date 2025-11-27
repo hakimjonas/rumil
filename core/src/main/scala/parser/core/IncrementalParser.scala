@@ -90,7 +90,7 @@ object IncrementalParser {
 
     tryTokenLevelUpdate(previousTree, previousSource, edit, newSource) match {
       case Some(result) => result
-      case None         =>
+      case None =>
         blockLevelReparse(previousTree, edit, newSource, parser, config)
     }
   }
