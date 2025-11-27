@@ -131,7 +131,7 @@ object ValidationTest {
     val zioResult = zioParser.parseString(input)
 
     val zioCount = zioResult match {
-      case Right(chunk) => chunk.asInstanceOf[zio.Chunk[_]].size
+      case Right(chunk) => chunk.asInstanceOf[zio.Chunk[?]].size
       case Left(_)      => -1
     }
 
@@ -170,7 +170,7 @@ object ValidationTest {
     val zioResult = zioParser.parseString(input)
 
     val zioCount = zioResult match {
-      case Right(chunk) => chunk.asInstanceOf[zio.Chunk[_]].size
+      case Right(chunk) => chunk.asInstanceOf[zio.Chunk[?]].size
       case Left(_)      => -1
     }
 

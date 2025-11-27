@@ -2,13 +2,8 @@ package parser.syntax
 
 import parser.core._
 
-// ============================================================================
-// EXTENSION METHODS - Ergonomic API
-// ============================================================================
-
 extension [E, A](p: Parser[E, A]) {
 
-  // Functor
   inline def map[B](f: A => B): Parser[E, B] =
     parser.core.map(p, f)
 
@@ -18,21 +13,18 @@ extension [E, A](p: Parser[E, A]) {
   inline def void: Parser[E, Unit] =
     p.as(())
 
-  // Monad
   inline def flatMap[B](f: A => Parser[E, B]): Parser[E, B] =
     parser.core.flatMap(p, f)
 
   inline def >>[B](f: A => Parser[E, B]): Parser[E, B] =
     flatMap(f)
 
-  // Choice
   inline def |(other: Parser[E, A]): Parser[E, A] =
     parser.core.or(p, other)
 
   inline def or(other: Parser[E, A]): Parser[E, A] =
     parser.core.or(p, other)
 
-  // Sequencing
   inline def ~[B](that: Parser[E, B]): Parser[E, (A, B)] =
     parser.core.zip(p, that)
 
@@ -45,7 +37,6 @@ extension [E, A](p: Parser[E, A]) {
   inline def between[L, R](left: Parser[E, L], right: Parser[E, R]): Parser[E, A] =
     parser.core.between(p, left, right)
 
-  // Repetition
   inline def many: Parser[E, List[A]] =
     parser.core.many(p)
 
@@ -102,7 +93,6 @@ extension [E, A](p: Parser[E, A]) {
   inline def surroundedBy[Delim](delim: Parser[E, Delim]): Parser[E, A] =
     parser.core.surroundedBy(delim)(p)
 
-  // Operators
   inline def chainl1(op: Parser[E, (A, A) => A]): Parser[E, A] =
     parser.core.chainl1(p, op)
 
@@ -125,11 +115,9 @@ extension [E, A](p: Parser[E, A]) {
   inline def chainRight(op: Parser[E, (A, A) => A], default: A): Parser[E, A] =
     parser.core.chainRight(p, op, default)
 
-  // Lookahead
   inline def lookAhead: Parser[E, A] =
     parser.core.lookAhead(p)
 
-  // Error handling
   inline def attempt: Parser[Nothing, Result[E, A]] =
     parser.core.attempt(p)
 
@@ -175,14 +163,12 @@ extension [E, A](p: Parser[E, A]) {
   inline def recover(fallback: Parser[E, A]): Parser[E, A] =
     parser.core.recover(p, fallback)
 
-  // Debugging
   inline def trace(label: String): Parser[E, A] =
     parser.core.trace(p, label)
 
   inline def debug(label: String): Parser[E, A] =
     parser.core.debug(p, label)
 
-  // Memoization
   /**
    * Memoizes parser results for improved performance on expensive parsers.
    *
@@ -209,12 +195,10 @@ extension [E, A](p: Parser[E, A]) {
   inline def memoize: Parser[E, A] =
     parser.core.memoize(p)
 
-  // Execution
   inline def run(input: String): Result[E, A] =
     parser.runtime.run(p, input)
 }
 
-// ParseError-specific extensions
 extension [A](p: Parser[ParseError, A]) {
   inline def notFollowedBy: Parser[ParseError, Unit] =
     parser.core.notFollowedBy(p)
