@@ -2,6 +2,8 @@ package parser.benchmarks
 
 import java.util.concurrent.TimeUnit
 
+import scala.compiletime.uninitialized
+
 import org.openjdk.jmh.annotations._
 
 /**
@@ -20,24 +22,20 @@ import org.openjdk.jmh.annotations._
 @Fork(1)
 class MinimalFairComparison {
 
-  // Inputs
-  var choiceInput: String = _
-  var manyInput: String   = _
+  var choiceInput: String = uninitialized
+  var manyInput: String   = uninitialized
 
-  // Parsers (built once)
-  var rumilChoice: parser.core.Parser[parser.core.ParseError, String] = _
-  var zioChoice: zio.parser.Syntax[String, Char, Char, String]        = _
+  var rumilChoice: parser.core.Parser[parser.core.ParseError, String] = uninitialized
+  var zioChoice: zio.parser.Syntax[String, Char, Char, String]        = uninitialized
 
-  var rumilMany: parser.core.Parser[parser.core.ParseError, List[Char]] = _
-  var zioMany: zio.parser.Syntax[String, Char, Char, zio.Chunk[Unit]]   = _
+  var rumilMany: parser.core.Parser[parser.core.ParseError, List[Char]] = uninitialized
+  var zioMany: zio.parser.Syntax[String, Char, Char, zio.Chunk[Unit]]   = uninitialized
 
   @Setup
   def setup(): Unit = {
-    // Test inputs
-    choiceInput = "lemon"   // Last choice, exercises all branches
-    manyInput = "1" * 10000 // 10K repetitions
+    choiceInput = "lemon"
+    manyInput = "1" * 10000
 
-    // Build parsers ONCE
     {
       import parser.core._
       import parser.syntax._
@@ -62,7 +60,6 @@ class MinimalFairComparison {
       zioMany = Syntax.char('1').repeat
     }
 
-    // Validate correctness
     {
       import parser.runtime.run
       import parser.syntax._
@@ -83,10 +80,6 @@ class MinimalFairComparison {
     println("✓ Setup validation passed - both libraries produce correct results")
   }
 
-  //
-  // Benchmark 1: Choice with backtracking
-  //
-
   @Benchmark
   def rumil_choice(): Any = {
     import parser.runtime.run
@@ -96,10 +89,6 @@ class MinimalFairComparison {
   @Benchmark
   def zio_choice(): Any =
     zioChoice.parseString(choiceInput)
-
-  //
-  // Benchmark 2: Many repetition (10K elements)
-  //
 
   @Benchmark
   def rumil_many(): Any = {
