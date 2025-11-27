@@ -138,14 +138,12 @@ object TextEdit {
    * @return Adjusted edits that can be applied in order
    */
   def compose(edits: List[TextEdit]): List[TextEdit] = {
-    // Validate non-overlapping
     edits.sliding(2).foreach {
       case List(a, b) =>
         require(a.endOffset <= b.startOffset, s"Edits must not overlap: $a and $b")
       case _ => ()
     }
 
-    // Adjust each edit by the cumulative delta of previous edits
     edits
       .foldLeft((List.empty[TextEdit], 0)) { case ((acc, delta), edit) =>
         val adjusted = TextEdit(

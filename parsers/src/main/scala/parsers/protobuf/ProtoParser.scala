@@ -4,10 +4,6 @@ import parser.core._
 import parser.syntax._
 import parsers.common._
 
-// ============================================================================
-// PROTOCOL BUFFERS PARSER - Proto3 Syntax
-// ============================================================================
-
 /**
  * Parses a .proto file from a string.
  *
@@ -26,11 +22,6 @@ import parsers.common._
 def parseProto(input: scala.Predef.String): Result[ParseError, ProtoFile] =
   protoFile.run(input)
 
-// ============================================================================
-// Whitespace and Comments
-// ============================================================================
-
-// Single whitespace character
 private def ws1: Parser[ParseError, Unit] =
   satisfy(c => c == ' ' || c == '\t' || c == '\r' || c == '\n', "whitespace").void
 
@@ -44,14 +35,8 @@ private def blockComment: Parser[ParseError, Unit] = {
   string("/*") *> commentChar.many *> string("*/").void
 }
 
-// Skip any combination of whitespace and comments
-// Each alternative must consume at least one character
 private def skip: Parser[ParseError, Unit] =
   (ws1 | lineComment | blockComment).many.void
-
-// ============================================================================
-// Identifiers and Keywords
-// ============================================================================
 
 private def protoIdentifier: Parser[ParseError, scala.Predef.String] =
   for {
@@ -61,10 +46,6 @@ private def protoIdentifier: Parser[ParseError, scala.Predef.String] =
 
 private def fullIdentifier: Parser[ParseError, scala.Predef.String] =
   protoIdentifier.sepBy1(char('.')).map(_.mkString("."))
-
-// ============================================================================
-// Types
-// ============================================================================
 
 private def scalarType: Parser[ParseError, ProtoType] = {
   val types = Map(
@@ -106,10 +87,6 @@ private def mapType: Parser[ParseError, ProtoType] =
 private def protoType: Parser[ParseError, ProtoType] =
   mapType | scalarType | messageType
 
-// ============================================================================
-// Fields
-// ============================================================================
-
 private def field: Parser[ParseError, ProtoField] =
   for {
     _        <- skip
@@ -133,10 +110,6 @@ private def field: Parser[ParseError, ProtoField] =
     options = Map.empty
   )
 
-// ============================================================================
-// Messages
-// ============================================================================
-
 private def messageBody: Parser[ParseError, List[ProtoField]] =
   for {
     _      <- skip *> char('{') *> skip
@@ -151,10 +124,6 @@ private def messageDef: Parser[ParseError, ProtoDefinition] =
     _      <- skip
     fields <- messageBody
   } yield ProtoDefinition.Message(name, fields, List())
-
-// ============================================================================
-// Enums
-// ============================================================================
 
 private def enumValue: Parser[ParseError, EnumValue] =
   for {
@@ -173,10 +142,6 @@ private def enumDef: Parser[ParseError, ProtoDefinition] =
     values <- enumValue.many
     _      <- skip *> char('}') *> skip
   } yield ProtoDefinition.Enum(name, values)
-
-// ============================================================================
-// Services
-// ============================================================================
 
 private def rpcMethod: Parser[ParseError, ProtoMethod] =
   for {
@@ -211,10 +176,6 @@ private def serviceDef: Parser[ParseError, ProtoDefinition] =
     _       <- skip *> char('}') *> skip
   } yield ProtoDefinition.Service(name, methods)
 
-// ============================================================================
-// Top-Level Statements
-// ============================================================================
-
 private def syntaxStatement: Parser[ParseError, scala.Predef.String] =
   for {
     _       <- skip *> string("syntax") *> skip
@@ -239,10 +200,6 @@ private def importStatement: Parser[ParseError, ProtoDefinition] =
     path     <- satisfy(_ != '"', "path char").many.map(_.mkString)
     _        <- char('"') *> skip *> char(';') *> skip
   } yield ProtoDefinition.Import(path, isPublic.isDefined)
-
-// ============================================================================
-// Proto File
-// ============================================================================
 
 private def protoFile: Parser[ParseError, ProtoFile] = {
   val definitionParser =

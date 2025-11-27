@@ -9,10 +9,6 @@ import parser.syntax._
 class JsonParserTests extends FunSuite {
   import JsonValue.*
 
-  // ============================================================================
-  // Literals Tests
-  // ============================================================================
-
   test("parse null") {
     val result = parseJson("null")
     assertEquals(result.toOption, Some(Null))
@@ -27,10 +23,6 @@ class JsonParserTests extends FunSuite {
     val result = parseJson("false")
     assertEquals(result.toOption, Some(Bool(false)))
   }
-
-  // ============================================================================
-  // Number Tests (RFC 8259 Section 6)
-  // ============================================================================
 
   test("parse integer zero") {
     val result = parseJson("0")
@@ -76,10 +68,6 @@ class JsonParserTests extends FunSuite {
     val result = parseJson("1.7976931348623157e+308")
     assert(result.isSuccess)
   }
-
-  // ============================================================================
-  // String Tests (RFC 8259 Section 7)
-  // ============================================================================
 
   test("parse empty string") {
     val result = parseJson("\"\"")
@@ -131,10 +119,6 @@ class JsonParserTests extends FunSuite {
     assert(result.isSuccess)
   }
 
-  // ============================================================================
-  // Array Tests (RFC 8259 Section 5)
-  // ============================================================================
-
   test("parse empty array") {
     val result = parseJson("[]")
     assertEquals(result.toOption, Some(Array(List())))
@@ -180,10 +164,6 @@ class JsonParserTests extends FunSuite {
     val result = parseJson("[ 1 , 2 , 3 ]")
     assertEquals(result.toOption, Some(Array(List(Number(1), Number(2), Number(3)))))
   }
-
-  // ============================================================================
-  // Object Tests (RFC 8259 Section 4)
-  // ============================================================================
 
   test("parse empty object") {
     val result = parseJson("{}")
@@ -255,12 +235,7 @@ class JsonParserTests extends FunSuite {
           ))))
   }
 
-  // ============================================================================
-  // RFC 8259 Compliance Tests
-  // ============================================================================
-
   test("RFC 8259: JSON text must be object or array") {
-    // Actually RFC 8259 allows any value at top level
     val tests = List(
       "null"      -> Null,
       "true"      -> Bool(true),
@@ -288,14 +263,9 @@ class JsonParserTests extends FunSuite {
   }
 
   test("RFC 8259: strings must be properly escaped") {
-    // Control characters must be escaped
     val result = parseJson("\"hello\nworld\"")
     assert(result.isFailure)
   }
-
-  // ============================================================================
-  // Complex Real-World Examples
-  // ============================================================================
 
   test("parse person object") {
     val json = """{
@@ -370,10 +340,6 @@ class JsonParserTests extends FunSuite {
     assert(result.isSuccess)
   }
 
-  // ============================================================================
-  // Formatting Tests
-  // ============================================================================
-
   test("format null") {
     assertEquals(formatJson(Null), "null")
   }
@@ -422,10 +388,6 @@ class JsonParserTests extends FunSuite {
     assert(result.contains("\n"))
   }
 
-  // ============================================================================
-  // Round-Trip Tests
-  // ============================================================================
-
   test("round-trip: parse and format") {
     val original = """{"name":"Alice","age":30,"active":true}"""
     val result   = parseJson(original)
@@ -434,10 +396,6 @@ class JsonParserTests extends FunSuite {
     val reparsed  = parseJson(formatted)
     assertEquals(reparsed, result)
   }
-
-  // ============================================================================
-  // Property-Based Tests
-  // ============================================================================
 
   test("property: null always parses") {
     val prop = forAll(Gen.const("null")) { input =>

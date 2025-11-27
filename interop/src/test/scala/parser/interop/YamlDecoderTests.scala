@@ -17,10 +17,6 @@ class YamlDecoderTests extends FunSuite {
 
   import YamlDecoders.given
 
-  // ============================================================================
-  // Primitive Type Decoding Tests
-  // ============================================================================
-
   test("decode YAML string to String") {
     val yaml   = YamlValue.String("hello")
     val result = Decoder[YamlValue, String].decode(yaml)
@@ -94,10 +90,6 @@ class YamlDecoderTests extends FunSuite {
     assertEquals(Decoder[YamlValue, Boolean].decode(yamlFalse), Result.Success(false, 0))
   }
 
-  // ============================================================================
-  // Null Handling Tests
-  // ============================================================================
-
   test("decode YAML null to Option[String]") {
     val yaml   = YamlValue.Null
     val result = Decoder[YamlValue, Option[String]].decode(yaml)
@@ -121,10 +113,6 @@ class YamlDecoderTests extends FunSuite {
     val result = Decoder[YamlValue, Option[Int]].decode(yaml)
     assertEquals(result, Result.Success(Some(42), 0))
   }
-
-  // ============================================================================
-  // Collection Decoding Tests
-  // ============================================================================
 
   test("decode YAML sequence to List[Int]") {
     val yaml = YamlValue.Sequence(
@@ -221,10 +209,6 @@ class YamlDecoderTests extends FunSuite {
     val result = Decoder[YamlValue, List[Option[String]]].decode(yaml)
     assertEquals(result, Result.Success(List(Some("hello"), None, Some("world")), 0))
   }
-
-  // ============================================================================
-  // Error Cases
-  // ============================================================================
 
   test("type mismatch error - Int expected, String found") {
     val yaml   = YamlValue.String("not a number")

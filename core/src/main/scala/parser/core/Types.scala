@@ -2,10 +2,6 @@ package parser.core
 
 import scala.collection.immutable.Vector
 
-// ============================================================================
-// NAMED TUPLES - Product Types
-// ============================================================================
-
 /**
  * Represents a position in the input stream.
  *
@@ -29,10 +25,6 @@ type Location = (line: Int, column: Int, offset: Int)
  * - end: Ending location (exclusive)
  */
 type Span = (start: Location, end: Location)
-
-// ============================================================================
-// ENUMS - Sum Types
-// ============================================================================
 
 /**
  * A parser that consumes input of type String and produces a result of type A,
@@ -59,7 +51,6 @@ enum Parser[+E, +A] {
   case Fail[E](error: E)                                extends Parser[E, Nothing]
   case Satisfy(pred: Char => Boolean, expected: String) extends Parser[ParseError, Char]
   case StringMatch(target: String)                      extends Parser[ParseError, String]
-  // Optimized choice of string literals using radix tree for O(m) matching
   case StringChoice(radix: RadixNode, targets: Array[String])       extends Parser[ParseError, String]
   case Map[E, A, B](source: Parser[E, A], f: A => B)                extends Parser[E, B]
   case FlatMap[E, A, B](source: Parser[E, A], f: A => Parser[E, B]) extends Parser[E, B]
@@ -76,12 +67,8 @@ enum Parser[+E, +A] {
   case Debug[E, A](parser: Parser[E, A], label: String)             extends Parser[E, A]
   case Defer[E, A](thunk: () => Parser[E, A])                       extends Parser[E, A]
   case Eof()                                                        extends Parser[ParseError, Unit]
-  // Error recovery combinators
   case RecoverWith[E, A](parser: Parser[E, A], recovery: Parser[E, A]) extends Parser[E, A]
   case Expect[A](parser: Parser[ParseError, A], message: String)       extends Parser[ParseError, A]
-  // Memoization support - caches parse results to avoid redundant work
-  // - enableLR=true: Full left-recursion support using seed-growth algorithm (Warth et al.)
-  // - enableLR=false: Simple caching without LR overhead (faster for non-recursive parsers)
   case Memo[E, A](inner: Parser[E, A], key: MemoKey[E, A], enableLR: Boolean) extends Parser[E, A]
 }
 

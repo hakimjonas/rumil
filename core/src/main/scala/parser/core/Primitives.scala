@@ -1,11 +1,5 @@
 package parser.core
 
-// ============================================================================
-// TOP-LEVEL FUNCTIONS - Primitive Parsers
-// ============================================================================
-
-// Character-level
-
 /**
  * Parses a specific character.
  *
@@ -80,8 +74,6 @@ def oneOf(chars: String): Parser[ParseError, Char] =
 def noneOf(chars: String): Parser[ParseError, Char] =
   satisfy(!chars.contains(_), s"none of '$chars'")
 
-// String-level
-
 /**
  * Parses an exact string.
  *
@@ -146,8 +138,6 @@ def keywords[A](mappings: Map[String, A]): Parser[ParseError, A] =
     val radix   = RadixNode.fromStrings(targets)
     Parser.Map(Parser.StringChoice(radix, targets), mappings)
   }
-
-// Common character classes
 
 /**
  * Parses a single digit (0-9).
@@ -226,8 +216,6 @@ def spaces: Parser[ParseError, List[Char]] =
 def spaces1: Parser[ParseError, List[Char]] =
   many1(whitespace)
 
-// Lexeme combinators
-
 /**
  * Parses a value and consumes trailing whitespace.
  *
@@ -259,8 +247,6 @@ def lexeme[E, A](p: Parser[E, A]): Parser[E | ParseError, A] =
  */
 def symbol(s: String): Parser[ParseError, String] =
   lexeme(string(s))
-
-// End of input
 
 /**
  * Succeeds only at the end of input.

@@ -19,10 +19,6 @@ import parsers.yaml.YamlValue
  */
 class DerivedDecoderTests extends FunSuite {
 
-  // ============================================================================
-  // TOML Decoder.derived Tests
-  // ============================================================================
-
   test("TOML: derive decoder for simple case class") {
     import TomlDecoders.given
 
@@ -136,10 +132,6 @@ class DerivedDecoderTests extends FunSuite {
       case _ => fail("Expected Failure")
     }
   }
-
-  // ============================================================================
-  // YAML Decoder.derived Tests
-  // ============================================================================
 
   test("YAML: derive decoder for simple case class") {
     import YamlDecoders.given
@@ -287,10 +279,6 @@ class DerivedDecoderTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // XML Decoder.derived Tests
-  // ============================================================================
-
   test("XML: derive decoder for simple case class") {
     import XmlDecoders.given
 
@@ -427,10 +415,6 @@ class DerivedDecoderTests extends FunSuite {
       case _ => fail("Expected Failure")
     }
   }
-
-  // ============================================================================
-  // Cross-Format Comparison Tests
-  // ============================================================================
 
   test("same case class can be decoded from all formats") {
     import JsonDecoders.given

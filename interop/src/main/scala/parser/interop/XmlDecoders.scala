@@ -28,10 +28,6 @@ object XmlDecoders {
 
   private val defaultLoc: Location = (line = 1, column = 1, offset = 0)
 
-  // ============================================================================
-  // Primitive Type Decoders
-  // ============================================================================
-
   /**
    * Decoder for String from XmlNode.
    *
@@ -167,10 +163,6 @@ object XmlDecoders {
       }
   }
 
-  // ============================================================================
-  // Generic Type Decoders
-  // ============================================================================
-
   /**
    * Decoder for Option[A] from XmlNode.
    *
@@ -264,10 +256,6 @@ object XmlDecoders {
       }
     }
 
-  // ============================================================================
-  // XML-Specific Decoders
-  // ============================================================================
-
   /**
    * Get an attribute value from an element.
    *
@@ -301,10 +289,6 @@ object XmlDecoders {
     element.children.collect {
       case e: XmlNode.Element if e.name.localName == name => e
     }
-
-  // ============================================================================
-  // Helper Functions
-  // ============================================================================
 
   /**
    * Extract text content from an XML node.

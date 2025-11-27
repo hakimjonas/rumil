@@ -18,10 +18,6 @@ class XmlDecoderTests extends FunSuite {
 
   import XmlDecoders.given
 
-  // ============================================================================
-  // String Decoding Tests
-  // ============================================================================
-
   test("decode XML Text node to String") {
     val xml    = XmlNode.Text("hello")
     val result = Decoder[XmlNode, String].decode(xml)
@@ -80,10 +76,6 @@ class XmlDecoderTests extends FunSuite {
     assertEquals(result, Result.Success("", 0))
   }
 
-  // ============================================================================
-  // Numeric Type Decoding Tests
-  // ============================================================================
-
   test("decode XML Text to Int") {
     val xml    = XmlNode.Text("42")
     val result = Decoder[XmlNode, Int].decode(xml)
@@ -124,10 +116,6 @@ class XmlDecoderTests extends FunSuite {
     assertEquals(result, Result.Success(1.5f, 0))
   }
 
-  // ============================================================================
-  // Boolean Decoding Tests
-  // ============================================================================
-
   test("decode XML Text 'true' to Boolean") {
     val xml    = XmlNode.Text("true")
     val result = Decoder[XmlNode, Boolean].decode(xml)
@@ -164,10 +152,6 @@ class XmlDecoderTests extends FunSuite {
     assertEquals(result, Result.Success(false, 0))
   }
 
-  // ============================================================================
-  // Option Decoding Tests
-  // ============================================================================
-
   test("decode XML Text to Option[String]") {
     val xml    = XmlNode.Text("hello")
     val result = Decoder[XmlNode, Option[String]].decode(xml)
@@ -199,10 +183,6 @@ class XmlDecoderTests extends FunSuite {
     val result = Decoder[XmlNode, Option[Int]].decode(xml)
     assertEquals(result, Result.Success(Some(42), 0))
   }
-
-  // ============================================================================
-  // List Decoding Tests
-  // ============================================================================
 
   test("decode XML Element with child elements to List[String]") {
     val xml = XmlNode.Element(
@@ -282,10 +262,6 @@ class XmlDecoderTests extends FunSuite {
     assertEquals(result, Result.Success(Vector(10, 20), 0))
   }
 
-  // ============================================================================
-  // XML Helper Function Tests
-  // ============================================================================
-
   test("getAttribute returns attribute value") {
     val xml: XmlNode.Element = XmlNode.Element(
       qname("element"),
@@ -354,10 +330,6 @@ class XmlDecoderTests extends FunSuite {
     val result = XmlDecoders.getChildren(xml, "item")
     assertEquals(result, List.empty)
   }
-
-  // ============================================================================
-  // Error Cases
-  // ============================================================================
 
   test("type mismatch error - Int expected, invalid text") {
     val xml    = XmlNode.Text("not a number")

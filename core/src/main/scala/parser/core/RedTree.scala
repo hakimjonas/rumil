@@ -36,7 +36,6 @@ final class RedTree private (
    */
   lazy val span: Span = green match {
     case GreenNode.Token(_, _, greenSpan) =>
-      // Adjust the green span by the red tree's offset
       val start = (
         line = greenSpan.start.line,
         column = greenSpan.start.column,
@@ -55,7 +54,6 @@ final class RedTree private (
         val loc = (line = 1, column = 1, offset = offset)
         (start = loc, end = loc)
       } else {
-        // First child starts at our offset
         var childOffset    = offset
         val firstChildSpan = GreenNode.span(children.head)
         val start = (
@@ -64,7 +62,6 @@ final class RedTree private (
           offset = childOffset
         )
 
-        // Compute offset of last child
         children.dropRight(1).foreach { child =>
           val childSpan = GreenNode.span(child)
           childOffset += (childSpan.end.offset - childSpan.start.offset)
@@ -177,7 +174,6 @@ final class RedTree private (
     if (targetOffset < span.start.offset || targetOffset >= span.end.offset) {
       None
     } else {
-      // Search children for a more specific match
       children
         .find { child =>
           targetOffset >= child.span.start.offset && targetOffset < child.span.end.offset
@@ -247,11 +243,9 @@ final class RedTree private (
    * @return The nearest reparsable ancestor, or None if none found
    */
   def findReparseAncestor(reparsableKinds: Set[SyntaxKind]): Option[RedTree] =
-    // Check if this node is reparsable
     syntaxKind match {
       case Some(k) if reparsableKinds.contains(k) => Some(this)
       case _                                      =>
-        // Check parent
         parent.flatMap(_.findReparseAncestor(reparsableKinds))
     }
 
@@ -271,10 +265,8 @@ final class RedTree private (
     editEnd: Int,
     reparsableKinds: Set[SyntaxKind]
   ): Option[RedTree] = {
-    // First find the deepest node containing the edit
     val deepest = nodeAt(editStart)
 
-    // Walk up to find a reparsable ancestor that fully contains the edit
     deepest.flatMap { node =>
       def search(current: RedTree): Option[RedTree] = {
         val containsEdit =
@@ -282,10 +274,8 @@ final class RedTree private (
             current.span.end.offset >= editEnd
 
         if (!containsEdit) {
-          // Go up - parent might contain the edit
           current.parent.flatMap(search)
         } else {
-          // This node contains the edit - check if reparsable
           current.syntaxKind match {
             case Some(k) if reparsableKinds.contains(k) => Some(current)
             case _                                      => current.parent.flatMap(search)

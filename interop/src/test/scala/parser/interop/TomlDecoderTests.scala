@@ -19,10 +19,6 @@ class TomlDecoderTests extends FunSuite {
 
   import TomlDecoders.given
 
-  // ============================================================================
-  // Primitive Type Decoding Tests
-  // ============================================================================
-
   test("decode TOML string to String") {
     val toml   = TomlValue.String("hello")
     val result = Decoder[TomlValue, String].decode(toml)
@@ -65,10 +61,6 @@ class TomlDecoderTests extends FunSuite {
     assertEquals(Decoder[TomlValue, Boolean].decode(tomlTrue), Result.Success(true, 0))
     assertEquals(Decoder[TomlValue, Boolean].decode(tomlFalse), Result.Success(false, 0))
   }
-
-  // ============================================================================
-  // DateTime Type Decoding Tests (TOML-specific)
-  // ============================================================================
 
   test("decode TOML DateTime to OffsetDateTime") {
     val dt     = OffsetDateTime.of(2024, 1, 15, 10, 30, 0, 0, ZoneOffset.UTC)
@@ -118,10 +110,6 @@ class TomlDecoderTests extends FunSuite {
     val result = Decoder[TomlValue, LocalTime].decode(toml)
     assertEquals(result, Result.Success(ldt.toLocalTime, 0))
   }
-
-  // ============================================================================
-  // Collection Decoding Tests
-  // ============================================================================
 
   test("decode TOML array to List[Int]") {
     val toml = TomlValue.Array(
@@ -193,10 +181,6 @@ class TomlDecoderTests extends FunSuite {
     val result = Decoder[TomlValue, List[List[Int]]].decode(toml)
     assertEquals(result, Result.Success(List(List(1, 2), List(3, 4)), 0))
   }
-
-  // ============================================================================
-  // Error Cases
-  // ============================================================================
 
   test("type mismatch error - String expected, Integer found") {
     val toml   = TomlValue.Integer(42L)

@@ -4,10 +4,6 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 
 import scala.language.strictEquality
 
-// ============================================================================
-// TOML TYPES - TOML v1.0.0 (Enums, Named Tuples, No Case Classes)
-// ============================================================================
-
 /**
  * TOML value types as per TOML v1.0.0 specification.
  */
@@ -24,7 +20,6 @@ enum TomlValue {
   case InlineTable(pairs: Map[scala.Predef.String, TomlValue])
 }
 
-// CanEqual instance for TomlValue
 given CanEqual[TomlValue, TomlValue] = CanEqual.derived
 
 /**
@@ -76,10 +71,6 @@ type KeyPath = List[scala.Predef.String]
  */
 def parseKeyPath(key: scala.Predef.String): KeyPath =
   key.split('.').toList.filter(_.nonEmpty)
-
-// ============================================================================
-// TOML FORMATTING - Convert TOML values back to string representation
-// ============================================================================
 
 /**
  * Formats a TOML value as a string.

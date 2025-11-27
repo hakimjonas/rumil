@@ -7,10 +7,6 @@ import parser.syntax._
 class TomlParserTests extends FunSuite {
   import TomlValue.*
 
-  // ============================================================================
-  // Basic Value Tests
-  // ============================================================================
-
   test("parse simple string") {
     val toml   = """key = "value""""
     val result = parseToml(toml)
@@ -57,10 +53,6 @@ class TomlParserTests extends FunSuite {
     assertEquals(doc.pairs("flag"), Boolean(false))
   }
 
-  // ============================================================================
-  // String Tests
-  // ============================================================================
-
   test("parse basic string") {
     val toml   = """str = "hello world""""
     val result = parseToml(toml)
@@ -87,16 +79,11 @@ class TomlParserTests extends FunSuite {
   }
 
   test("parse multi-line basic string") {
-    // Use string interpolation to inject literal """ without escaping
     val triple = "\"\"\""
     val toml   = s"str = $triple\nmulti\nline\nstring$triple\n"
     val result = parseToml(toml)
     assert(result.isSuccess)
   }
-
-  // ============================================================================
-  // Number Tests
-  // ============================================================================
 
   test("parse hex integer") {
     val toml   = """hex = 0xFF"""
@@ -156,10 +143,6 @@ class TomlParserTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Array Tests
-  // ============================================================================
-
   test("parse empty array") {
     val toml   = """arr = []"""
     val result = parseToml(toml)
@@ -206,10 +189,6 @@ class TomlParserTests extends FunSuite {
     assert(result.isSuccess)
   }
 
-  // ============================================================================
-  // Inline Table Tests
-  // ============================================================================
-
   test("parse empty inline table") {
     val toml   = """table = {}"""
     val result = parseToml(toml)
@@ -234,10 +213,6 @@ class TomlParserTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Comments Tests
-  // ============================================================================
-
   test("parse with comment") {
     val toml   = """# This is a comment
 key = "value" # inline comment
@@ -245,10 +220,6 @@ key = "value" # inline comment
     val result = parseToml(toml)
     assert(result.isSuccess)
   }
-
-  // ============================================================================
-  // Multiple Key-Value Pairs
-  // ============================================================================
 
   test("parse multiple key-value pairs") {
     val toml   = """name = "Alice"
@@ -262,10 +233,6 @@ active = true
     assertEquals(doc.pairs("age"), Integer(30))
     assertEquals(doc.pairs("active"), Boolean(true))
   }
-
-  // ============================================================================
-  // Real-World Examples
-  // ============================================================================
 
   test("parse configuration file") {
     val toml = """# Application configuration
@@ -281,14 +248,9 @@ ports = [ 8000, 8001, 8002 ]
 connection_max = 5000
 enabled = true
 """
-    // Simplified test - just check it parses without table support
     val result = parseToml(toml.split("\n").take(2).mkString("\n") + "\n")
     assert(result.isSuccess)
   }
-
-  // ============================================================================
-  // Round-Trip Tests
-  // ============================================================================
 
   test("round-trip: simple key-value pairs") {
     val doc: TomlTable = (

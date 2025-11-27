@@ -2,10 +2,6 @@ package parsers.yaml
 
 import scala.language.strictEquality
 
-// ============================================================================
-// YAML TYPES - YAML 1.2 (Enums, No Case Classes)
-// ============================================================================
-
 /**
  * YAML value types as per YAML 1.2 specification.
  */
@@ -19,7 +15,6 @@ enum YamlValue {
   case Mapping(pairs: Map[scala.Predef.String, YamlValue])
 }
 
-// CanEqual instance for strict equality
 given CanEqual[YamlValue, YamlValue] = CanEqual.derived
 
 /**

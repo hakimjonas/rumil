@@ -31,10 +31,6 @@ object TomlDecoders {
 
   private val defaultLoc: Location = (line = 1, column = 1, offset = 0)
 
-  // ============================================================================
-  // Primitive Type Decoders
-  // ============================================================================
-
   /**
    * Decoder for String from TomlValue.
    */
@@ -127,10 +123,6 @@ object TomlDecoders {
     }
   }
 
-  // ============================================================================
-  // DateTime Type Decoders (TOML-specific)
-  // ============================================================================
-
   /**
    * Decoder for OffsetDateTime from TomlValue.
    */
@@ -191,10 +183,6 @@ object TomlDecoders {
         )
     }
   }
-
-  // ============================================================================
-  // Generic Type Decoders
-  // ============================================================================
 
   /**
    * Decoder for Option[A] from TomlValue.
@@ -285,10 +273,6 @@ object TomlDecoders {
           )
       }
     }
-
-  // ============================================================================
-  // Helper Functions
-  // ============================================================================
 
   private def tomlValueTypeName(value: TomlValue): String = value match {
     case TomlValue.String(_)        => "String"

@@ -88,11 +88,9 @@ object IncrementalParser {
     // Apply the edit to get the new source
     val newSource = edit(previousSource)
 
-    // Strategy 1: Try token-level update first (fastest)
     tryTokenLevelUpdate(previousTree, previousSource, edit, newSource) match {
       case Some(result) => result
       case None         =>
-        // Strategy 2: Try block-level incremental reparsing
         blockLevelReparse(previousTree, edit, newSource, parser, config)
     }
   }
@@ -113,25 +111,19 @@ object IncrementalParser {
   ): Option[IncrementalResult] = {
     val redTree = RedTree(tree)
 
-    // Find the token containing the edit start
     redTree.nodeAt(edit.startOffset).flatMap { node =>
       node.green match {
         case GreenNode.Token(kind, oldText, oldSpan) =>
           val tokenStart = node.span.start.offset
           val tokenEnd   = node.span.end.offset
 
-          // Check if edit is entirely within this token
           if (edit.startOffset >= tokenStart && edit.endOffset <= tokenEnd) {
-            // Calculate the new token text
             val editStartInToken = edit.startOffset - tokenStart
             val editEndInToken   = edit.endOffset - tokenStart
             val newText = oldText.substring(0, editStartInToken) +
               edit.newText +
               oldText.substring(editEndInToken)
 
-            // For now, only allow token update if the token kind is "simple"
-            // (identifiers, numbers, strings, whitespace, comments)
-            // Operators and delimiters might change the parse structure
             val isSimpleToken = kind match {
               case TokenKind.Identifier | TokenKind.Number |
                   TokenKind.String | TokenKind.Whitespace | TokenKind.Comment =>
@@ -140,7 +132,6 @@ object IncrementalParser {
             }
 
             if (isSimpleToken && newText.nonEmpty) {
-              // Create the new token with adjusted span
               val newEnd = (
                 line = oldSpan.end.line,
                 column = oldSpan.start.column + newText.length,
@@ -149,10 +140,8 @@ object IncrementalParser {
               val newSpan: Span = (start = oldSpan.start, end = newEnd)
               val newToken      = GreenNode.Token(kind, newText, newSpan)
 
-              // Splice it in
               val path = node.pathFromRoot
               TreeSplicing.replaceAt(tree, path, newToken).map { newTree =>
-                // Adjust spans for subsequent nodes
                 val adjusted = TreeSplicing.adjustSpans(newTree, edit, 0)
                 IncrementalResult(
                   adjusted,
@@ -161,14 +150,14 @@ object IncrementalParser {
                 )
               }
             } else {
-              None // Fall back to block-level
+              None
             }
           } else {
-            None // Edit spans multiple tokens
+            None
           }
 
         case GreenNode.Tree(_, _) =>
-          None // Not a token
+          None
       }
     }
   }
@@ -188,32 +177,24 @@ object IncrementalParser {
   ): IncrementalResult =
     findReparseRegion(previousTree, edit, config) match {
       case Some((reparseNode, path)) =>
-        // Calculate the text region to reparse
         val regionStart = reparseNode.span.start.offset
         val regionEnd   = reparseNode.span.end.offset
 
-        // Adjust for the edit's effect on the region boundaries
         val adjustedEnd = if (edit.endOffset <= regionEnd) {
           regionEnd + edit.lengthDelta
         } else {
           regionEnd
         }
 
-        // Check if incremental is worthwhile (region significantly smaller than total)
         if (adjustedEnd - regionStart >= newSource.length - config.minReparseSize) {
-          // Region is too large - just do full reparse
           fullReparse(newSource, parser)
         } else {
-          // Extract the region text from new source
           val regionText = newSource.substring(regionStart, adjustedEnd)
 
-          // Parse just this region
           run(parser, regionText) match {
             case Result.Success(newSubtree, _) =>
-              // Splice the new subtree into the tree
               TreeSplicing.replaceAt(previousTree, path, newSubtree) match {
                 case Some(newTree) =>
-                  // Adjust spans for nodes after the edit
                   val adjusted = TreeSplicing.adjustSpans(newTree, edit, 0)
                   IncrementalResult(
                     adjusted,
@@ -221,12 +202,10 @@ object IncrementalParser {
                     fullReparse = false
                   )
                 case None =>
-                  // Splicing failed - fall back to full reparse
                   fullReparse(newSource, parser)
               }
 
             case Result.Partial(newSubtree, _, _) =>
-              // Partial success - still use the result
               TreeSplicing.replaceAt(previousTree, path, newSubtree) match {
                 case Some(newTree) =>
                   val adjusted = TreeSplicing.adjustSpans(newTree, edit, 0)
@@ -240,13 +219,11 @@ object IncrementalParser {
               }
 
             case Result.Failure(_, _) =>
-              // Region parse failed - fall back to full reparse
               fullReparse(newSource, parser)
           }
         }
 
       case None =>
-        // No suitable reparse region found - full reparse
         fullReparse(newSource, parser)
     }
 
@@ -260,10 +237,8 @@ object IncrementalParser {
     edit: TextEdit,
     config: Config
   ): Option[(RedTree, Vector[Int])] = {
-    // Build a red tree for navigation
     val redTree = RedTree(tree)
 
-    // Find the reparse region
     redTree
       .findReparseRegion(
         edit.startOffset,
@@ -288,7 +263,6 @@ object IncrementalParser {
       case Result.Partial(tree, _, _) =>
         IncrementalResult(tree, None, fullReparse = true)
       case Result.Failure(_, _) =>
-        // Even full parse failed - return an error tree
         val errorSpan: Span = (
           start = (line = 1, column = 1, offset = 0),
           end = (line = 1, column = 1, offset = source.length)
@@ -323,21 +297,16 @@ object IncrementalParser {
     } else if (edits.length == 1) {
       incrementalParse(previousTree, previousSource, edits.head, parser, config)
     } else {
-      // For multiple edits, we need to apply them in order
-      // Apply edits to get final source
       val newSource = edits.foldLeft(previousSource) { (src, edit) =>
         edit(src)
       }
 
-      // Find the overall affected region
       val minStart = edits.map(_.startOffset).min
       val maxEnd   = edits.map(e => e.endOffset + e.lengthDelta).max
 
-      // Check if we should just do full reparse
       if (maxEnd - minStart > newSource.length / 2) {
         fullReparse(newSource, parser)
       } else {
-        // Create a synthetic edit covering the whole range
         val combinedEdit = TextEdit(
           minStart,
           edits.last.endOffset,

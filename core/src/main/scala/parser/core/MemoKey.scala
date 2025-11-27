@@ -22,9 +22,7 @@ package parser.core
  * @tparam E The error type of the memoized parser result
  * @tparam A The value type of the memoized parser result
  */
-final class MemoKey[E, A] private[parser] () {
-  // Identity is reference equality (eq) - each key instance is unique
-}
+final class MemoKey[E, A] private[parser] ()
 
 object MemoKey {
 

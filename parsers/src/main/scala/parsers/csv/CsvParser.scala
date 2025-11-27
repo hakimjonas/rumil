@@ -4,10 +4,6 @@ import parser.core._
 import parser.syntax._
 import parsers.common._
 
-// ============================================================================
-// CSV PARSER - RFC 4180 Compliant
-// ============================================================================
-
 /**
  * Parses a CSV document with the given configuration.
  *
@@ -39,10 +35,6 @@ def parseCsv(input: String, config: CsvConfig = defaultCsvConfig): Result[ParseE
  */
 def parseTsv(input: String): Result[ParseError, CsvDocument] =
   parseCsv(input, defaultTsvConfig)
-
-// ============================================================================
-// Internal Parsers
-// ============================================================================
 
 /**
  * Parses a complete CSV document.

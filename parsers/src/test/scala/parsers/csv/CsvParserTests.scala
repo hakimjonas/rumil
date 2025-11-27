@@ -8,10 +8,6 @@ import parser.syntax._
 
 class CsvParserTests extends FunSuite {
 
-  // ============================================================================
-  // Basic Parsing Tests
-  // ============================================================================
-
   test("parse empty CSV") {
     val result = parseCsv("")
     assertEquals(result.toOption, Some(List(List(""))))
@@ -53,10 +49,6 @@ class CsvParserTests extends FunSuite {
         )))
   }
 
-  // ============================================================================
-  // Quoted Fields Tests (RFC 4180)
-  // ============================================================================
-
   test("parse quoted field") {
     val result = parseCsv("\"hello\"")
     assertEquals(result.toOption, Some(List(List("hello"))))
@@ -86,10 +78,6 @@ class CsvParserTests extends FunSuite {
     val result = parseCsv("\"\",a,\"\"")
     assertEquals(result.toOption, Some(List(List("", "a", ""))))
   }
-
-  // ============================================================================
-  // RFC 4180 Compliance Tests
-  // ============================================================================
 
   test("RFC 4180 Example 1: standard fields") {
     val input  = "aaa,bbb,ccc"
@@ -121,10 +109,6 @@ class CsvParserTests extends FunSuite {
     assertEquals(result.toOption, Some(List(List("aaa", "b\"bb", "ccc"))))
   }
 
-  // ============================================================================
-  // TSV Tests
-  // ============================================================================
-
   test("parse TSV single row") {
     val input  = "a\tb\tc"
     val result = parseTsv(input)
@@ -143,10 +127,6 @@ class CsvParserTests extends FunSuite {
           List("Bob", "25", "SF")
         )))
   }
-
-  // ============================================================================
-  // Advanced Features Tests
-  // ============================================================================
 
   test("parse with headers") {
     val input  = "name,age,city\nAlice,30,NYC\nBob,25,SF"
@@ -186,10 +166,6 @@ class CsvParserTests extends FunSuite {
     val result = parseCsvStrict(input)
     assert(result.isFailure)
   }
-
-  // ============================================================================
-  // Custom Configuration Tests
-  // ============================================================================
 
   test("parse with custom delimiter (semicolon)") {
     val config = (
@@ -242,10 +218,6 @@ class CsvParserTests extends FunSuite {
         )))
   }
 
-  // ============================================================================
-  // Edge Cases Tests
-  // ============================================================================
-
   test("parse empty fields") {
     val result = parseCsv(",,")
     assertEquals(result.toOption, Some(List(List("", "", ""))))
@@ -265,10 +237,6 @@ class CsvParserTests extends FunSuite {
     val result = parseCsv(",a,b")
     assertEquals(result.toOption, Some(List(List("", "a", "b"))))
   }
-
-  // ============================================================================
-  // Real-World Examples
-  // ============================================================================
 
   test("parse real-world contact list") {
     val input = """name,email,phone
@@ -299,10 +267,6 @@ class CsvParserTests extends FunSuite {
     assertEquals(rows(1)(1), "Gadget \"Pro\"")
   }
 
-  // ============================================================================
-  // Property-Based Tests
-  // ============================================================================
-
   test("property: parsing simple fields is identity") {
     val gen = Gen.listOfN(5, Gen.alphaNumStr.filter(s => s.nonEmpty && !s.contains(',')))
     val prop = forAll(gen) { fields =>
@@ -330,7 +294,7 @@ class CsvParserTests extends FunSuite {
     val prop = forAll(gen) { rows =>
       val input = rows.mkString("\n")
       if (rows.isEmpty) {
-        true // Empty input edge case
+        true
       } else {
         val result = parseCsv(input)
         result.toOption.exists(csv => csv.length == rows.length)
@@ -338,10 +302,6 @@ class CsvParserTests extends FunSuite {
     }
     prop.check()
   }
-
-  // ============================================================================
-  // Round-Trip Tests
-  // ============================================================================
 
   test("round-trip: simple CSV") {
     val original = List(

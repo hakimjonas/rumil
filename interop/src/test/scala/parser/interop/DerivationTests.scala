@@ -14,10 +14,6 @@ import parser.syntax._
  */
 class DerivationTests extends FunSuite {
 
-  // ============================================================================
-  // Test case classes
-  // ============================================================================
-
   case class Person(name: String, age: Int)
   given Parser[ParseError, Person] = derived[Person]
 
@@ -38,10 +34,6 @@ class DerivationTests extends FunSuite {
 
   case class ManyFields(a: Int, b: String, c: Boolean, d: Long, e: Double)
   given Parser[ParseError, ManyFields] = derived[ManyFields]
-
-  // ============================================================================
-  // Success cases
-  // ============================================================================
 
   test("derive parser for simple case class with two fields") {
     val parser = summon[Parser[ParseError, Person]]
@@ -178,10 +170,6 @@ class DerivationTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Failure cases
-  // ============================================================================
-
   test("fail when class name is wrong") {
     val parser = summon[Parser[ParseError, Person]]
     parser.run("NotPerson(Alice,30)") match {
@@ -278,10 +266,6 @@ class DerivationTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Option[A] tests
-  // ============================================================================
-
   case class PersonWithAge(name: String, age: Option[Int])
   given Parser[ParseError, PersonWithAge] = derived[PersonWithAge]
 
@@ -351,10 +335,6 @@ class DerivationTests extends FunSuite {
         assert(errors.nonEmpty)
     }
   }
-
-  // ============================================================================
-  // Collection tests
-  // ============================================================================
 
   case class Tags(items: List[String])
   given Parser[ParseError, Tags] = derived[Tags]
@@ -436,10 +416,6 @@ class DerivationTests extends FunSuite {
         fail(s"Expected success, got errors: $errors")
     }
   }
-
-  // ============================================================================
-  // Nested case class tests
-  // ============================================================================
 
   case class Address(street: String, city: String)
   given Parser[ParseError, Address] = derived[Address]
@@ -524,10 +500,6 @@ class DerivationTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Primitive type tests
-  // ============================================================================
-
   case class CharValue(c: Char)
   given Parser[ParseError, CharValue] = derived[CharValue]
 
@@ -588,10 +560,6 @@ class DerivationTests extends FunSuite {
         fail(s"Expected success, got errors: $errors")
     }
   }
-
-  // ============================================================================
-  // Integration tests - Complex combinations
-  // ============================================================================
 
   case class User(
     name: String,

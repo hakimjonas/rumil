@@ -6,10 +6,6 @@ import parser.core._
 import parser.syntax._
 import parsers.common._
 
-// ============================================================================
-// TOML PARSER - TOML v1.0.0 Specification
-// ============================================================================
-
 /**
  * Parses a TOML document from a string.
  *
@@ -27,10 +23,6 @@ import parsers.common._
  */
 def parseToml(input: scala.Predef.String): Result[ParseError, TomlDocument] =
   tomlDocument.run(input)
-
-// ============================================================================
-// Whitespace and Comments
-// ============================================================================
 
 /**
  * TOML whitespace: space or tab.
@@ -56,10 +48,6 @@ private def skip: Parser[ParseError, Unit] =
 private def eol: Parser[ParseError, Unit] =
   ws *> comment.optional *> (newline.void | eof)
 
-// ============================================================================
-// Keys
-// ============================================================================
-
 /**
  * Bare key: alphanumeric, -, _.
  */
@@ -84,10 +72,6 @@ private def simpleKey: Parser[ParseError, scala.Predef.String] =
  */
 private def dottedKey: Parser[ParseError, List[scala.Predef.String]] =
   simpleKey.sepBy1(ws *> char('.') *> ws)
-
-// ============================================================================
-// Strings
-// ============================================================================
 
 /**
  * Basic string: "..."
@@ -175,10 +159,6 @@ private def tomlString: Parser[ParseError, TomlValue] =
   (multiLineBasicString | multiLineLiteralString | basicString | literalString)
     .map(TomlValue.String.apply)
 
-// ============================================================================
-// Numbers
-// ============================================================================
-
 /**
  * Integer: decimal, hex, octal, or binary.
  */
@@ -220,12 +200,11 @@ private def tomlFloat: Parser[ParseError, TomlValue] = {
       "nan"  -> Double.NaN
     ))
 
-  // Float with decimal point (and optional exponent): 3.14, 3.14e10
   val withFraction = for {
     negative <- char('-').optional | char('+').optional
     whole <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1
                .map(_.filter(_ != '_').mkString)
-    _ <- char('.') // REQUIRED decimal point
+    _ <- char('.')
     frac <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1
               .map(_.filter(_ != '_').mkString)
     exp <- (oneOf("eE") *> (char('-') | char('+')).optional ~ satisfy(
@@ -245,7 +224,6 @@ private def tomlFloat: Parser[ParseError, TomlValue] = {
     s"$sign$whole.$frac$expPart".toDouble
   }
 
-  // Float with only exponent (no decimal point): 5e22
   val onlyExponent = for {
     negative <- char('-').optional | char('+').optional
     whole <- satisfy(c => c.isDigit || c == '_', "digit or underscore").many1
@@ -275,10 +253,6 @@ private def tomlBoolean: Parser[ParseError, TomlValue] =
       "true"  -> TomlValue.Boolean(true),
       "false" -> TomlValue.Boolean(false)
     ))
-
-// ============================================================================
-// Datetimes
-// ============================================================================
 
 /**
  * Date: YYYY-MM-DD
@@ -318,7 +292,6 @@ private def tomlDateTime: Parser[ParseError, TomlValue] =
   } yield {
     val str = chars.mkString
     try
-      // Try different datetime formats
       if (str.contains('T') || str.contains('t')) {
         if (str.contains('Z') || str.contains('+') || str.lastIndexOf('-') > 8) {
           TomlValue.DateTime(OffsetDateTime.parse(str))
@@ -330,13 +303,9 @@ private def tomlDateTime: Parser[ParseError, TomlValue] =
       }
     catch {
       case _: Exception =>
-        TomlValue.String(str) // Fallback
+        TomlValue.String(str)
     }
   }
-
-// ============================================================================
-// Arrays
-// ============================================================================
 
 /**
  * Array: [ values ]
@@ -346,14 +315,10 @@ private lazy val tomlArray: Parser[ParseError, TomlValue] =
     _        <- char('[')
     _        <- skip
     elements <- defer(tomlValue).sepBy(skip *> char(',') *> skip)
-    _        <- (skip *> char(',') *> skip).optional // Trailing comma
+    _        <- (skip *> char(',') *> skip).optional
     _        <- skip
     _        <- char(']')
   } yield TomlValue.Array(elements)
-
-// ============================================================================
-// Inline Tables
-// ============================================================================
 
 /**
  * Inline table: { key = value, ... }
@@ -374,10 +339,6 @@ private lazy val inlineTable: Parser[ParseError, TomlValue] = {
   } yield TomlValue.InlineTable(pairs.toMap)
 }
 
-// ============================================================================
-// Values
-// ============================================================================
-
 /**
  * Any TOML value.
  *
@@ -389,16 +350,12 @@ private lazy val inlineTable: Parser[ParseError, TomlValue] = {
  */
 private lazy val tomlValue: Parser[ParseError, TomlValue] =
   tomlString |
-    tomlBoolean | // Before datetime/numbers
-    tomlFloat |   // Before integer (3.14 should match float, not fail on integer)
-    tomlInteger | // Before datetime
+    tomlBoolean |
+    tomlFloat |
+    tomlInteger |
     tomlArray |
     inlineTable |
-    tomlDateTime // Last - greedy with String fallback
-
-// ============================================================================
-// Key-Value Pairs
-// ============================================================================
+    tomlDateTime
 
 /**
  * Key-value pair: key = value
@@ -411,10 +368,6 @@ private def keyValue: Parser[ParseError, (List[scala.Predef.String], TomlValue)]
     _     <- eol
   } yield (key, value)
 
-// ============================================================================
-// Tables
-// ============================================================================
-
 /**
  * Table header: [key.key.key]
  */
@@ -426,10 +379,6 @@ private def tableHeader: Parser[ParseError, List[scala.Predef.String]] =
  */
 private def arrayTableHeader: Parser[ParseError, List[scala.Predef.String]] =
   string("[[") *> ws *> dottedKey <* ws <* string("]]") <* eol
-
-// ============================================================================
-// Document
-// ============================================================================
 
 /**
  * Skip blank lines and full-line comments.
@@ -446,9 +395,9 @@ private def skipBlankAndComments: Parser[ParseError, Unit] =
  */
 private def tomlDocument: Parser[ParseError, TomlDocument] =
   for {
-    _     <- skipBlankAndComments                 // Skip leading blank lines and comments
-    pairs <- keyValue.sepBy(skipBlankAndComments) // Parse key-values separated by blanks/comments
-    _     <- skipBlankAndComments                 // Trailing whitespace
+    _     <- skipBlankAndComments
+    pairs <- keyValue.sepBy(skipBlankAndComments)
+    _     <- skipBlankAndComments
     _     <- eof
   } yield {
     val pairMap = pairs.foldLeft(Map.empty[scala.Predef.String, TomlValue]) {

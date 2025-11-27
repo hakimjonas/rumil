@@ -21,10 +21,6 @@ class DecoderTests extends FunSuite {
 
   import JsonDecoders.given
 
-  // ============================================================================
-  // Primitive Type Decoding Tests (5+ tests)
-  // ============================================================================
-
   test("decode JSON string to String") {
     val json   = JsonValue.Str("hello")
     val result = Decoder[JsonValue, String].decode(json)
@@ -87,10 +83,6 @@ class DecoderTests extends FunSuite {
       case _ => fail("Expected Failure")
     }
   }
-
-  // ============================================================================
-  // Case Class Decoding Tests (8+ tests)
-  // ============================================================================
 
   test("decode simple case class with 2 fields") {
     case class Point(x: Int, y: Int)
@@ -298,10 +290,6 @@ class DecoderTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Collection Decoding Tests (4+ tests)
-  // ============================================================================
-
   test("decode JSON array to List[Int]") {
     val json = JsonValue.Array(
       List(
@@ -366,10 +354,6 @@ class DecoderTests extends FunSuite {
     val result = Decoder[JsonValue, Map[String, Int]].decode(json)
     assertEquals(result, Result.Success(Map("a" -> 1, "b" -> 2, "c" -> 3), 0))
   }
-
-  // ============================================================================
-  // Integration Tests (3+ tests)
-  // ============================================================================
 
   test("integration: full pipeline from JSON string to case class") {
     import parsers.json.parseJson
@@ -445,10 +429,6 @@ class DecoderTests extends FunSuite {
       case _ => fail("Expected Failure or Partial with type mismatch")
     }
   }
-
-  // ============================================================================
-  // Additional Edge Cases
-  // ============================================================================
 
   test("decode case class with all primitive types") {
     case class AllTypes(
@@ -528,10 +508,6 @@ class DecoderTests extends FunSuite {
     val result = Decoder[JsonValue, BigNumbers].decode(json)
     assertEquals(result, Result.Success(BigNumbers(BigInt(123456789), BigDecimal(123.456)), 0))
   }
-
-  // ============================================================================
-  // Java Time Decoders Tests
-  // ============================================================================
 
   test("decode Instant from ISO-8601 string") {
     val json   = JsonValue.Str("2024-01-15T10:30:00Z")
@@ -616,10 +592,6 @@ class DecoderTests extends FunSuite {
       Result.Success(ZonedDateTime.parse("2024-01-15T10:30:00+01:00[Europe/Paris]"), 0))
   }
 
-  // ============================================================================
-  // UUID Decoder Tests
-  // ============================================================================
-
   test("decode UUID from string") {
     val uuid   = UUID.fromString("550e8400-e29b-41d4-a716-446655440000")
     val json   = JsonValue.Str("550e8400-e29b-41d4-a716-446655440000")
@@ -652,10 +624,6 @@ class DecoderTests extends FunSuite {
       case _ => fail("Expected Failure")
     }
   }
-
-  // ============================================================================
-  // Case Class with java.time Fields Tests
-  // ============================================================================
 
   test("decode case class with Instant field") {
     case class Event(name: String, timestamp: Instant)

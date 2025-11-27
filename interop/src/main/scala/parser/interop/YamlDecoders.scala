@@ -31,10 +31,6 @@ object YamlDecoders {
 
   private val defaultLoc: Location = (line = 1, column = 1, offset = 0)
 
-  // ============================================================================
-  // Primitive Type Decoders
-  // ============================================================================
-
   /**
    * Decoder for String from YamlValue.
    */
@@ -131,10 +127,6 @@ object YamlDecoders {
         )
     }
   }
-
-  // ============================================================================
-  // Generic Type Decoders
-  // ============================================================================
 
   /**
    * Decoder for Option[A] from YamlValue.
@@ -259,10 +251,6 @@ object YamlDecoders {
           )
       }
     }
-
-  // ============================================================================
-  // Helper Functions
-  // ============================================================================
 
   private def yamlValueTypeName(value: YamlValue): String = value match {
     case YamlValue.Null        => "Null"

@@ -4,10 +4,6 @@ import scala.collection.mutable
 
 import parser.core.{MemoKey, _}
 
-// ============================================================================
-// Ref - Controlled Mutation Pattern (Encapsulated Mutable State)
-// ============================================================================
-
 /**
  * Mutable reference cell for controlled mutation.
  *
@@ -21,12 +17,6 @@ final private class Ref[A](private var value: A) {
   def set(newValue: A): Unit  = value = newValue
   def update(f: A => A): Unit = value = f(value)
 }
-
-// ============================================================================
-// Left Recursion Support - Seed-Growth Algorithm (Warth et al.)
-// ============================================================================
-
-// Note: MemoKey is defined in parser.core.MemoKey to avoid coupling Parser to runtime
 
 /**
  * Type-safe memoization table for left recursion support.
@@ -112,10 +102,6 @@ final private[runtime] class MemoTable private () {
     val _ = table.put((key, pos), entry)
   }
 
-  // ===========================================================================
-  // Type Erasure Helpers - The ONLY place where casts occur
-  // ===========================================================================
-
   /**
    * Erase result type for heterogeneous storage.
    * Safe because we track type through MemoKey.
@@ -177,7 +163,6 @@ final private[runtime] class SimpleMemoTable private () {
   def getResult[E, A](key: MemoKey[E, A], pos: Int): Option[Result[E, A]] =
     table.get((key, pos)).map(entry => castResult[E, A](entry.result))
 
-  // Type erasure helpers
   private def eraseResult[E, A](result: Result[E, A]): Result[Any, Any] =
     result.asInstanceOf[Result[Any, Any]]
 
@@ -241,10 +226,6 @@ final private[runtime] case class LR(
   var head: Option[LRHead]
 )
 
-// ============================================================================
-// ParserState - Controlled Mutation via Refs
-// ============================================================================
-
 /**
  * Mutable parser state tracking position in input.
  *
@@ -271,12 +252,9 @@ final class ParserState private[runtime] (
   private var _line: Int,
   private var _column: Int
 ) {
-  // Left recursion support - lazily initialized (saves ~320 bytes for non-LR parsers)
   private[runtime] lazy val memo: MemoTable                  = MemoTable()
   private[runtime] lazy val lrStack: mutable.ArrayBuffer[LR] = mutable.ArrayBuffer.empty
   private[runtime] lazy val heads: mutable.Map[Int, LRHead]  = mutable.Map.empty
-
-  // Simple memoization (non-LR) - lazily initialized for performance
   private[runtime] lazy val simpleCache: SimpleMemoTable = SimpleMemoTable()
 
   def offset: Int = _offset
@@ -340,7 +318,6 @@ final class ParserState private[runtime] (
   def advanceByString(s: String): Unit = {
     val len = s.length
     _offset += len
-    // Fast path: check for newlines with indexOf (JVM intrinsic) before counting
     val nlIdx = s.indexOf('\n')
     if (nlIdx < 0) {
       _column += len

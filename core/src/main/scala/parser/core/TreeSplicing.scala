@@ -45,7 +45,6 @@ object TreeSplicing {
     replacement: GreenNode
   ): Option[GreenNode] = node match {
     case GreenNode.Token(_, _, _) =>
-      // Can't descend into a token
       None
 
     case GreenNode.Tree(kind, children) =>
@@ -53,11 +52,9 @@ object TreeSplicing {
       if (childIdx < 0 || childIdx >= children.length) {
         None
       } else if (pathIdx == path.length - 1) {
-        // This is the parent of the node to replace
         val newChildren = children.updated(childIdx, replacement)
         Some(GreenNode.Tree(kind, newChildren))
       } else {
-        // Recurse into the child
         replaceAtPath(children(childIdx), path, pathIdx + 1, replacement).map { newChild =>
           val newChildren = children.updated(childIdx, newChild)
           GreenNode.Tree(kind, newChildren)
@@ -140,7 +137,6 @@ object TreeSplicing {
       current.parent match {
         case None         => acc
         case Some(parent) =>
-          // Find our index in parent's children
           val siblings = parent.children
           val idx      = siblings.indexWhere(_.offset == current.offset)
           loop(parent, idx +: acc)
@@ -163,23 +159,19 @@ object TreeSplicing {
   def adjustSpans(node: GreenNode, edit: TextEdit, nodeStartOffset: Int): GreenNode = {
     val nodeEndOffset = nodeStartOffset + nodeLength(node)
 
-    // If node is entirely before the edit, no changes needed
     if (nodeEndOffset <= edit.startOffset) {
       node
     }
-    // If node is entirely after the edit, shift its span
     else if (nodeStartOffset >= edit.endOffset) {
       shiftSpan(node, edit.lengthDelta)
     }
-    // Node overlaps with edit - need to recurse into children
     else {
       node match {
         case t @ GreenNode.Token(kind, text, span) =>
-          // Token overlaps with edit - just shift if after edit start
           if (span.start.offset >= edit.endOffset) {
             shiftSpan(t, edit.lengthDelta)
           } else {
-            t // Token is at or before edit, keep as is (will be reparsed anyway)
+            t
           }
 
         case GreenNode.Tree(kind, children) =>
@@ -248,7 +240,6 @@ object TreeSplicing {
           childOffset += childLen
           i += 1
         }
-        // Offset not in any child but might be at tree boundary
         if (offset == nodeOffset && children.isEmpty) acc
         else Vector.empty
     }

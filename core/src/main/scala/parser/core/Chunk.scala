@@ -217,7 +217,6 @@ final class ChunkBuilder[A](sizeHint: Int = 16) {
   /** Clear all elements (reuse array). */
   def clear(): Unit = {
     size = 0
-    // Don't null out array elements - not worth the cost
   }
 
   private def ensureCapacity(required: Int): Unit = {

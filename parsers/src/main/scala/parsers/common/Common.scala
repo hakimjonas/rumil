@@ -3,10 +3,6 @@ package parsers.common
 import parser.core._
 import parser.syntax._
 
-// ============================================================================
-// COMMON UTILITIES - Shared across all parsers
-// ============================================================================
-
 /**
  * Parses a hexadecimal digit (0-9, a-f, A-F).
  */

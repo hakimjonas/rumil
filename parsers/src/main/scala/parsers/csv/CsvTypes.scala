@@ -1,9 +1,5 @@
 package parsers.csv
 
-// ============================================================================
-// CSV TYPES - Following Rumil manifesto (enums, named tuples, no case classes)
-// ============================================================================
-
 /**
  * Configuration for CSV parsing.
  *
@@ -80,10 +76,6 @@ enum CsvError {
   case InconsistentColumns(expected: Int, found: Int, row: Int)
   case ParseError(message: String, line: Int, column: Int)
 }
-
-// ============================================================================
-// CSV FORMATTING - Convert CSV data back to string representation
-// ============================================================================
 
 /**
  * Formats a CSV document as a string.

@@ -7,10 +7,6 @@ import parser.syntax._
 class XmlParserTests extends FunSuite {
   import XmlNode.*
 
-  // ============================================================================
-  // Basic Element Tests
-  // ============================================================================
-
   test("parse empty self-closing element") {
     val result = parseXmlFragment("<root/>")
     assert(result.isSuccess)
@@ -50,10 +46,6 @@ class XmlParserTests extends FunSuite {
       case _                       => fail("Expected Element")
     }
   }
-
-  // ============================================================================
-  // Attribute Tests
-  // ============================================================================
 
   test("parse element with single attribute") {
     val xml    = """<root id="123"/>"""
@@ -97,10 +89,6 @@ class XmlParserTests extends FunSuite {
       case _                         => fail("Expected Element")
     }
   }
-
-  // ============================================================================
-  // Entity Tests
-  // ============================================================================
 
   test("parse text with lt entity") {
     val xml    = "<root>5 &lt; 10</root>"
@@ -152,10 +140,6 @@ class XmlParserTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Character Reference Tests
-  // ============================================================================
-
   test("parse decimal character reference") {
     val xml    = "<root>&#65;BC</root>"
     val result = parseXmlFragment(xml)
@@ -175,10 +159,6 @@ class XmlParserTests extends FunSuite {
       case _                                 => fail("Expected Element with Text child")
     }
   }
-
-  // ============================================================================
-  // CDATA Tests
-  // ============================================================================
 
   test("parse CDATA section") {
     val xml    = "<root><![CDATA[<>&\"']]></root>"
@@ -201,10 +181,6 @@ class XmlParserTests extends FunSuite {
       case _ => fail("Expected Element with CData child")
     }
   }
-
-  // ============================================================================
-  // Comment Tests
-  // ============================================================================
 
   test("parse comment") {
     val xml    = "<root><!-- this is a comment --></root>"
@@ -233,10 +209,6 @@ class XmlParserTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Processing Instruction Tests
-  // ============================================================================
-
   test("parse processing instruction") {
     val xml    = "<root><?target content?></root>"
     val result = parseXmlFragment(xml)
@@ -248,10 +220,6 @@ class XmlParserTests extends FunSuite {
       case _ => fail("Expected Element with ProcessingInstruction child")
     }
   }
-
-  // ============================================================================
-  // Namespace Tests
-  // ============================================================================
 
   test("parse element with namespace prefix") {
     val xml    = "<xs:element/>"
@@ -281,10 +249,6 @@ class XmlParserTests extends FunSuite {
     assert(result.isSuccess)
   }
 
-  // ============================================================================
-  // Whitespace Tests
-  // ============================================================================
-
   test("parse element with whitespace") {
     val xml    = """
       <root>
@@ -311,10 +275,6 @@ class XmlParserTests extends FunSuite {
     }
   }
 
-  // ============================================================================
-  // Complete Document Tests
-  // ============================================================================
-
   test("parse document with XML declaration") {
     val xml    = """<?xml version="1.0" encoding="UTF-8"?><root/>"""
     val result = parseXml(xml)
@@ -339,10 +299,6 @@ class XmlParserTests extends FunSuite {
     val doc = result.toOption.get
     assertEquals(doc.version, "1.0")
   }
-
-  // ============================================================================
-  // Real-World Examples
-  // ============================================================================
 
   test("parse SVG fragment") {
     val xml    = """<svg width="100" height="100">
@@ -394,10 +350,6 @@ class XmlParserTests extends FunSuite {
     assert(result.isSuccess)
   }
 
-  // ============================================================================
-  // Formatting Tests
-  // ============================================================================
-
   test("format simple element") {
     val elem = Element(
       qname("root"),
@@ -443,10 +395,6 @@ class XmlParserTests extends FunSuite {
     assert(formatted.contains("<root/>"))
   }
 
-  // ============================================================================
-  // Error Cases
-  // ============================================================================
-
   test("fail on unclosed element") {
     val xml    = "<root>"
     val result = parseXmlFragment(xml)
@@ -456,7 +404,6 @@ class XmlParserTests extends FunSuite {
   test("fail on mismatched tags") {
     val xml    = "<root></other>"
     val result = parseXmlFragment(xml)
-    // Note: Current implementation may not catch this, but it should
     assert(result.isSuccess || result.isFailure)
   }
 

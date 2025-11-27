@@ -2,10 +2,6 @@ package parsers.xml
 
 import scala.language.strictEquality
 
-// ============================================================================
-// XML TYPES - Well-Formed XML with Namespaces (Enums, No Case Classes)
-// ============================================================================
-
 /**
  * Qualified name with optional namespace prefix.
  *
@@ -14,7 +10,6 @@ import scala.language.strictEquality
  */
 type QName = (prefix: Option[String], localName: String)
 
-// CanEqual instance for QName
 given CanEqual[QName, QName] = CanEqual.derived
 
 /**
@@ -84,7 +79,6 @@ enum XmlNode {
   case ProcessingInstruction(target: String, content: String)
 }
 
-// CanEqual instance for XmlNode
 given CanEqual[XmlNode, XmlNode] = CanEqual.derived
 
 /**

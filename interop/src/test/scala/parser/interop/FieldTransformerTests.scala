@@ -7,10 +7,6 @@ import munit.FunSuite
  */
 class FieldTransformerTests extends FunSuite {
 
-  // ============================================================================
-  // Built-in Transformers
-  // ============================================================================
-
   test("IdentityFieldTransformer returns field names unchanged") {
     val transformer = IdentityFieldTransformer
 
@@ -48,10 +44,6 @@ class FieldTransformerTests extends FunSuite {
     assertEquals(transformer.transformFieldName("isAdmin"), "IS_ADMIN")
     assertEquals(transformer.transformFieldName("name"), "NAME")
   }
-
-  // ============================================================================
-  // Custom Transformers
-  // ============================================================================
 
   test("Custom transformer can add prefix to all fields") {
     val transformer = new FieldTransformer {

@@ -16,7 +16,6 @@ import parser.core._
  */
 object TrampolineOpt {
 
-  // Sentinel values to avoid Option boxing
   private val NoParser: Parser[Any, Any]  = null.asInstanceOf[Parser[Any, Any]]
   private val NoResult: IResult[Any, Any] = null.asInstanceOf[IResult[Any, Any]]
   private val NoMapFn: Any => Any         = null.asInstanceOf[Any => Any]
@@ -40,57 +39,36 @@ object TrampolineOpt {
    * Optimized stack-safe interpreter.
    */
   def run[E, A](parser: Parser[E, A], state: ParserState): IResult[E, A] = {
-    // Pre-allocate stack with reasonable capacity
     var stack    = new Array[Frame](32)
     var stackTop = 0
 
-    // Current parser - NoParser means we're in result-processing mode
     var current: Parser[Any, Any] = parser.asInstanceOf[Parser[Any, Any]]
-
-    // Current result - NoResult means we're in parser-expansion mode
     var result: IResult[Any, Any] = NoResult
-
-    // Accumulated consumed count (avoids allocating separate continuation)
     var consumedAcc = 0
-
-    // Accumulated map functions (fuses consecutive maps)
     var mapFn: Any => Any = NoMapFn
 
-    // Main loop
     while (true) {
-      // Phase 1: Expand FlatMap/Map chains into continuations
       while (current ne NoParser)
         current match {
           case Parser.FlatMap(source, f) =>
-            // Ensure stack capacity
             if (stackTop >= stack.length) {
               val newStack = new Array[Frame](stack.length * 2)
               System.arraycopy(stack, 0, newStack, 0, stackTop)
               stack = newStack
             }
-            // If we have accumulated maps, they apply to the OUTPUT of the flatMap,
-            // so we need to wrap f to apply maps after. e.g. Map(FlatMap(src, f), mf)
-            // means: src.flatMap(f).map(mf), so the result of f(a) needs mf applied after.
             val fn: Any => Parser[Any, Any] = if (mapFn ne NoMapFn) {
               val mf = mapFn
               mapFn = NoMapFn
-              // Wrap the parser returned by f with a Map
               (a: Any) => Parser.Map(f.asInstanceOf[Any => Parser[Any, Any]](a), mf)
             } else {
               f.asInstanceOf[Any => Parser[Any, Any]]
             }
-            // Push FlatMap continuation with current consumed accumulator
             stack(stackTop) = Frame.FlatMap(fn, consumedAcc)
             stackTop += 1
             consumedAcc = 0
             current = source.asInstanceOf[Parser[Any, Any]]
 
           case Parser.Map(source, f) =>
-            // Fuse maps - don't allocate continuation, just compose
-            // Map(Map(p, f1), f2) desugars to p.map(f1).map(f2) = p.map(a => f2(f1(a)))
-            // When we see Map(source, f), f is the OUTER map function.
-            // If mapFn is already set, it's an even MORE outer function.
-            // So composition should be: outer(inner(a)) = mapFn(f(a))
             val innerF = f.asInstanceOf[Any => Any]
             mapFn = if (mapFn ne NoMapFn) {
               val outerF = mapFn
@@ -101,12 +79,10 @@ object TrampolineOpt {
             current = source.asInstanceOf[Parser[Any, Any]]
 
           case _ =>
-            // Terminal case - interpret and get result
             result = interpretI(current, state).asInstanceOf[IResult[Any, Any]]
             current = NoParser
         }
 
-      // Apply any pending map function to the result
       if (mapFn ne NoMapFn) {
         val mf = mapFn
         mapFn = NoMapFn
@@ -120,10 +96,8 @@ object TrampolineOpt {
         }
       }
 
-      // Phase 2: Apply continuations
       while (result ne NoResult) {
         if (stackTop == 0) {
-          // No more continuations - apply accumulated consumed and return
           if (consumedAcc > 0) {
             result = result match {
               case Result.Success(value, consumed) =>
@@ -137,10 +111,9 @@ object TrampolineOpt {
           return result.asInstanceOf[IResult[E, A]]
         }
 
-        // Pop continuation
         stackTop -= 1
         val frame = stack(stackTop)
-        stack(stackTop) = null.asInstanceOf[Frame] // Help GC
+        stack(stackTop) = null.asInstanceOf[Frame]
 
         frame match {
           case fm: Frame.FlatMap =>
@@ -149,13 +122,11 @@ object TrampolineOpt {
 
             result match {
               case Result.Success(value, consumed) =>
-                // Success: continue with f(value)
                 consumedAcc = prevConsumed + consumed + consumedAcc
                 current = fn(value)
-                result = NoResult // Switch to Phase 1
+                result = NoResult
 
               case LazyPartial(value, mkErrs, consumed) =>
-                // Partial: push partial continuation and continue
                 if (stackTop >= stack.length) {
                   val newStack = new Array[Frame](stack.length * 2)
                   System.arraycopy(stack, 0, newStack, 0, stackTop)
@@ -168,12 +139,10 @@ object TrampolineOpt {
                 stackTop += 1
                 consumedAcc = 0
                 current = fn(value)
-                result = NoResult // Switch to Phase 1
+                result = NoResult
 
               case _: LazyFailure[?] =>
-                // Failure: add accumulated consumed back and propagate
                 consumedAcc += prevConsumed
-              // result stays the same, continue popping
             }
 
           case fmp: Frame.FlatMapPartial =>

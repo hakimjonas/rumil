@@ -2,10 +2,6 @@ package parsers.protobuf
 
 import scala.language.strictEquality
 
-// ============================================================================
-// PROTOCOL BUFFERS TYPES - Proto3 Syntax (Enums, No Case Classes)
-// ============================================================================
-
 /**
  * Protocol Buffers field types.
  */
@@ -19,7 +15,6 @@ enum ProtoType {
   case Repeated(elementType: ProtoType)
 }
 
-// CanEqual instances for strict equality
 given CanEqual[ProtoType, ProtoType] = CanEqual.derived
 
 /**

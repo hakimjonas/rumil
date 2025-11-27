@@ -4,10 +4,6 @@ import parser.core._
 import parser.syntax._
 import parsers.common._
 
-// ============================================================================
-// JSON PARSER - RFC 8259 Compliant
-// ============================================================================
-
 /**
  * Parses a JSON value from a string.
  *
@@ -27,10 +23,6 @@ def parseJson(input: String): Result[ParseError, JsonValue] =
 /** Exposed for benchmarking - the full JSON parser */
 val jsonParser: Parser[ParseError, JsonValue] = ws *> jsonValue <* ws <* eof
 
-// ============================================================================
-// Whitespace handling (RFC 8259 Section 2)
-// ============================================================================
-
 /**
  * JSON whitespace: space, tab, newline, carriage return.
  */
@@ -42,10 +34,6 @@ private def ws: Parser[ParseError, Unit] =
  */
 private def lexeme[A](p: Parser[ParseError, A]): Parser[ParseError, A] =
   ws *> p <* ws
-
-// ============================================================================
-// Literals (RFC 8259 Section 3)
-// ============================================================================
 
 /**
  * Parses JSON null.
@@ -61,10 +49,6 @@ private def jsonBool: Parser[ParseError, JsonValue] =
     string("true").as(JsonValue.Bool(true)) |
       string("false").as(JsonValue.Bool(false))
   ).named("boolean")
-
-// ============================================================================
-// Numbers (RFC 8259 Section 6)
-// ============================================================================
 
 /**
  * Parses JSON number.
@@ -102,10 +86,6 @@ private def jsonNumber: Parser[ParseError, JsonValue] =
       JsonValue.Number(numStr.toDouble)
     }
   ).named("number")
-
-// ============================================================================
-// Strings (RFC 8259 Section 7)
-// ============================================================================
 
 /**
  * Parses JSON string with full escape sequence support.
@@ -170,10 +150,6 @@ private def rawString: Parser[ParseError, String] =
     _     <- char('"')
   } yield chars.mkString
 
-// ============================================================================
-// Arrays (RFC 8259 Section 5)
-// ============================================================================
-
 /**
  * Parses JSON array.
  *
@@ -206,10 +182,6 @@ private lazy val jsonObject: Parser[ParseError, JsonValue] = {
   } yield JsonValue.Object(pairs.toMap)).named("object")
 }
 
-// ============================================================================
-// Main parser
-// ============================================================================
-
 /**
  * Parses any JSON value.
  *
@@ -222,10 +194,6 @@ private lazy val jsonValue: Parser[ParseError, JsonValue] =
     jsonString |
     jsonArray |
     jsonObject).named("value")
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
 
 /**
  * Parses JSON and returns a specific type.
@@ -264,7 +232,6 @@ private def formatJsonValue(value: JsonValue, depth: Int, config: JsonFormatConf
     case JsonValue.Null      => "null"
     case JsonValue.Bool(b)   => b.toString
     case JsonValue.Number(n) =>
-      // Format numbers nicely (remove .0 for whole numbers)
       if (n.isWhole) n.toLong.toString
       else n.toString
     case JsonValue.Str(s) =>

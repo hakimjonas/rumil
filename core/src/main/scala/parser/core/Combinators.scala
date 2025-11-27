@@ -1,11 +1,5 @@
 package parser.core
 
-// ============================================================================
-// TOP-LEVEL FUNCTIONS - Core Combinators
-// ============================================================================
-
-// Construction
-
 /**
  * Creates a parser that always succeeds with the given value.
  *
@@ -37,8 +31,6 @@ inline def succeed[A](value: A): Parser[Nothing, A] =
  */
 inline def fail[E](error: E): Parser[E, Nothing] =
   Parser.Fail(error)
-
-// Sequencing
 
 /**
  * Transforms the result of a parser using a function.
@@ -148,8 +140,6 @@ def zipRight[E, A, B](p1: Parser[E, A], p2: Parser[E, B]): Parser[E, B] =
 def between[E, A, L, R](p: Parser[E, A], left: Parser[E, L], right: Parser[E, R]): Parser[E, A] =
   zipRight(left, zipLeft(p, right))
 
-// Choice
-
 /**
  * Tries the left parser, and if it fails, tries the right parser.
  *
@@ -193,7 +183,6 @@ def choice[E, A](parsers: List[Parser[E, A]]): Parser[E, A] =
     case p :: Nil      => p
     case _ :: _ :: Nil => or(parsers.head, parsers(1))
     case _             =>
-      // Optimization: if all alternatives are StringMatch, use StringChoice
       val allStrings = parsers.forall {
         case Parser.StringMatch(_) => true
         case _                     => false
@@ -206,8 +195,6 @@ def choice[E, A](parsers: List[Parser[E, A]]): Parser[E, A] =
         Parser.Choice(parsers)
       }
   }
-
-// Repetition
 
 /**
  * Parses zero or more occurrences of p.
@@ -350,8 +337,6 @@ def count[E, A](n: Int, p: Parser[E, A]): Parser[E, List[A]] =
 inline def times[E, A](n: Int, p: Parser[E, A]): Parser[E, List[A]] =
   count(n, p)
 
-// Lookahead
-
 /**
  * Parses p without consuming input.
  *
@@ -387,8 +372,6 @@ inline def lookAhead[E, A](p: Parser[E, A]): Parser[E, A] =
 inline def notFollowedBy[A](p: Parser[ParseError, A]): Parser[ParseError, Unit] =
   Parser.NotFollowedBy(p)
 
-// Error handling
-
 /**
  * Captures the result of p as a value instead of propagating errors.
  *
@@ -406,28 +389,6 @@ inline def notFollowedBy[A](p: Parser[ParseError, A]): Parser[ParseError, Unit] 
  */
 inline def attempt[E, A](p: Parser[E, A]): Parser[Nothing, Result[E, A]] =
   Parser.Attempt(p)
-
-// ============================================================================
-// Error Recovery Combinators
-// ============================================================================
-//
-// These combinators handle parse failures in different ways:
-//
-// | Combinator   | On Success | On Failure           | Returns      | Use When                    |
-// |--------------|------------|----------------------|--------------|-----------------------------|
-// | recover      | value      | f(error) -> value    | Always A     | Default value from error    |
-// | recoverWith  | value      | f(error) -> Parser   | A or fail    | Alternative parser needed   |
-// | orElse       | value      | try fallback parser  | Partial/Fail | Resilient parsing w/ errors |
-//
-// Key differences:
-// - `recover` always succeeds, discards the error, returns pure value
-// - `recoverWith` may still fail if the fallback parser fails
-// - `orElse` preserves errors in Partial result for error reporting
-//
-// For resilient/IDE parsing, prefer `orElse` as it accumulates errors.
-// For simple defaults, use `recover`.
-// For complex recovery logic based on error type, use `recoverWith`.
-// ============================================================================
 
 /**
  * Recovers from parse failures by providing a default value.
@@ -593,8 +554,6 @@ inline def expect[A](p: Parser[ParseError, A], message: String): Parser[ParseErr
 inline def named[A](p: Parser[ParseError, A], name: String): Parser[ParseError, A] =
   Parser.Named(p, name)
 
-// Debugging
-
 /**
  * Adds tracing output to a parser for debugging.
  *
@@ -638,8 +597,6 @@ inline def trace[E, A](p: Parser[E, A], label: String): Parser[E, A] =
  */
 inline def debug[E, A](p: Parser[E, A], label: String): Parser[E, A] =
   Parser.Debug(p, label)
-
-// Operators
 
 /**
  * Parses one or more occurrences of p separated by op, left-associative.
@@ -694,12 +651,6 @@ def chainr1[E, A](p: Parser[E, A], op: Parser[E, (A, A) => A]): Parser[E, A] =
         succeed(left)
       )
   )
-
-// ============================================================================
-// CLEARER NAME ALIASES
-// ============================================================================
-// These provide more descriptive names for common combinators.
-// The original short names are retained for compatibility.
 
 /**
  * Parses one or more occurrences of p.

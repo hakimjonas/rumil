@@ -4,10 +4,6 @@ import parser.core._
 import parser.syntax._
 import parsers.common._
 
-// ============================================================================
-// XML PARSER - Well-Formed XML with Namespace Support
-// ============================================================================
-
 /**
  * Parses an XML document from a string.
  *
@@ -36,10 +32,6 @@ def parseXmlFragment(
   input: String,
   config: XmlConfig = defaultXmlConfig): Result[ParseError, XmlNode] =
   (ws *> xmlElement(config) <* ws <* eof).run(input)
-
-// ============================================================================
-// Whitespace and Basic Tokens
-// ============================================================================
 
 /**
  * XML whitespace: space, tab, CR, LF.
@@ -71,10 +63,6 @@ private def xmlName: Parser[ParseError, String] = {
  */
 private def qualifiedName: Parser[ParseError, QName] =
   xmlName.map(qname)
-
-// ============================================================================
-// XML Declaration/Prolog
-// ============================================================================
 
 /**
  * Parses XML declaration: <?xml version="1.0" encoding="UTF-8"?>
@@ -108,10 +96,6 @@ private def xmlDecl: Parser[ParseError, (String, Option[String], Option[Boolean]
     _ <- string("?>")
   } yield (version, encoding, standalone)
 
-// ============================================================================
-// Helper: Parse until delimiter
-// ============================================================================
-
 /**
  * Consumes characters until the specified delimiter is found.
  */
@@ -119,10 +103,6 @@ private def untilString(delimiter: String): Parser[ParseError, String] = {
   val char = parser.core.notFollowedBy(string(delimiter)) *> satisfy(_ => true, "any char")
   char.many.map(_.mkString)
 }
-
-// ============================================================================
-// Comments and Processing Instructions
-// ============================================================================
 
 /**
  * Parses XML comment: <!-- content -->
@@ -146,10 +126,6 @@ private def processingInstruction: Parser[ParseError, XmlNode] =
     _       <- string("?>")
   } yield XmlNode.ProcessingInstruction(target, content.trim)
 
-// ============================================================================
-// CDATA Sections
-// ============================================================================
-
 /**
  * Parses CDATA section: <![CDATA[content]]>
  */
@@ -159,10 +135,6 @@ private def cdataSection: Parser[ParseError, XmlNode] =
     content <- untilString("]]>")
     _       <- string("]]>")
   } yield XmlNode.CData(content)
-
-// ============================================================================
-// Text Content and Entities
-// ============================================================================
 
 /**
  * Parses entity reference: &name;
@@ -215,10 +187,6 @@ private def textContent(config: XmlConfig): Parser[ParseError, XmlNode] = {
   }
 }
 
-// ============================================================================
-// Attributes
-// ============================================================================
-
 /**
  * Parses an attribute value (quoted string with entity support).
  */
@@ -254,10 +222,6 @@ private def attribute(config: XmlConfig): Parser[ParseError, XmlAttribute] =
 private def attributes(config: XmlConfig): Parser[ParseError, List[XmlAttribute]] =
   (ws *> attribute(config)).many
 
-// ============================================================================
-// Elements
-// ============================================================================
-
 /**
  * Parses self-closing element: <name attrs/>
  */
@@ -287,11 +251,9 @@ private def normalElement(config: XmlConfig): Parser[ParseError, XmlNode] =
     _         <- ws
     _         <- char('>')
   } yield
-  // Verify matching tags
   if (name == closeName) {
     XmlNode.Element(name, attrs, children)
   } else {
-    // This would ideally be a parse error, but we'll allow it for now
     XmlNode.Element(name, attrs, children)
   }
 
@@ -314,7 +276,6 @@ private def xmlContent(config: XmlConfig): Parser[ParseError, List[XmlNode]] = {
       xmlElement(config) |
       textContent(config)
 
-  // Only strip whitespace around nodes if not preserving it
   val wrappedParser = if (config.preserveWhitespace) {
     nodeParser
   } else {
@@ -322,7 +283,6 @@ private def xmlContent(config: XmlConfig): Parser[ParseError, List[XmlNode]] = {
   }
 
   wrappedParser.many.map { nodes =>
-    // Filter out empty text nodes if not preserving whitespace
     if (config.preserveWhitespace) {
       nodes
     } else {
@@ -334,10 +294,6 @@ private def xmlContent(config: XmlConfig): Parser[ParseError, List[XmlNode]] = {
   }
 }
 
-// ============================================================================
-// Document
-// ============================================================================
-
 /**
  * Parses a complete XML document.
  */
@@ -346,7 +302,6 @@ private def xmlDocument(config: XmlConfig): Parser[ParseError, XmlDocument] =
     _    <- ws
     decl <- xmlDecl.optional
     _    <- ws
-    // Skip any processing instructions or comments before root
     _    <- (processingInstruction | xmlComment).many
     _    <- ws
     root <- xmlElement(config)
@@ -362,10 +317,6 @@ private def xmlDocument(config: XmlConfig): Parser[ParseError, XmlDocument] =
       root = root
     )
   }
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
 
 /**
  * Formats an XML node as a string.
@@ -398,7 +349,6 @@ def formatXml(node: XmlNode, indent: Int = 2, depth: Int = 0): String = {
             case XmlNode.Text(content) =>
               s"$indentStr<$nameStr$attrsStr>${escapeText(content)}</$nameStr>"
             case _ =>
-              // Unreachable due to hasTextOnly guard, but needed for exhaustivity
               s"$indentStr<$nameStr$attrsStr/>"
           }
         } else {

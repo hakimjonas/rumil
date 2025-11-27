@@ -4,10 +4,6 @@ import parser.core._
 import parser.syntax._
 import parsers.common._
 
-// ============================================================================
-// YAML PARSER - YAML 1.2 Subset
-// ============================================================================
-
 /**
  * Parses a YAML document from a string.
  *
@@ -27,10 +23,6 @@ import parsers.common._
 def parseYaml(input: scala.Predef.String): Result[ParseError, YamlDocument] =
   yamlDocument.run(input)
 
-// ============================================================================
-// Whitespace and Comments
-// ============================================================================
-
 private def ws: Parser[ParseError, Unit] =
   satisfy(c => c == ' ' || c == '\t' || c == '\r' || c == '\n', "whitespace").many.void
 
@@ -42,10 +34,6 @@ private def blankLine: Parser[ParseError, Unit] =
 
 private def indent(n: Int): Parser[ParseError, Unit] =
   hspace.count(n).void
-
-// ============================================================================
-// Scalars
-// ============================================================================
 
 private def yamlNull: Parser[ParseError, YamlValue] =
   stringIn("null", "~").as(YamlValue.Null)
@@ -62,8 +50,6 @@ private def yamlBoolean: Parser[ParseError, YamlValue] =
     ))
 
 private def yamlNumber: Parser[ParseError, YamlValue] = {
-  // Float must have '.' or 'e'/'E', otherwise it's an integer
-  // We use notFollowedBy to ensure integer doesn't match float patterns
   val integer = (signedInt <* parser.core.notFollowedBy(oneOf(".eE")))
     .map(n => YamlValue.Integer(n.toLong))
   val float = floatingPoint.map(YamlValue.Float.apply)
@@ -82,10 +68,6 @@ private def quotedString: Parser[ParseError, YamlValue] =
 
 private def yamlScalar: Parser[ParseError, YamlValue] =
   yamlNull | yamlBoolean | yamlNumber | quotedString | plainString
-
-// ============================================================================
-// Flow Style (JSON-like)
-// ============================================================================
 
 private lazy val flowSequence: Parser[ParseError, YamlValue] =
   for {
@@ -114,10 +96,6 @@ private lazy val flowMapping: Parser[ParseError, YamlValue] = {
   } yield YamlValue.Mapping(pairs.toMap)
 }
 
-// ============================================================================
-// Block Style (Indentation-based)
-// ============================================================================
-
 private lazy val blockSequence: Parser[ParseError, YamlValue] = {
   val item = for {
     _     <- char('-') *> hspace.many1
@@ -140,20 +118,12 @@ private lazy val blockMapping: Parser[ParseError, YamlValue] = {
   pair.many1.map(pairs => YamlValue.Mapping(pairs.toMap))
 }
 
-// ============================================================================
-// Main Value Parser
-// ============================================================================
-
 private lazy val yamlValue: Parser[ParseError, YamlValue] =
   flowSequence |
     flowMapping |
     blockSequence |
     blockMapping |
     yamlScalar
-
-// ============================================================================
-// Document
-// ============================================================================
 
 private def yamlDocument: Parser[ParseError, YamlDocument] =
   for {
