@@ -16,7 +16,8 @@ Rumil is a parser combinator library for Scala 3, designed for correctness, effi
 - Parsers are immutable, composable values
 - 40+ combinators for building complex parsers
 - **Left Recursion Support** - Write natural grammars via `rule` combinator (seed-growth algorithm)
-- **Deep Recursion Support** - Stress tested to **7,000,000+** nested recursive rules (limited by heap, not stack)
+- **Stack-Safe Sequential Operations** - FlatMap/Map chains are fully trampolined (7M+ operations)
+- **Recursive Grammar Support** - Recursive grammars supported up to JVM stack limits (~500K depth)
 - Error tracking with line, column, and offset information
 - Memoized interpreter with lazy evaluation
 - Monadic interface with for-comprehension support
@@ -98,7 +99,7 @@ lazy val expr: Parser[ParseError, Expr] = rule {
 import parser.core._
 import parser.interop.Decoder
 import parser.interop.JsonDecoders.given
-import parsers.json.{JsonParser, JsonValue}
+import parsers.json.{parseJson, JsonValue}
 
 // Parse JSON to case classes with automatic derivation
 case class User(name: String, age: Int, admin: Boolean)
@@ -107,7 +108,7 @@ given Decoder[JsonValue, User] = Decoder.derived
 val input = """{"name": "Alice", "age": 30, "admin": true}"""
 
 // Parse JSON string to JsonValue
-val jsonResult = JsonParser.parseValue.run(input)
+val jsonResult = parseJson(input)
 
 // Decode JsonValue to case class
 val userResult = jsonResult.flatMap(json =>
@@ -207,13 +208,13 @@ Automatic parsing to case classes:
 import parser.core._
 import parser.interop.Decoder
 import parser.interop.JsonDecoders.given
-import parsers.json.{JsonParser, JsonValue}
+import parsers.json.{parseJson, JsonValue}
 
 case class Person(name: String, age: Int)
 given Decoder[JsonValue, Person] = Decoder.derived
 
 val input = """{"name": "Alice", "age": 30}"""
-val jsonResult = JsonParser.parseValue.run(input)
+val jsonResult = parseJson(input)
 val personResult = jsonResult.flatMap(json =>
   Decoder[JsonValue, Person].decode(json)
 )
@@ -226,7 +227,7 @@ given Decoder[JsonValue, Address] = Decoder.derived
 given Decoder[JsonValue, User] = Decoder.derived
 
 val nestedInput = """{"name": "Bob", "email": "bob@example.com", "address": {"street": "123 Main St", "city": "Springfield", "zip": "12345"}}"""
-val nestedJsonResult = JsonParser.parseValue.run(nestedInput)
+val nestedJsonResult = parseJson(nestedInput)
 val userResult = nestedJsonResult.flatMap(json =>
   Decoder[JsonValue, User].decode(json)
 )
@@ -505,24 +506,27 @@ Rumil prioritizes **garbage-free parsing** for backtracking-heavy grammars:
 - **Lazy Error Construction**: Defers error materialization until needed
   - Failed backtracking branches never allocate error objects
   - Significant GC pressure reduction in ambiguous grammars
-- **Deep Recursion Safety**: Stress tested to **7,000,000+** nested recursive rules
-  - Limited only by heap memory, not stack depth
-  - Write natural recursive grammars with zero fear of production crashes
+- **Stack Safety**: Trampolined interpreter for sequential operations
+  - FlatMap/Map chains: Fully stack-safe (7M+ operations tested)
+  - Recursive grammars: JVM stack-based (~500K depth limit)
+  - Left-recursive rules: Supported via seed-growth algorithm
 - **Memoization**: Supports both `.memoize` (fast caching) and `rule` (left-recursion)
 
 **Performance Characteristics:**
-- **Throughput**: 1.8-3.5x slower than cats-parse (November 2025 benchmarks)
 - **Allocation**: Minimal GC pressure during backtracking (lazy errors)
 - **Latency**: Better p99 latency in backtracking scenarios (less GC)
 - **Memory**: Stable memory usage, no allocation spikes on failed branches
 
-**Benchmark Results (vs cats-parse, JMH):**
-| Benchmark | cats-parse | Rumil | Ratio |
-|-----------|------------|-------|-------|
-| choice (10-way) | 177k ops/ms | 100k ops/ms | 1.8x |
-| parseCommaSep100 | 417 ops/ms | 150 ops/ms | 2.8x |
-| parseDigits1000 | 423 ops/ms | 122 ops/ms | 3.5x |
-| stringMatch | 301k ops/ms | 130k ops/ms | 2.3x |
+**Benchmark Results (vs cats-parse & zio-parser, JMH, November 2025):**
+| Benchmark | cats-parse | zio-parser | Rumil | vs cats | vs zio |
+|-----------|------------|------------|-------|---------|--------|
+| string match | 106k ops/ms | 54k ops/ms | 93k ops/ms | **0.88x** | **1.72x faster** |
+| choice (10-way) | 86k ops/ms | 10.5k ops/ms | 75k ops/ms | **0.87x** | **7.2x faster** |
+| many (1K chars) | 190 ops/ms | 193 ops/ms | 110 ops/ms | 1.73x slower | 1.75x slower |
+| number parse | 61k ops/ms | 29k ops/ms | 22k ops/ms | 2.82x slower | 1.33x slower |
+| sequential (100) | 4.7k ops/ms | - | 895 ops/ms | 5.2x slower | - |
+
+*String choice is automatically optimized using radix tree matching.*
 
 **When to Use Rumil:**
 - Grammars with heavy backtracking (ambiguous or complex rules)

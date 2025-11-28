@@ -8,7 +8,7 @@ package examples.nestedstructures
 import parser.core._
 import parser.interop._
 import parser.interop.JsonDecoders.given
-import parsers.json.{JsonParser, JsonValue}
+import parsers.json.{parseJson, JsonValue}
 
 /**
  * Example: Parsing Nested Structures
@@ -58,7 +58,7 @@ import parsers.json.{JsonParser, JsonValue}
     ]
   }"""
 
-  val authorResult = JsonParser.parseValue.run(authorJson).flatMap(json =>
+  val authorResult = parseJson(authorJson).flatMap(json =>
     Decoder[JsonValue, Author].decode(json)
   )
 
@@ -116,7 +116,7 @@ import parsers.json.{JsonParser, JsonValue}
     ]
   }"""
 
-  val blogResult = JsonParser.parseValue.run(blogJson).flatMap(json =>
+  val blogResult = parseJson(blogJson).flatMap(json =>
     Decoder[JsonValue, Blog].decode(json)
   )
 
@@ -158,7 +158,7 @@ import parsers.json.{JsonParser, JsonValue}
     ]
   }"""
 
-  val incompleteResult = JsonParser.parseValue.run(incompleteJson).flatMap(json =>
+  val incompleteResult = parseJson(incompleteJson).flatMap(json =>
     Decoder[JsonValue, Author].decode(json)
   )
 

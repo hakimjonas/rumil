@@ -159,8 +159,32 @@ def between[E, A, L, R](p: Parser[E, A], left: Parser[E, L], right: Parser[E, R]
  * or(char('a'), char('b')).run("b")  // Success('b', 1)
  * }}}
  */
-inline def or[E, A](left: Parser[E, A], right: Parser[E, A]): Parser[E, A] =
-  Parser.Or(left, right)
+def or[E, A](left: Parser[E, A], right: Parser[E, A]): Parser[E, A] = {
+  // Recursively flatten nested Or/Choice/StringChoice into a single list
+  def flatten(p: Parser[E, A]): List[Parser[E, A]] = p match {
+    case Parser.Or(l, r)              => flatten(l) ++ flatten(r)
+    case Parser.Choice(alts)          => alts.flatMap(flatten)
+    case Parser.StringChoice(_, strs) => strs.map(s => Parser.StringMatch(s)).toList
+    case other                        => List(other)
+  }
+
+  val allAlts = flatten(left) ++ flatten(right)
+
+  // Check if all are string matches - use StringChoice optimization
+  val allStrings = allAlts.forall {
+    case Parser.StringMatch(_) => true
+    case _                     => false
+  }
+  if (allStrings && allAlts.size > 2) {
+    val targets = allAlts.collect { case Parser.StringMatch(s) => s }.toArray
+    val radix   = RadixNode.fromStrings(targets)
+    Parser.StringChoice(radix, targets).asInstanceOf[Parser[E, A]]
+  } else if (allAlts.size == 2) {
+    Parser.Or(allAlts.head, allAlts(1))
+  } else {
+    Parser.Choice(allAlts)
+  }
+}
 
 /**
  * Tries a list of parsers in order, succeeding with the first success.

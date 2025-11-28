@@ -8,7 +8,7 @@ package examples.jsontocaseclass
 import parser.core._
 import parser.interop._
 import parser.interop.JsonDecoders.given
-import parsers.json.{JsonParser, JsonValue}
+import parsers.json.{parseJson, JsonValue}
 
 /**
  * Example: Parsing JSON to Case Classes (Idiomatic Way)
@@ -32,7 +32,7 @@ import parsers.json.{JsonParser, JsonValue}
   val input = """{"name": "Alice", "age": 30, "admin": true}"""
 
   // Step 1: Parse JSON string to JsonValue (intermediate representation)
-  val jsonResult: Result[ParseError, JsonValue] = JsonParser.parseValue.run(input)
+  val jsonResult: Result[ParseError, JsonValue] = parseJson(input)
 
   // Step 2: Decode JsonValue to case class
   val userResult: Result[DecodeError, User] = jsonResult match {
@@ -86,7 +86,7 @@ import parsers.json.{JsonParser, JsonValue}
     }
   }"""
 
-  val nestedJsonResult = JsonParser.parseValue.run(nestedInput)
+  val nestedJsonResult = parseJson(nestedInput)
   val employeeResult = nestedJsonResult.flatMap(json =>
     Decoder[JsonValue, Employee].decode(json)
   )
@@ -105,7 +105,7 @@ import parsers.json.{JsonParser, JsonValue}
 
   val invalidInput = """{"name": "Charlie", "age": "not a number"}"""
 
-  val invalidJsonResult = JsonParser.parseValue.run(invalidInput)
+  val invalidJsonResult = parseJson(invalidInput)
   val invalidUserResult = invalidJsonResult.flatMap(json =>
     Decoder[JsonValue, User].decode(json)
   )

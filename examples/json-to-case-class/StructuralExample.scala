@@ -6,7 +6,7 @@ package examples.jsontocaseclass
 
 import parser.core._
 import parser.syntax._
-import parsers.json.{JsonValue, JsonParser}
+import parsers.json.{parseJson, JsonValue}
 
 /**
  * Example: Parsing JSON to Case Classes (Structural Way)
@@ -30,7 +30,7 @@ import parsers.json.{JsonValue, JsonParser}
   val input = """{"name": "Alice", "age": 30, "admin": true}"""
 
   // Step 1: Parse JSON string to JsonValue
-  val jsonResult: Result[ParseError, JsonValue] = JsonParser.parseValue.run(input)
+  val jsonResult: Result[ParseError, JsonValue] = parseJson(input)
 
   // Step 2: Manually extract fields and map to case class
   val userResult: Result[String, User] = jsonResult match {
@@ -63,7 +63,7 @@ import parsers.json.{JsonValue, JsonParser}
   println("\n--- Example 2: With Custom Validation ---")
 
   val input2 = """{"name": "Bob", "age": 17, "admin": false}"""
-  val jsonResult2 = JsonParser.parseValue.run(input2)
+  val jsonResult2 = parseJson(input2)
 
   val validatedUserResult = jsonResult2 match {
     case Result.Success(jsonValue, _) =>
