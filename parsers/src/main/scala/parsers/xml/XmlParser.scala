@@ -698,6 +698,8 @@ private def xmlDocument(config: XmlConfig): Parser[ParseError, XmlDocument] =
     _ <- ws
     ctx <- maybeDoctype(config)
     _ <- ws
+    _ <- (processingInstruction | xmlComment).many
+    _ <- ws
     root <- xmlElement(ctx)
     _ <- ws
     _ <- eof

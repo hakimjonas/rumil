@@ -61,6 +61,28 @@ class XmlDtdTests extends FunSuite {
     assert(result.isFailure, s"expected failure, got $result")
   }
 
+  test("indirect < in replacement text rejected in attribute") {
+    val xml = "<!DOCTYPE r [<!ENTITY a \"&b;\"><!ENTITY b \"<tag>\">]><r x=\"&a;\"/>"
+    val result = parseXml(xml)
+    assert(result.isFailure, s"expected failure, got $result")
+  }
+
+  test("indirect external entity ref rejected in attribute") {
+    val xml = "<!DOCTYPE r [<!ENTITY a \"&b;\"><!ENTITY b SYSTEM \"e.xml\">]><r x=\"&a;\"/>"
+    val result = parseXml(xml)
+    assert(result.isFailure, s"expected failure, got $result")
+  }
+
+  test("character reference in entity value is expanded") {
+    val xml = "<!DOCTYPE r [<!ENTITY e \"&#65;BC\">]><r>&e;</r>"
+    val result = parseXml(xml)
+    assert(result.isSuccess)
+    root(result) match {
+      case Element(_, _, Text("ABC") :: _) => ()
+      case other => fail(s"Expected 'ABC', got $other")
+    }
+  }
+
   test("undeclared entity rejected with internal DTD") {
     val xml = "<!DOCTYPE r [<!ENTITY e \"value\">]><r>&f;</r>"
     val result = parseXml(xml)
@@ -119,6 +141,40 @@ class XmlDtdTests extends FunSuite {
         "<r id=\"1\">hello</r>"
     val result = parseXml(xml)
     assert(result.isSuccess)
+  }
+
+  test("ELEMENT content model with choice and quantifier is skipped") {
+    val xml = "<!DOCTYPE r [<!ELEMENT r (a|b|c)*>]><r><a/><b/></r>"
+    val result = parseXml(xml)
+    assert(result.isSuccess)
+  }
+
+  test("ATTLIST enumeration and tokenized type are skipped") {
+    val xml = "<!DOCTYPE r [<!ATTLIST r id IDREF #IMPLIED kind (x|y) #FIXED \"x\">]><r/>"
+    val result = parseXml(xml)
+    assert(result.isSuccess)
+  }
+
+  test("NOTATION with PUBLIC identifier is skipped") {
+    val xml = "<!DOCTYPE r [<!NOTATION n PUBLIC \"-//X//EN\">]><r/>"
+    val result = parseXml(xml)
+    assert(result.isSuccess)
+  }
+
+  test("comment between DOCTYPE and root element is allowed") {
+    val xml = "<!DOCTYPE r><!-- note --><r/>"
+    val result = parseXml(xml)
+    assert(result.isSuccess)
+  }
+
+  test("parameter entity declaration and reference relax strict checking") {
+    val xml = "<!DOCTYPE r [<!ENTITY % pe \"v\"> %pe;]><r>&maybe;</r>"
+    val result = parseXml(xml)
+    assert(result.isSuccess)
+    root(result) match {
+      case Element(_, _, Text(content) :: _) => assertEquals(content, "&maybe;")
+      case other => fail(s"Expected literal entity reference text, got $other")
+    }
   }
 
   test("strictXmlConfig does not resolve DTD") {
