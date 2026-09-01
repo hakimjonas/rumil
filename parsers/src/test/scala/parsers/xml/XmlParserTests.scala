@@ -266,7 +266,8 @@ class XmlParserTests extends FunSuite {
       preserveWhitespace = true,
       parseComments = true,
       parseProcessingInstructions = true,
-      expandEntities = true
+      expandEntities = true,
+      resolveDtd = true
     )
     val xml = "<root>  text  </root>"
     val result = parseXmlFragment(xml, config)
