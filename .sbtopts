@@ -1,0 +1,4 @@
+-J-Xss4m
+-J-Xmx4g
+-J-XX:+UseZGC
+-J-XX:+ZGenerational

@@ -1,0 +1,6 @@
+-Xmx4G
+-Xss4M
+-XX:+UseZGC
+-XX:ReservedCodeCacheSize=512m
+-XX:MaxMetaspaceSize=1G
+-Dfile.encoding=UTF-8
