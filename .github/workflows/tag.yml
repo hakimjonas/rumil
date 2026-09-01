@@ -23,6 +23,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Do not persist the GITHUB_TOKEN: the tag push below authenticates with
+          # RELEASE_TOKEN, and a persisted token would override those credentials.
+          persist-credentials: false
 
       - name: Compute and push the next alpha tag
         env:

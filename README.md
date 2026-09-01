@@ -1,6 +1,6 @@
 # Rumil
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 A parser combinator library for Scala 3 with lossless syntax trees, error recovery, and left-recursion support.
 
@@ -546,7 +546,7 @@ sbt interop/Test/testFull
 
 ## License
 
-MIT License
+GPL-3.0-or-later
 
 ## Contributing
 
