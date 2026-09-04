@@ -340,14 +340,27 @@ class GreenTreeStackSafety extends munit.FunSuite {
     )
   }
 
-  test("Phase A: textLength value-equivalence with a naive recursive sum over a varied corpus") {
-    // The cached width must equal what a straightforward recursive char-sum would compute, for
-    // every node shape. Corpus mixes Token / Tree / Unexpected / Missing, nesting, and empties.
-    def naive(n: GreenNode): Int = n match {
-      case GreenNode.Token(_, text) => text.length
-      case GreenNode.Missing(_) => 0
-      case GreenNode.Tree(_, kids, _) => kids.foldLeft(0)((a, c) => a + naive(c))
-      case GreenNode.Unexpected(kids, _) => kids.foldLeft(0)((a, c) => a + naive(c))
+  test("Phase A: textLength value-equivalence with an independent char-sum over a varied corpus") {
+    // The cached width must equal what a straightforward char-sum would compute, for every node
+    // shape. Corpus mixes Token / Tree / Unexpected / Missing, nesting, and empties.
+    //
+    // The reference traversal is tail-recursive with an accumulator — compiled to a loop, so the
+    // checker itself is immune to JVM-stack depth (the original recursive version overflowed on CI
+    // at leftDeep(1000), ~5 JVM frames per level). It stays an independent implementation: a plain
+    // sum over token text lengths, no width cache involved. Child order is irrelevant to a sum, so
+    // kids are simply prepended.
+    def naive(root: GreenNode): Int = {
+      @annotation.tailrec
+      def loop(pending: List[GreenNode], total: Int): Int = pending match {
+        case Nil => total
+        case GreenNode.Token(_, text) :: rest => loop(rest, total + text.length)
+        case GreenNode.Missing(_) :: rest => loop(rest, total)
+        case GreenNode.Tree(_, kids, _) :: rest =>
+          loop(kids.toList ::: rest, total)
+        case GreenNode.Unexpected(kids, _) :: rest =>
+          loop(kids.toList ::: rest, total)
+      }
+      loop(List(root), 0)
     }
     val corpus: List[GreenNode] = List(
       num,
