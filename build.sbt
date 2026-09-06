@@ -50,7 +50,7 @@ addCommandAlias("check", "scalafixAll --check; scalafmtCheckAll; scalafmtSbtChec
 
 javacOptions ++= Seq("--release", "25")
 
-val saratiVersion = "1.0.0-alpha.3"
+val saratiVersion = "1.0.0-alpha.5"
 
 val sharedScalacOptions = Seq(
   "-deprecation",
