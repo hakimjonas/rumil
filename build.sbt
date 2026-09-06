@@ -74,7 +74,7 @@ lazy val core = (project in file("core"))
   .settings(
     name := "rumil-core",
     libraryDependencies ++= Seq(
-      "org.scalacheck" %% "scalacheck" % "1.19.0" % Test,
+      "org.scalacheck" %% "scalacheck" % "1.20.0" % Test,
       "org.scalameta" %% "munit" % "1.3.5" % Test,
       "org.typelevel" %% "cats-parse" % "1.1.0" % Test,
       "dev.zio" %% "zio-parser" % "0.1.11" % Test
@@ -96,7 +96,7 @@ lazy val parsers = (project in file("parsers"))
     name := "rumil-parsers",
     libraryDependencies ++= Seq(
       "net.ghoula" %% "sarati" % saratiVersion,
-      "org.scalacheck" %% "scalacheck" % "1.19.0" % Test,
+      "org.scalacheck" %% "scalacheck" % "1.20.0" % Test,
       "org.scalameta" %% "munit" % "1.3.5" % Test
     ),
     scalacOptions ++= sharedScalacOptions,
