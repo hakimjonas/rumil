@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   application code.
 - **Dependency** — `sarati` moved to 1.0.0-alpha.3 (license-metadata-only upstream release;
   no API change).
+- **Dependency** — `sarati` moved to 1.0.0-alpha.4 (toolchain-only upstream release:
+  Scala 3.9.0 LTS + sbt 2.0.8; no API change).
 
 ### Removed
 
