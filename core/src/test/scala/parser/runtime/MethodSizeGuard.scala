@@ -1,7 +1,5 @@
 package parser.runtime
 
-import java.lang.classfile.ClassFile
-import java.lang.classfile.attribute.CodeAttribute
 import scala.jdk.CollectionConverters.*
 
 /** JIT method-size invariant guard.
@@ -35,7 +33,10 @@ class MethodSizeGuard extends munit.FunSuite {
       Set("loop", "stepEval", "stepApply", "stepApplySuccess", "stepComposeK")
   )
 
-  /** Max `Code`-attribute length per method name in a class (overloads → take the max). */
+  /** Max `Code`-attribute length per method name in a class (overloads → take the max). Driven
+    * through the Java helper in `MethodSizes.java` — see its scaladoc for why the JDK class-file
+    * API is not driven from Scala directly.
+    */
   private def codeSizes(binaryName: String): Map[String, Int] = {
     val resource = binaryName.replace('.', '/') + ".class"
     val stream = Option(getClass.getClassLoader.getResourceAsStream(resource))
@@ -43,16 +44,7 @@ class MethodSizeGuard extends munit.FunSuite {
     val bytes =
       try stream.readAllBytes()
       finally stream.close()
-    val cm = ClassFile.of().parse(bytes)
-    cm.methods()
-      .asScala
-      .toList
-      .flatMap { mm =>
-        mm.attributes().asScala.collectFirst { case ca: CodeAttribute =>
-          mm.methodName().stringValue() -> ca.codeLength()
-        }
-      }
-      .groupMapReduce(_._1)(_._2)(math.max)
+    MethodSizes.codeSizes(bytes).asScala.map(kv => kv._1 -> kv._2.intValue()).toMap
   }
 
   for ((binaryName, methods) <- Guarded; method <- methods) {
