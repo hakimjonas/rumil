@@ -713,7 +713,3 @@ private def xmlDocument(config: XmlConfig): Parser[ParseError, XmlDocument] =
       root = root
     )
   }
-
-// Re-export Sarati's XML types and formatters so downstream consumers
-// don't need to import from Sarati directly.
-export net.ghoula.sarati.ast.xml.{formatXml, formatXmlDocument}

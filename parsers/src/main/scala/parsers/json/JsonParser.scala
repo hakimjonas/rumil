@@ -234,7 +234,3 @@ def parseJsonAs[A](input: String)(f: JsonValue => Option[A]): Result[ParseError,
       }
     case Result.Failure(errors, furthest) => Result.Failure(errors, furthest)
   }
-
-// Re-export Sarati's JSON types and formatter so downstream consumers
-// don't need to import from Sarati directly.
-export net.ghoula.sarati.ast.json.{formatJson, JsonFormatConfig, compactFormat, prettyFormat}
