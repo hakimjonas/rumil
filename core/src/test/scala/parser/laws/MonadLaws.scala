@@ -211,13 +211,11 @@ object ParserExecutionLaws extends Properties("Parser Execution Laws") {
   }
 
   // map transforms result
-  property("map transforms result") = Prop.forAll { (n: Int) =>
-    (n >= 0 && n <= 9) ==> {
-      digit.map(_.toString.toInt).run(n.toString) match {
-        case PResult.Success(value, _) => value == n
-        case PResult.Partial(_, _, _) => false
-        case PResult.Failure(_, _) => false
-      }
+  property("map transforms result") = Prop.forAll(Gen.choose(0, 9)) { (n: Int) =>
+    digit.map(_.toString.toInt).run(n.toString) match {
+      case PResult.Success(value, _) => value == n
+      case PResult.Partial(_, _, _) => false
+      case PResult.Failure(_, _) => false
     }
   }
 
