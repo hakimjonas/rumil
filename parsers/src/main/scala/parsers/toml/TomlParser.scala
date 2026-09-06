@@ -504,7 +504,3 @@ private def tomlDocument: Parser[ParseError, TomlDocument] =
     _ <- eof
     doc <- buildDocument(items)
   } yield doc
-
-// Re-export Sarati's TOML types and formatter so downstream consumers
-// don't need to import from Sarati directly.
-export net.ghoula.sarati.ast.toml.{formatTomlValue, formatToml, toInlineValue}

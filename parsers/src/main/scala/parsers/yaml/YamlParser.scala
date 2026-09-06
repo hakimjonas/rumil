@@ -137,7 +137,3 @@ private def yamlDocument: Parser[ParseError, YamlDocument] =
     _ <- (string("...") <* newline.optional).optional
     _ <- ws *> eof
   } yield (root = root, directives = List())
-
-// Re-export Sarati's YAML types and formatter so downstream consumers
-// don't need to import from Sarati directly.
-export net.ghoula.sarati.ast.yaml.{formatYaml, formatYamlDocument}

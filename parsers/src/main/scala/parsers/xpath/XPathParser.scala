@@ -252,7 +252,3 @@ private def orExpr: Parser[ParseError, XPathExpr] =
   andExpr.chainl1(keyword("or").map(_ => (l: XPathExpr, r: XPathExpr) => XPathExpr.Or(l, r)))
 
 private def expr: Parser[ParseError, XPathExpr] = defer(orExpr)
-
-// Re-export Sarati's XPath AST types so downstream consumers don't need to import from Sarati
-// directly for what this parser produces.
-export net.ghoula.sarati.xpath.{ArithOp, Axis, BinaryOp, NameTest, NodeTest, Step, XPathExpr}

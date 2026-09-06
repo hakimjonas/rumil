@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dependency** — `sarati` moved to 1.0.0-alpha.3 (license-metadata-only upstream release;
   no API change).
 
+### Removed
+
+- **Sarati re-exports** — `parsers.{json,xml,toml,yaml,xpath}` no longer re-export Sarati's
+  formatters and XPath AST types (`formatJson`, `formatXml`, `formatToml*`, `formatYaml*`,
+  `compactFormat`, `prettyFormat`, `JsonFormatConfig`, `toInlineValue`, `XPathExpr`, `Step`,
+  `Axis`, `NodeTest`, `NameTest`, `BinaryOp`, `ArithOp`). Import them from Sarati directly
+  (`net.ghoula.sarati.ast.json.*`, `net.ghoula.sarati.ast.xml.*`, `net.ghoula.sarati.ast.toml.*`,
+  `net.ghoula.sarati.ast.yaml.*`, `net.ghoula.sarati.xpath.*`): every consumer already
+  declares `sarati` (the AST types appear throughout Rumil's public signatures), and each
+  library's compatibility surface should be exactly its own. Rumil's own API — the parsers
+  and combinators — is unchanged.
+
 ## [1.0.0-alpha] - 2026-09
 
 Initial public release.
