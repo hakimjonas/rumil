@@ -5,7 +5,7 @@ ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
-ThisBuild / licenses := Seq("GPL-3.0-or-later" -> uri("https://www.gnu.org/licenses/gpl-3.0.txt"))
+ThisBuild / licenses := Seq("LGPL-3.0-or-later" -> uri("https://www.gnu.org/licenses/lgpl-3.0.txt"))
 ThisBuild / homepage := Some(uri("https://github.com/hakimjonas/rumil"))
 ThisBuild / description := "A Scala 3 parser combinator library with structural-first design and idiomatic interop"
 ThisBuild / developers := List(
