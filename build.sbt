@@ -75,7 +75,7 @@ lazy val core = (project in file("core"))
     name := "rumil-core",
     libraryDependencies ++= Seq(
       "org.scalacheck" %% "scalacheck" % "1.20.0" % Test,
-      "org.scalameta" %% "munit" % "1.3.5" % Test,
+      "org.scalameta" %% "munit" % "1.3.6" % Test,
       "org.typelevel" %% "cats-parse" % "1.1.0" % Test,
       "dev.zio" %% "zio-parser" % "0.1.11" % Test
     ),
@@ -97,7 +97,7 @@ lazy val parsers = (project in file("parsers"))
     libraryDependencies ++= Seq(
       "net.ghoula" %% "sarati" % saratiVersion,
       "org.scalacheck" %% "scalacheck" % "1.20.0" % Test,
-      "org.scalameta" %% "munit" % "1.3.5" % Test
+      "org.scalameta" %% "munit" % "1.3.6" % Test
     ),
     scalacOptions ++= sharedScalacOptions,
     javaOptions ++= Seq("-XX:+UseZGC"),
@@ -112,7 +112,7 @@ lazy val interop = (project in file("interop"))
     name := "rumil-interop",
     libraryDependencies ++= Seq(
       "net.ghoula" %% "sarati" % saratiVersion,
-      "org.scalameta" %% "munit" % "1.3.5" % Test
+      "org.scalameta" %% "munit" % "1.3.6" % Test
     ),
     scalacOptions ++= sharedScalacOptions,
     javaOptions ++= Seq("-XX:+UseZGC"),
