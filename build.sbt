@@ -132,7 +132,7 @@ lazy val benchmarks = (project in file("benchmarks"))
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-parse" % "1.1.0",
       "dev.zio" %% "zio-parser" % "0.1.11",
-      "org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0"
+      "org.scala-lang.modules" %% "scala-parser-combinators" % "2.5.0"
     ),
     scalacOptions ++= Seq(
       "-deprecation",
