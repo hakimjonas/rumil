@@ -77,7 +77,7 @@ lazy val core = (project in file("core"))
       "org.scalacheck" %% "scalacheck" % "1.20.0" % Test,
       "org.scalameta" %% "munit" % "1.3.6" % Test,
       "org.typelevel" %% "cats-parse" % "1.1.0" % Test,
-      "dev.zio" %% "zio-parser" % "0.1.11" % Test
+      "dev.zio" %% "zio-parser" % "0.1.12" % Test
     ),
     scalacOptions ++= sharedScalacOptions,
     Test / testOptions += Tests.Filter { name =>
@@ -131,7 +131,7 @@ lazy val benchmarks = (project in file("benchmarks"))
     publish / skip := true,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-parse" % "1.1.0",
-      "dev.zio" %% "zio-parser" % "0.1.11",
+      "dev.zio" %% "zio-parser" % "0.1.12",
       "org.scala-lang.modules" %% "scala-parser-combinators" % "2.5.0"
     ),
     scalacOptions ++= Seq(
